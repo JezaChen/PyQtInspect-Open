@@ -16,6 +16,11 @@ from PyQtInspect.pqi_contants import IS_JYTH_LESS25, IS_PYCHARM, get_thread_id, 
     clear_cached_thread_id, INTERACTIVE_MODE_AVAILABLE, SHOW_DEBUG_INFO_ENV, IS_PY34_OR_GREATER, IS_PY36_OR_GREATER, \
     IS_PY2, NULL, NO_FTRACE, dummy_excepthook, IS_CPYTHON, GOTO_HAS_RESPONSE, set_global_debugger, IS_PY3K
 import PyQtInspect.pqi_log as pqi_log
+from PyQtInspect._pqi_bundle.pqi_comm import CMD_SET_BREAK, CMD_SET_NEXT_STATEMENT, CMD_STEP_INTO, CMD_STEP_OVER, \
+    CMD_STEP_RETURN, CMD_STEP_INTO_MY_CODE, CMD_THREAD_SUSPEND, CMD_RUN_TO_LINE, \
+    CMD_ADD_EXCEPTION_BREAK, CMD_SMART_STEP_INTO, PyDBDaemonThread, ReaderThread, GetGlobalDebugger, \
+    get_global_debugger, set_global_debugger, WriterThread, pydevd_log, \
+    start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread
 import traceback
 
 threadingCurrentThread = threading.current_thread
@@ -252,6 +257,9 @@ class PyDB(object):
         # If True, pydevd finished all work and only waits output_checker_thread
         self.wait_output_checker_thread = False
 
+        # the role PyDB plays in the communication with IDE
+        self.communication_role = None
+
     def get_thread_local_trace_func(self):
         try:
             thread_trace_func = self._local_thread_trace_func.thread_trace_func
@@ -329,10 +337,24 @@ class PyDB(object):
         self._finish_debugging_session = True
 
     def initialize_network(self, sock):
-        pass
+        try:
+            sock.settimeout(None)  # infinite, no timeouts from now on - jython does not have it
+        except:
+            pass
+        self.writer = WriterThread(sock)
+        self.reader = ReaderThread(sock)
+        self.writer.start()
+        self.reader.start()
 
     def connect(self, host, port):
-        pass
+        if host:
+            self.communication_role = CommunicationRole.CLIENT
+            s = start_client(host, port)
+        else:
+            self.communication_role = CommunicationRole.SERVER
+            s = start_server(port)
+
+        self.initialize_network(s)
 
     def get_internal_queue(self, thread_id):
         """ returns internal command queue for a given thread.
@@ -730,7 +752,17 @@ def main():
         traceback.print_exc()
         usage(exit_code=1)
 
+    port = setup['port']
+    host = setup['client']
+
     debugger = PyDB()
+
+    try:
+        debugger.connect(host, port)
+    except:
+        sys.stderr.write("Could not connect to %s: %s\n" % (host, port))
+        traceback.print_exc()
+        sys.exit(1)
 
     import PyQtInspect.pqi_monkey
 
