@@ -8,6 +8,7 @@ import sys
 import os
 import time
 
+from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle import fix_getpass
 from PyQtInspect._pqi_bundle import pqi_vm_type
@@ -20,7 +21,7 @@ from PyQtInspect._pqi_bundle.pqi_comm import CMD_SET_BREAK, CMD_SET_NEXT_STATEME
     CMD_STEP_RETURN, CMD_STEP_INTO_MY_CODE, CMD_THREAD_SUSPEND, CMD_RUN_TO_LINE, \
     CMD_ADD_EXCEPTION_BREAK, CMD_SMART_STEP_INTO, PyDBDaemonThread, ReaderThread, GetGlobalDebugger, \
     get_global_debugger, set_global_debugger, WriterThread, pydevd_log, \
-    start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread
+    start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread, NetCommand, NetCommandFactory
 import traceback
 
 threadingCurrentThread = threading.current_thread
@@ -161,7 +162,7 @@ class PyDB(object):
         self.output_checker_thread = None
         self.py_db_command_thread = None
         self.quitting = None
-        # self.cmd_factory = NetCommandFactory()
+        self.cmd_factory = NetCommandFactory()
         # self._cmd_queue = defaultdict(_queue.Queue)  # Key is thread id or '*', value is Queue
 
         self.breakpoints = {}
@@ -355,6 +356,8 @@ class PyDB(object):
             s = start_server(port)
 
         self.initialize_network(s)
+        if host:
+            self.send_process_created_message()
 
     def get_internal_queue(self, thread_id):
         """ returns internal command queue for a given thread.
@@ -395,7 +398,9 @@ class PyDB(object):
     def send_process_created_message(self):
         """Sends a message that a new process has been created.
         """
-        pass
+        cmdText = '<process/>'
+        cmd = NetCommand(CMD_PROCESS_CREATED, 0, cmdText)
+        self.writer.add_command(cmd)
 
     def send_process_will_be_substituted(self):
         """When `PyDB` works in server mode this method sends a message that a
@@ -457,7 +462,7 @@ class PyDB(object):
         except:
             pass
 
-        from pqi_monkey import patch_thread_modules
+        from PyQtInspect.pqi_monkey import patch_thread_modules
         patch_thread_modules()
 
     def run(self, file, globals=None, locals=None, is_module=False, set_trace=True):
@@ -615,6 +620,10 @@ class PyDB(object):
     def wait_for_commands(self, globals):
         pass
 
+    def send_widget_message(self, widget_name: str, create_info: dict):
+        cmd = self.cmd_factory.make_widget_message(widget_name, create_info)
+        self.writer.add_command(cmd)
+
     # trace_dispatch = _trace_dispatch
     # frame_eval_func = frame_eval_func
     # dummy_trace_dispatch = dummy_trace_dispatch
@@ -727,10 +736,85 @@ def _locked_settrace(
     else:
         monkey_qt.patch_qt("pyqt5")
 
-    global connected
-    global bufferStdOutToServer
-    global bufferStdErrToServer
+    # global connected
+    # global bufferStdOutToServer
+    # global bufferStdErrToServer
+    connected = False
 
+    # Reset created PyDB daemon threads after fork - parent threads don't exist in a child process.
+    PyDBDaemonThread.created_pydb_daemon_threads = {}
+
+    if not connected:
+
+        if SetupHolder.setup is None:
+            setup = {
+                'client': host,  # dispatch expects client to be set to the host address when server is False
+                'server': False,
+                'port': int(port),
+                'multiprocess': patch_multiprocessing,
+            }
+            SetupHolder.setup = setup
+
+        debugger = PyDB()
+        debugger.connect(host, port)  # Note: connect can raise error.
+
+        # Mark connected only if it actually succeeded.
+        connected = True
+        bufferStdOutToServer = stdoutToServer
+        bufferStdErrToServer = stderrToServer
+
+        # if bufferStdOutToServer:
+        #     init_stdout_redirect()
+        #
+        # if bufferStdErrToServer:
+        #     init_stderr_redirect()
+        #
+        # patch_stdin(debugger)
+        #
+        # t = threadingCurrentThread()
+        # additional_info = set_additional_thread_info(t)
+
+        while not debugger.ready_to_run:
+            time.sleep(0.1)  # busy wait until we receive run command
+
+        # Set the tracing only
+        debugger.set_trace_for_frame_and_parents(get_frame().f_back)
+
+        # CustomFramesContainer.custom_frames_lock.acquire()  # @UndefinedVariable
+        # try:
+        #     for _frameId, custom_frame in dict_iter_items(CustomFramesContainer.custom_frames):
+        #         debugger.set_trace_for_frame_and_parents(custom_frame.frame)
+        # finally:
+        #     CustomFramesContainer.custom_frames_lock.release()  # @UndefinedVariable
+
+        debugger.start_auxiliary_daemon_threads()
+
+        debugger.enable_tracing(apply_to_all_threads=True)
+
+        if not trace_only_current_thread:
+            # Trace future threads?
+            debugger.patch_threads()
+
+            # As this is the first connection, also set tracing for any untraced threads
+            debugger.set_tracing_for_untraced_contexts(ignore_current_thread=True)
+
+        # Stop the tracing as the last thing before the actual shutdown for a clean exit.
+        # atexit.register(stoptrace)  todo
+
+    else:
+        # ok, we're already in debug mode, with all set, so, let's just set the break
+        debugger = get_global_debugger()
+
+        debugger.set_trace_for_frame_and_parents(get_frame().f_back)
+
+        t = threadingCurrentThread()
+        # additional_info = set_additional_thread_info(t)
+
+        debugger.enable_tracing()
+
+        if not trace_only_current_thread:
+            # Trace future threads?
+            debugger.patch_threads()
 
 # =======================================================================================================================
 # main

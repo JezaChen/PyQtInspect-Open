@@ -6,6 +6,8 @@ import os
 import threading  # todo used by only python3
 import sys
 
+from PyQtInspect.pqi_contants import get_global_debugger
+
 
 def set_trace_in_qt():
     # from _pydevd_bundle.pydevd_comm import get_global_debugger
@@ -302,6 +304,10 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             print(f"create info: {self._pqi_last_frame_when_create}")
         print(f"{inspect.getfile(self.__class__)}")
         print(f"{self.styleSheet(), self.objectName()}")
+        debugger = get_global_debugger()
+        if debugger is not None:
+            traceInfoDict = dict(self._pqi_last_frame_when_create._asdict())
+            debugger.send_widget_message(self.__class__.__name__, traceInfoDict)
         if not hasattr(self, '_pqi_highlight_bg'):
             self._pqi_highlight_bg = _createHighlightWidget(self)
 

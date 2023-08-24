@@ -106,7 +106,9 @@ CMD_RETURN = 502
 CMD_SET_PROTOCOL = 503
 CMD_ERROR = 901
 
-from _pydev_bundle._pydev_filesystem_encoding import getfilesystemencoding
+CMD_WIDGET_INFO = 1001
+
+from PyQtInspect._pqi_bundle._pqi_filesystem_encoding import getfilesystemencoding
 
 file_system_encoding = getfilesystemencoding()
 filesystem_encoding_is_utf8 = file_system_encoding.lower() in ('utf-8', 'utf_8', 'utf8')
@@ -191,4 +193,5 @@ ID_TO_MEANING = {
     '502': 'CMD_RETURN',
     '503': 'CMD_SET_PROTOCOL',
     '901': 'CMD_ERROR',
+    '1001': 'CMD_WIDGET_INFO',
 }

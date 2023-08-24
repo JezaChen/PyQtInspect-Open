@@ -154,7 +154,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     CMD_THREAD_SUSPEND_SINGLE_NOTIFICATION, CMD_THREAD_RESUME_SINGLE_NOTIFICATION,
     CMD_REDIRECT_OUTPUT, CMD_GET_NEXT_STATEMENT_TARGETS, CMD_SET_PROJECT_ROOTS, CMD_VERSION,
     CMD_RETURN, CMD_SET_PROTOCOL, CMD_ERROR, CMD_GET_SMART_STEP_INTO_VARIANTS, CMD_DATAVIEWER_ACTION,
-    CMD_TABLE_EXEC, CMD_INTERRUPT_DEBUG_CONSOLE, CMD_SET_USER_TYPE_RENDERERS)
+    CMD_TABLE_EXEC, CMD_INTERRUPT_DEBUG_CONSOLE, CMD_SET_USER_TYPE_RENDERERS, CMD_WIDGET_INFO)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -424,7 +424,7 @@ def start_server(port):
         newSock, _addr = s.accept()
         pydevd_log(1, "Connection accepted")
         # closing server socket is not necessary but we don't need it
-        s.shutdown(SHUT_RDWR)
+        # s.shutdown(SHUT_RDWR)  # todo?
         s.close()
         return newSock
 
@@ -564,19 +564,28 @@ class NetCommand:
 # # =======================================================================================================================
 # # NetCommandFactory
 # # =======================================================================================================================
-# class NetCommandFactory:
-#
-#     def _thread_to_xml(self, thread):
-#         """ thread information as XML """
-#         name = pydevd_xml.make_valid_xml_value(thread.name)
-#         cmdText = '<thread name="%s" id="%s" />' % (quote(name), get_thread_id(thread))
-#         return cmdText
-#
-#     def make_error_message(self, seq, text):
-#         cmd = NetCommand(CMD_ERROR, seq, text)
-#         if DebugInfoHolder.DEBUG_TRACE_LEVEL > 2:
-#             sys.stderr.write("Error: %s" % (text,))
-#         return cmd
+class NetCommandFactory:
+    def make_dict(self, **kwargs):
+        return kwargs
+
+    def make_json(self, **kwargs):
+        return json.dumps(kwargs)
+
+    def make_widget_message(self, widget_class_name: str, create_info: dict):
+        cmd = NetCommand(CMD_WIDGET_INFO, 0, self.make_json(widget_class_name=widget_class_name, create_info=create_info))
+        return cmd
+
+    # def _thread_to_xml(self, thread):
+    #     """ thread information as XML """
+    #     name = pydevd_xml.make_valid_xml_value(thread.name)
+    #     cmdText = '<thread name="%s" id="%s" />' % (quote(name), get_thread_id(thread))
+    #     return cmdText
+
+    # def make_error_message(self, seq, text):
+    #     cmd = NetCommand(CMD_ERROR, seq, text)
+    #     if DebugInfoHolder.DEBUG_TRACE_LEVEL > 2:
+    #         sys.stderr.write("Error: %s" % (text,))
+    #     return cmd
 #
 #     def make_protocol_set_message(self, seq):
 #         return NetCommand(CMD_SET_PROTOCOL, seq, '')
