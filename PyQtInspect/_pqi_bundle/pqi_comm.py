@@ -218,14 +218,6 @@ class PyDBDaemonThread(threading.Thread):
         created_pydb_daemon[self] = 1
         try:
             try:
-                if IS_JYTHON and not isinstance(threading.current_thread(), threading._MainThread):
-                    # we shouldn't update sys.modules for the main thread, cause it leads to the second importing 'threading'
-                    # module, and the new instance of main thread is created
-                    import org.python.core as PyCore  # @UnresolvedImport
-                    ss = PyCore.PySystemState()
-                    # Note: Py.setSystemState() affects only the current thread.
-                    PyCore.Py.setSystemState(ss)
-
                 self._stop_trace()
                 self._warn_pydevd_thread_is_traced()
                 self._on_run()

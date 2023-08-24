@@ -772,7 +772,8 @@ def main():
     is_module = setup['module']
 
     enable_qt_support("pyqt5")
-    debugger.run(setup["file"], None, None, is_module)
+    if setup['file']:
+        debugger.run(setup["file"], None, None, is_module)
 
 
 if __name__ == '__main__':
