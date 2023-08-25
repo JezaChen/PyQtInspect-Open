@@ -5,6 +5,7 @@
 # Description: 
 # ==============================================
 import time
+import queue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 import sys
@@ -20,7 +21,12 @@ from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 
-class Dispatcher(QtCore.QObject):
+class DispatcherThread(QtCore.QThread):
+    def run(self) -> None:
+        super().run()
+
+
+class Dispatcher(QtCore.QThread):
     sigMsg = QtCore.pyqtSignal(dict)
 
     def __init__(self, parent, sock):
@@ -45,7 +51,7 @@ class Dispatcher(QtCore.QObject):
 
 class DispatchReader(ReaderThread):
     def __init__(self, dispatcher):
-        ReaderThread.__init__(self, self.dispatcher.sock)
+        ReaderThread.__init__(self, dispatcher.sock)
         self.dispatcher = dispatcher
 
     @overrides(ReaderThread._on_run)
@@ -62,9 +68,10 @@ class DispatchReader(ReaderThread):
         from urllib.parse import unquote
         text = unquote(text)
         print(cmd_id, seq, text)
+        self.dispatcher.notify(cmd_id, seq, text)
 
 
-class BrowserHandler(QtCore.QObject):
+class BrowserHandler(QtCore.QThread):
     running = False
     newTextAndColor = QtCore.pyqtSignal(str, object)
 
@@ -86,10 +93,13 @@ class BrowserHandler(QtCore.QObject):
             )
             QtCore.QThread.msleep(1000)
 
+
 class PQYWorker(QtCore.QObject):
     start = QtCore.pyqtSignal()
 
     widgetInfoRecv = QtCore.pyqtSignal(dict)
+
+    sigNewDispatcher = QtCore.pyqtSignal(Dispatcher)
 
     def __init__(self, parent, port):
         super().__init__(parent)
@@ -115,50 +125,106 @@ class PQYWorker(QtCore.QObject):
             while True:
                 newSock, _addr = s.accept()
                 # 新建个线程来处理
-                dispatcher = BrowserHandler()
-                # dispatcher.sigMsg.connect(self.widgetInfoRecv)
-                t = QtCore.QThread()
-                dispatcher.moveToThread(t)
-                t.started.connect(dispatcher.run)
+                dispatcher = Dispatcher(None, newSock)
+                # dispatcher.sigMsg.connect(self.onMsg)
+                # t = QtCore.QThread()
+                # dispatcher.moveToThread(t)
+                # t.started.connect(dispatcher.run)
                 self.dispatchers.append(dispatcher)
-                self.threads.append(t)
-
-                t.start()
+                # self.threads.append(t)
+                self.sigNewDispatcher.emit(dispatcher)
+                dispatcher.start()
 
         except:
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
             sys.stderr.flush()
             traceback.print_exc()
 
+    def onMsg(self, info: dict):
+        self.widgetInfoRecv.emit(info)
+
 
 class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("PyQtInspect")
-        self.resize(800, 600)
+        self.resize(700, 1000)
+
+        self._mainContainer = QtWidgets.QWidget(self)
+        self.setCentralWidget(self._mainContainer)
+        self._mainLayout = QtWidgets.QVBoxLayout(self._mainContainer)
+        self._mainLayout.setContentsMargins(0, 0, 0, 0)
+        self._mainLayout.setSpacing(0)
+
+        self._topContainer = QtWidgets.QWidget(self)
+        self._topContainer.setFixedHeight(30)
+        self._topContainer.move(0, 0)
+
+        self._topLayout = QtWidgets.QHBoxLayout(self._topContainer)
+        self._topLayout.setContentsMargins(0, 0, 0, 0)
+        self._topLayout.setSpacing(0)
+
+        self._portLineEdit = QtWidgets.QLineEdit(self._topContainer)
+        self._portLineEdit.setFixedHeight(30)
+        self._portLineEdit.setText("19394")
+        self._portLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        self._topLayout.addWidget(self._portLineEdit)
+
+        self._serveButton = QtWidgets.QPushButton(self)
+        self._serveButton.setText("Serve")
+        self._serveButton.setFixedHeight(30)
+        self._serveButton.clicked.connect(self.runWorker)
+
+        self._topLayout.addWidget(self._serveButton)
+
+        self._mainLayout.addWidget(self._topContainer)
 
         self._infoLabel = QtWidgets.QLabel(self)
         self._infoLabel.setText("PyQtInspect")
         self._infoLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.setCentralWidget(self._infoLabel)
+        self._infoLabel.setWordWrap(True)
+        self._infoLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
-        # self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
-        self._worker = PQYWorker(None, 19394)
+        self._mainLayout.addWidget(self._infoLabel)
+
+        self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
+        self._bottomStatusTextBrowser.setFixedHeight(100)
+        self._bottomStatusTextBrowser.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        self._mainLayout.addWidget(self._bottomStatusTextBrowser)
+
+        self._worker = None
+
+    def runWorker(self):
+        if self._worker is not None:
+            return
+
+        try:
+            port = int(self._portLineEdit.text())
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
+            return
+
+        self._portLineEdit.setEnabled(False)
+        self._serveButton.setEnabled(False)
+
+        self._worker = PQYWorker(None, port)
+        self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
+        self._worker.sigNewDispatcher.connect(self.onNewDispatcher)
         self._workerThread = QtCore.QThread()
 
         self._worker.moveToThread(self._workerThread)
         self._workerThread.started.connect(self._worker.run)
 
-        self._btn = QtWidgets.QPushButton(self)
-        self._btn.setText("Click")
-        self._btn.clicked.connect(self.runWorker)
-        self._btn.move(100, 100)
-
-    def runWorker(self):
         self._workerThread.start()
 
     def on_widget_info_recv(self, info):
-        print(info)
+        self._infoLabel.setText(str(info["text"]))
+        self._bottomStatusTextBrowser.append(f"recv: {info}")
+
+    def onNewDispatcher(self, dispatcher):
+        dispatcher.sigMsg.connect(self.on_widget_info_recv)
 
 
 if __name__ == '__main__':
@@ -168,4 +234,3 @@ if __name__ == '__main__':
     window = PQIWindow()
     window.show()
     sys.exit(app.exec())
-
