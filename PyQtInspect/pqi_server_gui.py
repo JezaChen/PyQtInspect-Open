@@ -4,6 +4,7 @@
 # Time: 2023/8/24 17:36
 # Description: 
 # ==============================================
+import json
 import time
 import queue
 
@@ -144,6 +145,112 @@ class PQYWorker(QtCore.QObject):
         self.widgetInfoRecv.emit(info)
 
 
+class BriefLine(QtWidgets.QWidget):
+    def __init__(self, parent, key: str, defaultValue: str = ""):
+        super().__init__(parent)
+        self.setFixedHeight(30)
+
+        self._layout = QtWidgets.QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(3)
+
+        self._keyLabel = QtWidgets.QLabel(self)
+        self._keyLabel.setText(key)
+        self._keyLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self._keyLabel.setWordWrap(True)
+        self._keyLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        self._layout.addWidget(self._keyLabel)
+
+        self._valueLineEdit = QtWidgets.QLineEdit(self)
+        self._valueLineEdit.setText(defaultValue)
+        self._valueLineEdit.setAlignment(QtCore.Qt.AlignCenter)
+        self._valueLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        self._layout.addWidget(self._valueLineEdit)
+
+    def setValue(self, value: str):
+        self._valueLineEdit.setText(value)
+
+
+class WidgetBriefWidget(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._mainLayout = QtWidgets.QVBoxLayout(self)
+        self._mainLayout.setContentsMargins(0, 0, 0, 0)
+        self._mainLayout.setSpacing(5)
+
+        self._classNameLine = BriefLine(self, "class_name")
+        self._mainLayout.addWidget(self._classNameLine)
+
+        self._objectNameLine = BriefLine(self, "object_name")
+        self._mainLayout.addWidget(self._objectNameLine)
+
+        self._sizeLine = BriefLine(self, "size")
+        self._mainLayout.addWidget(self._sizeLine)
+
+        self._posLine = BriefLine(self, "pos")
+        self._mainLayout.addWidget(self._posLine)
+
+        self._parentLine = BriefLine(self, "parent")
+        self._mainLayout.addWidget(self._parentLine)
+
+        self._styleSheetLine = BriefLine(self, "style_sheet")
+        self._mainLayout.addWidget(self._styleSheetLine)
+
+        self._mainLayout.addStretch(1)
+
+    def setInfo(self, info):
+        self._classNameLine.setValue(info["class_name"])
+        self._objectNameLine.setValue(info["object_name"])
+        self._sizeLine.setValue(str(info["size"]))
+        self._posLine.setValue(str(info["pos"]))
+        self._parentLine.setValue(str(info["parent_classes"]))
+
+
+class CreateStacksListWidget(QtWidgets.QListWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setMinimumHeight(200)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+    def setStacks(self, stacks: list):
+        self.clear()
+        for index, stack in enumerate(stacks):
+            fileName = stack.get("filename", "")
+            lineNo = stack.get("lineno", "")
+            funcName = stack.get("function", "")
+            item = QtWidgets.QListWidgetItem()
+            item.setText(f"{index + 1}. File {fileName}, line {lineNo}: {funcName}")
+            # set property
+            item.setData(QtCore.Qt.UserRole, (fileName, lineNo))
+            self.addItem(item)
+
+    # double click to open file
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
+        super().mousePressEvent(event)
+        if event.button() == QtCore.Qt.LeftButton:
+            item = self.itemAt(event.pos())
+            if item is not None:
+                fileName, lineNo = item.data(QtCore.Qt.UserRole)
+                if fileName:
+                    self.openFile(fileName, lineNo)
+
+    def findPycharm(self):
+        import os
+        for path in os.environ["PATH"].split(";"):
+            if "pycharm" in path.lower():
+                return path + "\\pycharm64.exe"
+        return None
+
+    def openFile(self, fileName: str, lineNo: int):
+        # open in Pycharm
+        import subprocess
+        pycharm = self.findPycharm()
+        subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
+
+
+
 class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -180,13 +287,15 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._mainLayout.addWidget(self._topContainer)
 
-        self._infoLabel = QtWidgets.QLabel(self)
-        self._infoLabel.setText("PyQtInspect")
-        self._infoLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self._infoLabel.setWordWrap(True)
-        self._infoLabel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self._widgetBriefWidget = WidgetBriefWidget(self)
+        self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-        self._mainLayout.addWidget(self._infoLabel)
+        self._mainLayout.addWidget(self._widgetBriefWidget)
+
+        self._createStacksListWidget = CreateStacksListWidget(self)
+        self._createStacksListWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        self._mainLayout.addWidget(self._createStacksListWidget)
 
         self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
         self._bottomStatusTextBrowser.setFixedHeight(100)
@@ -219,9 +328,14 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._workerThread.start()
 
-    def on_widget_info_recv(self, info):
-        self._infoLabel.setText(str(info["text"]))
+    def on_widget_info_recv(self, info: dict):
+        if info.get("cmd_id") == 1001:
+            self.handle_widget_info_msg(json.loads(info["text"]))
         self._bottomStatusTextBrowser.append(f"recv: {info}")
+
+    def handle_widget_info_msg(self, info):
+        self._widgetBriefWidget.setInfo(info)
+        self._createStacksListWidget.setStacks(info.get("stacks_when_create", []))
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)

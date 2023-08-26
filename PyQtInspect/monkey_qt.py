@@ -6,6 +6,7 @@ import os
 import threading  # todo used by only python3
 import sys
 
+from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_classes, get_stylesheet
 from PyQtInspect.pqi_contants import get_global_debugger
 from PyQtInspect.pqi_structures import QWidgetInfo
 
@@ -324,7 +325,11 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             widget_info = QWidgetInfo(
                 class_name=self.__class__.__name__,
                 object_name=self.objectName(),
-                stacks_when_create=self._pqi_stacks_when_create
+                stacks_when_create=self._pqi_stacks_when_create,
+                size=get_widget_size(self),
+                pos=get_widget_pos(self),
+                parent_classes=list(get_parent_classes(self)),
+                stylesheet=get_stylesheet(self)
             )
             debugger.send_widget_message(widget_info)
         if not hasattr(self, '_pqi_highlight_bg'):
