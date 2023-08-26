@@ -7,6 +7,7 @@ import threading  # todo used by only python3
 import sys
 
 from PyQtInspect.pqi_contants import get_global_debugger
+from PyQtInspect.pqi_structures import QWidgetInfo
 
 
 def set_trace_in_qt():
@@ -286,13 +287,27 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
         return widget
 
+    def _filter_trace_stack(traceStacks):
+        filteredStacks = []
+        for frame in traceStacks[1:]:
+            filteredStacks.append(
+                {
+                    'filename': frame.filename,
+                    'lineno': frame.lineno,
+                    'function': frame.function,
+                    'code_context': frame.code_context,
+                }
+            )
+        return filteredStacks
+
     def _new_QWidget_init(self, *args, **kwargs):
         _original_QWidget_init(self, *args, **kwargs)
+        frames = inspect.stack()
         frame = inspect.currentframe()
         previousFrame = frame.f_back
         previousFrameInfo = inspect.getframeinfo(previousFrame)
         # 不要直接保存frame引用, 因为调用后frame会走到最后一行, 失去了回溯意义
-        setattr(self, '_pqi_last_frame_when_create', previousFrameInfo)
+        setattr(self, '_pqi_stacks_when_create', _filter_trace_stack(frames))
 
     # hook QWidget enterEvent
     def _enterEvent(self: QtWidgets.QWidget, event):
@@ -300,14 +315,18 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         if self.objectName() == "_pqi_highlight_bg":
             return oldEnterEvent(self, event)
         print(f"{self.__class__.__name__}")
-        if hasattr(self, '_pqi_last_frame_when_create'):
-            print(f"create info: {self._pqi_last_frame_when_create}")
+        if hasattr(self, '_pqi_stacks_when_create'):
+            print(f"create info: {self._pqi_stacks_when_create}")
         print(f"{inspect.getfile(self.__class__)}")
         print(f"{self.styleSheet(), self.objectName()}")
         debugger = get_global_debugger()
         if debugger is not None:
-            traceInfoDict = dict(self._pqi_last_frame_when_create._asdict())
-            debugger.send_widget_message(self.__class__.__name__, traceInfoDict)
+            widget_info = QWidgetInfo(
+                class_name=self.__class__.__name__,
+                object_name=self.objectName(),
+                stacks_when_create=self._pqi_stacks_when_create
+            )
+            debugger.send_widget_message(widget_info)
         if not hasattr(self, '_pqi_highlight_bg'):
             self._pqi_highlight_bg = _createHighlightWidget(self)
 

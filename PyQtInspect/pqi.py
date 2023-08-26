@@ -7,6 +7,7 @@
 import sys
 import os
 import time
+import typing
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
@@ -23,6 +24,8 @@ from PyQtInspect._pqi_bundle.pqi_comm import CMD_SET_BREAK, CMD_SET_NEXT_STATEME
     get_global_debugger, set_global_debugger, WriterThread, pydevd_log, \
     start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread, NetCommand, NetCommandFactory
 import traceback
+
+from PyQtInspect.pqi_structures import QWidgetInfo
 
 threadingCurrentThread = threading.current_thread
 
@@ -620,8 +623,8 @@ class PyDB(object):
     def wait_for_commands(self, globals):
         pass
 
-    def send_widget_message(self, widget_name: str, create_info: dict):
-        cmd = self.cmd_factory.make_widget_message(widget_name, create_info)
+    def send_widget_message(self, widget_info: QWidgetInfo):
+        cmd = self.cmd_factory.make_widget_message(widget_info)
         self.writer.add_command(cmd)
 
     # trace_dispatch = _trace_dispatch
@@ -730,11 +733,11 @@ def _locked_settrace(
 
     try:
         print('pydev_monkey_qt')
-        import monkey_qt
+        import PyQtInspect.monkey_qt
     except:
         pass
     else:
-        monkey_qt.patch_qt("pyqt5")
+        PyQtInspect.monkey_qt.patch_qt("pyqt5")
 
     # global connected
     # global bufferStdOutToServer

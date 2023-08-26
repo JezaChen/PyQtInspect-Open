@@ -69,7 +69,7 @@ each command has a format:
     * JAVA - remote debugger, the java end
     * PYDB - pydevd, the python end
 '''
-
+import dataclasses
 import itertools
 
 import queue
@@ -77,6 +77,7 @@ import _thread as thread
 import threading
 import time
 import socket
+import typing
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR, SHUT_RDWR, timeout
 from PyQtInspect.pqi_contants import DebugInfoHolder, get_thread_id, IS_JYTHON, IS_PY2, IS_PY3K, \
     IS_PY36_OR_GREATER, STATE_RUN, dict_keys, ASYNC_EVAL_TIMEOUT_SEC, IS_IRONPYTHON, GlobalDebuggerHolder, \
@@ -84,6 +85,8 @@ from PyQtInspect.pqi_contants import DebugInfoHolder, get_thread_id, IS_JYTHON, 
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 import json
 import weakref
+
+from PyQtInspect.pqi_structures import QWidgetInfo
 
 try:
     from urllib import quote_plus, unquote, unquote_plus
@@ -571,8 +574,11 @@ class NetCommandFactory:
     def make_json(self, **kwargs):
         return json.dumps(kwargs)
 
-    def make_widget_message(self, widget_class_name: str, create_info: dict):
-        cmd = NetCommand(CMD_WIDGET_INFO, 0, self.make_json(widget_class_name=widget_class_name, create_info=create_info))
+    def make_widget_message(self,
+                            widget_info: QWidgetInfo):
+        cmd = NetCommand(CMD_WIDGET_INFO, 0, self.make_json(
+            **dataclasses.asdict(widget_info)
+        ))
         return cmd
 
     # def _thread_to_xml(self, thread):
@@ -586,6 +592,8 @@ class NetCommandFactory:
     #     if DebugInfoHolder.DEBUG_TRACE_LEVEL > 2:
     #         sys.stderr.write("Error: %s" % (text,))
     #     return cmd
+
+
 #
 #     def make_protocol_set_message(self, seq):
 #         return NetCommand(CMD_SET_PROTOCOL, seq, '')
