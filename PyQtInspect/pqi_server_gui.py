@@ -18,7 +18,8 @@ from ssl import SOL_SOCKET
 from PyQt5.QtGui import QColor
 from _socket import SO_REUSEADDR
 
-from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread
+from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
+from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 
@@ -33,9 +34,16 @@ class Dispatcher(QtCore.QThread):
     def __init__(self, parent, sock):
         super().__init__(parent)
         self.sock = sock
+        self.net_command_factory = NetCommandFactory()
+        self.reader = None
+        self.writer = None
 
     def run(self):
         print("run")
+        self.writer = WriterThread(self.sock)
+        self.writer.pydev_do_not_trace = False  # We run writer in the same thread so we don't want to loose tracing.
+        self.writer.start()
+
         self.reader = DispatchReader(self)
         self.reader.pydev_do_not_trace = False  # We run reader in the same thread so we don't want to loose tracing.
         self.reader.run()
@@ -48,6 +56,12 @@ class Dispatcher(QtCore.QThread):
 
     def notify(self, cmd_id, seq, text):
         self.sigMsg.emit({"cmd_id": cmd_id, "seq": seq, "text": text})
+
+    def sendEnableInspect(self):
+        self.writer.add_command(self.net_command_factory.make_enable_inspect_message())
+
+    def sendDisableInspect(self):
+        self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
 
 
 class DispatchReader(ReaderThread):
@@ -70,29 +84,6 @@ class DispatchReader(ReaderThread):
         text = unquote(text)
         print(cmd_id, seq, text)
         self.dispatcher.notify(cmd_id, seq, text)
-
-
-class BrowserHandler(QtCore.QThread):
-    running = False
-    newTextAndColor = QtCore.pyqtSignal(str, object)
-
-    # method which will execute algorithm in another thread
-    def run(self):
-        print("acaa")
-        while True:
-            # send signal with new text and color from aonther thread
-            self.newTextAndColor.emit(
-                '{} - thread 2 variant 1.\n'.format(str(time.strftime("%Y-%m-%d-%H.%M.%S", time.localtime()))),
-                QColor(0, 0, 255)
-            )
-            QtCore.QThread.msleep(1000)
-
-            # send signal with new text and color from aonther thread
-            self.newTextAndColor.emit(
-                '{} - thread 2 variant 2.\n'.format(str(time.strftime("%Y-%m-%d-%H.%M.%S", time.localtime()))),
-                QColor(255, 0, 0)
-            )
-            QtCore.QThread.msleep(1000)
 
 
 class PQYWorker(QtCore.QObject):
@@ -144,6 +135,14 @@ class PQYWorker(QtCore.QObject):
     def onMsg(self, info: dict):
         self.widgetInfoRecv.emit(info)
 
+    def sendEnableInspect(self):
+        for dispatcher in self.dispatchers:
+            dispatcher.sendEnableInspect()
+
+    def sendDisableInspect(self):
+        for dispatcher in self.dispatchers:
+            dispatcher.sendDisableInspect()
+
 
 class BriefLine(QtWidgets.QWidget):
     def __init__(self, parent, key: str, defaultValue: str = ""):
@@ -151,8 +150,8 @@ class BriefLine(QtWidgets.QWidget):
         self.setFixedHeight(30)
 
         self._layout = QtWidgets.QHBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(3)
+        self._layout.setContentsMargins(5, 0, 5, 0)
+        self._layout.setSpacing(5)
 
         self._keyLabel = QtWidgets.QLabel(self)
         self._keyLabel.setText(key)
@@ -166,6 +165,7 @@ class BriefLine(QtWidgets.QWidget):
         self._valueLineEdit.setText(defaultValue)
         self._valueLineEdit.setAlignment(QtCore.Qt.AlignCenter)
         self._valueLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self._valueLineEdit.setReadOnly(True)
 
         self._layout.addWidget(self._valueLineEdit)
 
@@ -250,7 +250,6 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
         subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
 
 
-
 class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -285,6 +284,15 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._topLayout.addWidget(self._serveButton)
 
+        self._inspectButton = QtWidgets.QPushButton(self)
+        self._inspectButton.setText("Inspect")
+        self._inspectButton.setFixedHeight(30)
+        self._inspectButton.setCheckable(True)
+        self._inspectButton.clicked.connect(self._onInspectButtonClicked)
+        self._inspectButton.setEnabled(False)
+
+        self._topLayout.addWidget(self._inspectButton)
+
         self._mainLayout.addWidget(self._topContainer)
 
         self._widgetBriefWidget = WidgetBriefWidget(self)
@@ -317,6 +325,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._portLineEdit.setEnabled(False)
         self._serveButton.setEnabled(False)
+        self._inspectButton.setEnabled(True)
 
         self._worker = PQYWorker(None, port)
         self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
@@ -329,16 +338,31 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._workerThread.start()
 
     def on_widget_info_recv(self, info: dict):
-        if info.get("cmd_id") == 1001:
+        cmdId = info.get("cmd_id")
+        if cmdId == CMD_WIDGET_INFO:
             self.handle_widget_info_msg(json.loads(info["text"]))
+        elif cmdId == CMD_INSPECT_FINISHED:
+            self.handle_inspect_finished_msg()
         self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
         self._widgetBriefWidget.setInfo(info)
         self._createStacksListWidget.setStacks(info.get("stacks_when_create", []))
 
+    def handle_inspect_finished_msg(self):
+        self._inspectButton.setChecked(False)
+        self._worker.sendDisableInspect()  # disable inspect for all dispatchers
+
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
+
+    def _onInspectButtonClicked(self, checked: bool):
+        if self._worker is None:
+            return
+        if checked:
+            self._worker.sendEnableInspect()
+        else:
+            self._worker.sendDisableInspect()
 
 
 if __name__ == '__main__':

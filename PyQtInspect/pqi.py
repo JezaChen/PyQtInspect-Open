@@ -264,6 +264,8 @@ class PyDB(object):
         # the role PyDB plays in the communication with IDE
         self.communication_role = None
 
+        self.inspect_enabled = False
+
     def get_thread_local_trace_func(self):
         try:
             thread_trace_func = self._local_thread_trace_func.thread_trace_func
@@ -637,6 +639,16 @@ class PyDB(object):
         """A proxy method for calling :func:`stoptrace` from the modules where direct import
         is impossible because, for example, a circular dependency."""
         pass
+
+    def enable_inspect(self):
+        self.inspect_enabled = True
+
+    def disable_inspect(self):
+        self.inspect_enabled = False
+
+    def notify_inspect_finished(self):
+        cmd = self.cmd_factory.make_inspect_finished_message()
+        self.writer.add_command(cmd)
 
 
 def set_debug(setup):

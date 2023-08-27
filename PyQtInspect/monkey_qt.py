@@ -270,6 +270,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     _original_QWidget_init = QtWidgets.QWidget.__init__
     oldEnterEvent = QtWidgets.QWidget.enterEvent
     oldLeaveEvent = QtWidgets.QWidget.leaveEvent
+    oldMousePressEvent = QtWidgets.QWidget.mousePressEvent
 
     lastHighlightWidget = None
 
@@ -313,25 +314,29 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     # hook QWidget enterEvent
     def _enterEvent(self: QtWidgets.QWidget, event):
         nonlocal lastHighlightWidget
+
         if self.objectName() == "_pqi_highlight_bg":
             return oldEnterEvent(self, event)
+
+        debugger = get_global_debugger()
+        if debugger is None or not debugger.inspect_enabled:
+            return oldEnterEvent(self, event)
+
         print(f"{self.__class__.__name__}")
         if hasattr(self, '_pqi_stacks_when_create'):
             print(f"create info: {self._pqi_stacks_when_create}")
         print(f"{inspect.getfile(self.__class__)}")
         print(f"{self.styleSheet(), self.objectName()}")
-        debugger = get_global_debugger()
-        if debugger is not None:
-            widget_info = QWidgetInfo(
-                class_name=self.__class__.__name__,
-                object_name=self.objectName(),
-                stacks_when_create=self._pqi_stacks_when_create,
-                size=get_widget_size(self),
-                pos=get_widget_pos(self),
-                parent_classes=list(get_parent_classes(self)),
-                stylesheet=get_stylesheet(self)
-            )
-            debugger.send_widget_message(widget_info)
+        widget_info = QWidgetInfo(
+            class_name=self.__class__.__name__,
+            object_name=self.objectName(),
+            stacks_when_create=self._pqi_stacks_when_create,
+            size=get_widget_size(self),
+            pos=get_widget_pos(self),
+            parent_classes=list(get_parent_classes(self)),
+            stylesheet=get_stylesheet(self)
+        )
+        debugger.send_widget_message(widget_info)
         if not hasattr(self, '_pqi_highlight_bg'):
             self._pqi_highlight_bg = _createHighlightWidget(self)
 
@@ -352,7 +357,19 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
         return oldLeaveEvent(self, event)
 
+    # hook QWidget mousePressEvent
+    def _mousePressEvent(self: QtWidgets.QWidget, event):
+        if event.button() != QtCore.Qt.LeftButton:
+            return oldMousePressEvent(self, event)
+        debugger = get_global_debugger()
+        if debugger is None or not debugger.inspect_enabled:
+            return oldMousePressEvent(self, event)
+        debugger.notify_inspect_finished()
+        if hasattr(self, '_pqi_highlight_bg'):
+            self._pqi_highlight_bg.hide()
+
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget.enterEvent = _enterEvent
     QtWidgets.QWidget.leaveEvent = _leaveEvent
+    QtWidgets.QWidget.mousePressEvent = _mousePressEvent
     print("patched")

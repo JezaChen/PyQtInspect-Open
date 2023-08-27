@@ -107,6 +107,9 @@ CMD_SET_PROTOCOL = 503
 CMD_ERROR = 901
 
 CMD_WIDGET_INFO = 1001
+CMD_ENABLE_INSPECT = 1002
+CMD_DISABLE_INSPECT = 1003
+CMD_INSPECT_FINISHED = 1004
 
 from PyQtInspect._pqi_bundle._pqi_filesystem_encoding import getfilesystemencoding
 
@@ -193,5 +196,9 @@ ID_TO_MEANING = {
     '502': 'CMD_RETURN',
     '503': 'CMD_SET_PROTOCOL',
     '901': 'CMD_ERROR',
+
     '1001': 'CMD_WIDGET_INFO',
+    '1002': 'CMD_ENABLE_INSPECT',
+    '1003': 'CMD_DISABLE_INSPECT',
+    '1004': 'CMD_INSPECT_FINISHED',
 }

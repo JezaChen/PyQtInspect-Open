@@ -130,5 +130,5 @@ if __name__ == '__main__':
     print(f"pid: {os.getpid()}")
     app = QApplication(sys.argv)
     multiprocessing.Process(target=main).start()
-    # main()
+    main()
     sys.exit(app.exec_())
