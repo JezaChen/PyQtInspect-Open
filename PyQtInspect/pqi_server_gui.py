@@ -22,6 +22,9 @@ from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetComm
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
+import ctypes
+myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha' # arbitrary string
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 class DispatcherThread(QtCore.QThread):
     def run(self) -> None:
@@ -262,13 +265,22 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
         # open in Pycharm
         import subprocess
         pycharm = self.findPycharm()
-        subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
+        if pycharm:
+            try:
+                subprocess.Popen(f"{pycharm} --line {lineNo} {fileName}")
+            except Exception as e:
+                # message box
+                QtWidgets.QMessageBox.critical(self, "Error", f"Error occurred when opening file: {e}")
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Pycharm not found")
+        # subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
 
 
 class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("PyQtInspect")
+        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
         self.resize(700, 1000)
 
         self._mainContainer = QtWidgets.QWidget(self)
