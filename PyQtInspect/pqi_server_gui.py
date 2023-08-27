@@ -30,10 +30,12 @@ class DispatcherThread(QtCore.QThread):
 
 class Dispatcher(QtCore.QThread):
     sigMsg = QtCore.pyqtSignal(dict)
+    sigDelete = QtCore.pyqtSignal(int)
 
-    def __init__(self, parent, sock):
+    def __init__(self, parent, sock, id):
         super().__init__(parent)
         self.sock = sock
+        self.id = id
         self.net_command_factory = NetCommandFactory()
         self.reader = None
         self.writer = None
@@ -63,6 +65,12 @@ class Dispatcher(QtCore.QThread):
     def sendDisableInspect(self):
         self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
 
+    def notifyDelete(self):
+        self.reader.do_kill_pydev_thread()
+        self.writer.do_kill_pydev_thread()
+
+        self.sigDelete.emit(self.id)
+
 
 class DispatchReader(ReaderThread):
     def __init__(self, dispatcher):
@@ -76,7 +84,7 @@ class DispatchReader(ReaderThread):
         return ReaderThread._on_run(self)
 
     def handle_except(self):
-        ReaderThread.handle_except(self)
+        self.dispatcher.notifyDelete()
 
     def process_command(self, cmd_id, seq, text):
         # unquote text
@@ -88,16 +96,16 @@ class DispatchReader(ReaderThread):
 
 class PQYWorker(QtCore.QObject):
     start = QtCore.pyqtSignal()
-
     widgetInfoRecv = QtCore.pyqtSignal(dict)
-
     sigNewDispatcher = QtCore.pyqtSignal(Dispatcher)
 
     def __init__(self, parent, port):
         super().__init__(parent)
         self.port = port
+
         self.dispatchers = []
-        self.threads = []
+        self.idToDispatcher = {}
+
         self.start.connect(self.run)
 
     def run(self):
@@ -113,19 +121,20 @@ class PQYWorker(QtCore.QObject):
         s.bind(('', self.port))
         s.listen(1)
 
+        dispatcherId = 0
+
         try:
             while True:
                 newSock, _addr = s.accept()
                 # 新建个线程来处理
-                dispatcher = Dispatcher(None, newSock)
-                # dispatcher.sigMsg.connect(self.onMsg)
-                # t = QtCore.QThread()
-                # dispatcher.moveToThread(t)
-                # t.started.connect(dispatcher.run)
+                dispatcher = Dispatcher(None, newSock, dispatcherId)
+                dispatcher.sigDelete.connect(self._onDispatcherDelete)
                 self.dispatchers.append(dispatcher)
-                # self.threads.append(t)
+                self.idToDispatcher[dispatcherId] = dispatcher
+
                 self.sigNewDispatcher.emit(dispatcher)
                 dispatcher.start()
+                dispatcherId += 1
 
         except:
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
@@ -142,6 +151,12 @@ class PQYWorker(QtCore.QObject):
     def sendDisableInspect(self):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
+
+    def _onDispatcherDelete(self, id: int):
+        dispatcher = self.idToDispatcher.pop(id)
+        self.dispatchers.remove(dispatcher)
+        dispatcher.close()
+        dispatcher.deleteLater()
 
 
 class BriefLine(QtWidgets.QWidget):
