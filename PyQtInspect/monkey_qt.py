@@ -270,7 +270,8 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     _original_QWidget_init = QtWidgets.QWidget.__init__
     oldEnterEvent = QtWidgets.QWidget.enterEvent
     oldLeaveEvent = QtWidgets.QWidget.leaveEvent
-    oldMousePressEvent = QtWidgets.QWidget.mousePressEvent
+    oldMouseReleaseEvent = QtWidgets.QWidget.mouseReleaseEvent
+    oldEvent = QtWidgets.QWidget.event
 
     lastHighlightWidget = None
 
@@ -291,7 +292,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     def _filter_trace_stack(traceStacks):
         filteredStacks = []
-        for frame in traceStacks[1:]:
+        for frame in traceStacks[1:5]:  # 太卡了, 先保存4层
             filteredStacks.append(
                 {
                     'filename': frame.filename,
@@ -315,6 +316,19 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     def _enterEvent(self: QtWidgets.QWidget, event):
         nonlocal lastHighlightWidget
 
+        def _mouseReleaseEvent(event):
+            if event.button() != QtCore.Qt.LeftButton:
+                return self._oldMouseReleaseEvent(event)
+            debugger = get_global_debugger()
+            if debugger is None or not debugger.inspect_enabled:
+                return self._oldMouseReleaseEvent(event)
+            debugger.notify_inspect_finished()
+            if hasattr(self, '_pqi_highlight_bg'):
+                self._pqi_highlight_bg.hide()
+            self.mouseReleaseEvent = self._oldMouseReleaseEvent
+
+        # setattr(_mouseReleaseEvent, '_pqi_hooked', True)
+
         if self.objectName() == "_pqi_highlight_bg":
             return oldEnterEvent(self, event)
 
@@ -322,11 +336,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         if debugger is None or not debugger.inspect_enabled:
             return oldEnterEvent(self, event)
 
-        print(f"{self.__class__.__name__}")
-        if hasattr(self, '_pqi_stacks_when_create'):
-            print(f"create info: {self._pqi_stacks_when_create}")
-        print(f"{inspect.getfile(self.__class__)}")
-        print(f"{self.styleSheet(), self.objectName()}")
         widget_info = QWidgetInfo(
             class_name=self.__class__.__name__,
             object_name=self.objectName(),
@@ -345,6 +354,9 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         self._pqi_highlight_bg.show()
         lastHighlightWidget = self._pqi_highlight_bg
 
+        self._oldMouseReleaseEvent = self.mouseReleaseEvent
+        self.mouseReleaseEvent = _mouseReleaseEvent
+
         return oldEnterEvent(self, event)
 
     # hook QWidget leaveEvent
@@ -355,21 +367,34 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         if hasattr(self, '_pqi_highlight_bg'):
             self._pqi_highlight_bg.hide()
 
+        if hasattr(self, '_oldMouseReleaseEvent'):
+            self.mouseReleaseEvent = self._oldMouseReleaseEvent
+
         return oldLeaveEvent(self, event)
 
-    # hook QWidget mousePressEvent
-    def _mousePressEvent(self: QtWidgets.QWidget, event):
+    # hook QWidget mouseReleaseEvent
+    def _mouseReleaseEvent(self: QtWidgets.QWidget, event):
         if event.button() != QtCore.Qt.LeftButton:
-            return oldMousePressEvent(self, event)
+            return oldMouseReleaseEvent(self, event)
         debugger = get_global_debugger()
         if debugger is None or not debugger.inspect_enabled:
-            return oldMousePressEvent(self, event)
+            return oldMouseReleaseEvent(self, event)
         debugger.notify_inspect_finished()
         if hasattr(self, '_pqi_highlight_bg'):
             self._pqi_highlight_bg.hide()
 
+    def _event(self: QtWidgets.QWidget, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.LeftButton:
+            debugger = get_global_debugger()
+            if debugger is not None and debugger.inspect_enabled:
+                debugger.notify_inspect_finished()
+                _hideLastHighlightWidget()
+                return True
+        return oldEvent(self, event)
+
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget.enterEvent = _enterEvent
     QtWidgets.QWidget.leaveEvent = _leaveEvent
-    QtWidgets.QWidget.mousePressEvent = _mousePressEvent
+    # QtWidgets.QWidget.mouseReleaseEvent = _mouseReleaseEvent
+    # QtWidgets.QWidget.event = _event
     print("patched")

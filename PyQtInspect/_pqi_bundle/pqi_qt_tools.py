@@ -27,7 +27,11 @@ def get_widget_pos(widget: QtWidgets.QWidget):
 
 def get_parent_classes(widget: QtWidgets.QWidget):
     while True:
-        parent = widget.parent()
+        try:
+            parent = widget.parent()
+        except:
+            break
+
         if parent is None:
             break
         widget = parent

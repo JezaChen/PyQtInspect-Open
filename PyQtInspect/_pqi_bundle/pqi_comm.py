@@ -341,7 +341,6 @@ class ReaderThread(PyDBDaemonThread):
         self.process_net_command(self.global_debugger_holder.global_dbg, cmd_id, seq, text)
 
     def process_net_command(self, global_dbg, cmd_id, seq, text):
-        print("process_net_command", cmd_id, seq, text)
         if global_dbg is None:
             return
         if cmd_id == CMD_ENABLE_INSPECT:

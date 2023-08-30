@@ -370,7 +370,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             self.handle_widget_info_msg(json.loads(info["text"]))
         elif cmdId == CMD_INSPECT_FINISHED:
             self.handle_inspect_finished_msg()
-        self._bottomStatusTextBrowser.append(f"recv: {info}")
+        # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
         self._widgetBriefWidget.setInfo(info)
