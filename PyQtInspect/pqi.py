@@ -10,6 +10,7 @@ import time
 import typing
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
+from PyQtInspect._pqi_bundle.pqi_qt_tools import set_widget_size
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle import fix_getpass
 from PyQtInspect._pqi_bundle import pqi_vm_type
@@ -265,6 +266,7 @@ class PyDB(object):
         self.communication_role = None
 
         self.inspect_enabled = False
+        self._selectedWidget = None
 
     def get_thread_local_trace_func(self):
         try:
@@ -626,7 +628,7 @@ class PyDB(object):
         pass
 
     def send_widget_message(self, widget_info: QWidgetInfo):
-        cmd = self.cmd_factory.make_widget_message(widget_info)
+        cmd = self.cmd_factory.make_widget_info_message(widget_info)
         self.writer.add_command(cmd)
 
     # trace_dispatch = _trace_dispatch
@@ -646,9 +648,14 @@ class PyDB(object):
     def disable_inspect(self):
         self.inspect_enabled = False
 
-    def notify_inspect_finished(self):
+    def notify_inspect_finished(self, widget):
+        self._selectedWidget = widget
+
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
+
+    def set_selected_widget_size(self, width, height):
+        set_widget_size(self._selectedWidget, width, height)
 
 
 def set_debug(setup):

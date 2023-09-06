@@ -68,6 +68,9 @@ class Dispatcher(QtCore.QThread):
     def sendDisableInspect(self):
         self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
 
+    def sendWidgetResizeEvent(self, width: int, height: int):
+        self.writer.add_command(self.net_command_factory.make_widget_resize_message(width, height))
+
     def notifyDelete(self):
         self.reader.do_kill_pydev_thread()
         self.writer.do_kill_pydev_thread()
@@ -155,6 +158,10 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
 
+    def sendWidgetResizeEvent(self, width: int, height: int):
+        for dispatcher in self.dispatchers:
+            dispatcher.sendWidgetResizeEvent(width, height)
+
     def _onDispatcherDelete(self, id: int):
         dispatcher = self.idToDispatcher.pop(id)
         self.dispatchers.remove(dispatcher)
@@ -191,7 +198,25 @@ class BriefLine(QtWidgets.QWidget):
         self._valueLineEdit.setText(value)
 
 
+class BriefLineWithEditButton(BriefLine):
+    sigEditButtonClicked = QtCore.pyqtSignal(str)  # new value
+
+    def __init__(self, parent, key: str = None, defaultValue: str = None, buttonText: str = "Edit"):
+        super().__init__(parent, key, defaultValue)
+
+        self._valueLineEdit.setReadOnly(False)
+
+        self._editButton = QtWidgets.QPushButton(self)
+        self._editButton.setText(buttonText)
+        self._editButton.setFixedHeight(30)
+        self._editButton.clicked.connect(lambda: self.sigEditButtonClicked.emit(self._valueLineEdit.text()))
+
+        self._layout.addWidget(self._editButton)
+
+
 class WidgetBriefWidget(QtWidgets.QWidget):
+    sigSelectedWidgetResize = QtCore.pyqtSignal(int, int)  # width, height
+
     def __init__(self, parent):
         super().__init__(parent)
         self._mainLayout = QtWidgets.QVBoxLayout(self)
@@ -207,7 +232,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._sizeLine = BriefLine(self, "size")
         self._mainLayout.addWidget(self._sizeLine)
 
-        self._posLine = BriefLine(self, "pos")
+        self._posLine = BriefLineWithEditButton(self, "pos")
+        self._posLine.sigEditButtonClicked.connect(self._onPosLineEditButtonClicked)
         self._mainLayout.addWidget(self._posLine)
 
         self._parentLine = BriefLine(self, "parent")
@@ -224,6 +250,14 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._sizeLine.setValue(str(info["size"]))
         self._posLine.setValue(str(info["pos"]))
         self._parentLine.setValue(str(info["parent_classes"]))
+
+    def _onPosLineEditButtonClicked(self, text: str):
+        """ emit the width and height when the button of pos line edit is clicked """
+        try:
+            width, height = text.split(",")
+            self.sigSelectedWidgetResize.emit(int(width), int(height))
+        except:
+            QtWidgets.QMessageBox.critical(self, "Error", "Invalid pos format")
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -324,6 +358,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self._widgetBriefWidget.sigSelectedWidgetResize.connect(self._onSelectedWidgetResize)
 
         self._mainLayout.addWidget(self._widgetBriefWidget)
 
@@ -390,6 +425,12 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._worker.sendEnableInspect()
         else:
             self._worker.sendDisableInspect()
+
+    def _onSelectedWidgetResize(self, width: int, height: int):
+        if self._worker is None:
+            return
+
+        self._worker.sendWidgetResizeEvent(width, height)
 
 
 if __name__ == '__main__':

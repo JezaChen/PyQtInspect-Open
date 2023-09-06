@@ -42,3 +42,9 @@ def get_stylesheet(widget: QtWidgets.QWidget):
     return widget.styleSheet()
 
 
+def set_widget_size(widget: QtWidgets.QWidget, width: int, height: int):
+    print(f"set_widget_size: {widget}, {width}, {height}")
+    if not isinstance(widget, QtWidgets.QWidget):
+        return
+
+    widget.setFixedSize(width, height)

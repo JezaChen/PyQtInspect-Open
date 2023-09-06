@@ -326,7 +326,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             debugger = get_global_debugger()
             if debugger is None or not debugger.inspect_enabled:
                 return self._oldMouseReleaseEvent(event)
-            debugger.notify_inspect_finished()
+            debugger.notify_inspect_finished(self)
             if hasattr(self, '_pqi_highlight_bg'):
                 self._pqi_highlight_bg.hide()
             self.mouseReleaseEvent = self._oldMouseReleaseEvent
