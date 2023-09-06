@@ -37,15 +37,6 @@ pydev_src_dir = os.path.dirname(os.path.dirname(__file__))
 
 def _get_python_c_args(host, port, indC, args, setup):
     host_literal = "'" + host + "'" if host is not None else 'None'
-    # return ("import sys; sys.path.append(r'%s'); import pydevd; "
-    #         "pydevd.settrace(host=%s, port=%s, suspend=False, trace_only_current_thread=False, patch_multiprocessing=True); "
-    #         "from pydevd import SetupHolder; SetupHolder.setup = %s; %s"
-    #         ) % (
-    #     pydev_src_dir,
-    #     host_literal,
-    #     port,
-    #     setup,
-    #     args[indC + 1])
     return ("import sys; sys.path.append(r'%s'); import PyQtInspect.pqi as pqi; "
             "pqi.settrace(host=%s, port=%s, suspend=False, trace_only_current_thread=False, patch_multiprocessing=True); "
             "from PyQtInspect.pqi import SetupHolder; SetupHolder.setup = %s; %s"

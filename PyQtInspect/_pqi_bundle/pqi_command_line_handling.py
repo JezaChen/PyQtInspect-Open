@@ -58,6 +58,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerWithParam('port', int, 0),
     ArgHandlerWithParam('vm_type'),
     ArgHandlerWithParam('client'),
+    ArgHandlerWithParam('stack-max-depth', int, 0),
 
     ArgHandlerBool('server'),
     ArgHandlerBool('DEBUG_RECORD_SOCKET_READS'),

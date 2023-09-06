@@ -292,7 +292,10 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     def _filter_trace_stack(traceStacks):
         filteredStacks = []
-        for frame in traceStacks[1:5]:  # 太卡了, 先保存4层
+        from PyQtInspect.pqi import SetupHolder
+        stackMaxDepth = SetupHolder.setup["stack-max-depth"]
+        stacks = traceStacks[1:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[1:]
+        for frame in stacks:
             filteredStacks.append(
                 {
                     'filename': frame.filename,
@@ -305,12 +308,13 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     def _new_QWidget_init(self, *args, **kwargs):
         _original_QWidget_init(self, *args, **kwargs)
-        frames = inspect.stack()
-        frame = inspect.currentframe()
-        previousFrame = frame.f_back
-        previousFrameInfo = inspect.getframeinfo(previousFrame)
-        # 不要直接保存frame引用, 因为调用后frame会走到最后一行, 失去了回溯意义
-        setattr(self, '_pqi_stacks_when_create', _filter_trace_stack(frames))
+        if sip.ispycreated(self):
+            frames = inspect.stack()
+            frame = inspect.currentframe()
+            previousFrame = frame.f_back
+            previousFrameInfo = inspect.getframeinfo(previousFrame)
+            # 不要直接保存frame引用, 因为调用后frame会走到最后一行, 失去了回溯意义
+            setattr(self, '_pqi_stacks_when_create', _filter_trace_stack(frames))
 
     # hook QWidget enterEvent
     def _enterEvent(self: QtWidgets.QWidget, event):

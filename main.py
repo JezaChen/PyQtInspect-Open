@@ -105,8 +105,12 @@ class Window(QWidget):
         import os
         print(f"pid: {os.getpid()}")
         layout = QHBoxLayout(self)
-        layout.addWidget(QPushButton("red button", self,
-                                     objectName="RedButton", minimumHeight=48))
+        redButton = QPushButton("red button", self,
+                                objectName="RedButton", minimumHeight=48)
+
+        layout.addWidget(redButton)
+        self.testButton = QPushButton(redButton)
+
         layout.addWidget(QPushButton("green button", self,
                                      objectName="GreenButton", minimumHeight=48))
         layout.addWidget(QPushButton("blue button", self,
@@ -116,19 +120,26 @@ class Window(QWidget):
         layout.addWidget(QPushButton("purple button", self,
                                      objectName="PurpleButton", minimumHeight=48))
 
+    def testFind(self):
+        """
+
+        """
+        self.findChild(QWidget, "RedButtons")
+
 
 def main():
     app = QApplication(sys.argv)
     app.setStyleSheet(StyleSheet)
     w = Window()
     w.show()
+    w.testFind()
     sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
     import os
+
     print(f"pid: {os.getpid()}")
     app = QApplication(sys.argv)
     multiprocessing.Process(target=main).start()
-    main()
     sys.exit(app.exec_())
