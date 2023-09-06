@@ -399,6 +399,4 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget.enterEvent = _enterEvent
     QtWidgets.QWidget.leaveEvent = _leaveEvent
-    # QtWidgets.QWidget.mouseReleaseEvent = _mouseReleaseEvent
-    # QtWidgets.QWidget.event = _event
     print("patched")

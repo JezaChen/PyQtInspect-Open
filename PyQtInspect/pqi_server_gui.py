@@ -229,11 +229,11 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._objectNameLine = BriefLine(self, "object_name")
         self._mainLayout.addWidget(self._objectNameLine)
 
-        self._sizeLine = BriefLine(self, "size")
+        self._sizeLine = BriefLineWithEditButton(self, "size")
+        self._sizeLine.sigEditButtonClicked.connect(self._onPosLineEditButtonClicked)
         self._mainLayout.addWidget(self._sizeLine)
 
-        self._posLine = BriefLineWithEditButton(self, "pos")
-        self._posLine.sigEditButtonClicked.connect(self._onPosLineEditButtonClicked)
+        self._posLine = BriefLine(self, "pos")
         self._mainLayout.addWidget(self._posLine)
 
         self._parentLine = BriefLine(self, "parent")
@@ -247,7 +247,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
     def setInfo(self, info):
         self._classNameLine.setValue(info["class_name"])
         self._objectNameLine.setValue(info["object_name"])
-        self._sizeLine.setValue(str(info["size"]))
+        width, height = info["size"]
+        self._sizeLine.setValue(f"{width}, {height}")
         self._posLine.setValue(str(info["pos"]))
         self._parentLine.setValue(str(info["parent_classes"]))
 
@@ -405,6 +406,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             self.handle_widget_info_msg(json.loads(info["text"]))
         elif cmdId == CMD_INSPECT_FINISHED:
             self.handle_inspect_finished_msg()
+            self.windowHandle().requestActivate()
         # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
