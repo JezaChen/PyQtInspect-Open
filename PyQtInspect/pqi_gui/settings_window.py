@@ -4,15 +4,18 @@
 # Time: 2023/9/7 16:00
 # Description: 
 # ==============================================
+import os
+
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
+from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 
 
 class SimpleSettingLineEdit(QtWidgets.QWidget):
     def __init__(self, parent, key: str, defaultValue: str = ""):
         super().__init__(parent)
-        self.setFixedHeight(30)
+        self.setFixedHeight(32)
 
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(5, 0, 5, 0)
@@ -39,6 +42,37 @@ class SimpleSettingLineEdit(QtWidgets.QWidget):
         return self._valueLineEdit.text()
 
 
+class PycharmPathSettingLineEdit(SimpleSettingLineEdit):
+    def __init__(self, parent):
+        super().__init__(parent, "PyCharm Path: ")
+
+        self._openButton = QtWidgets.QPushButton(self)
+        self._openButton.setText("...")
+        self._openButton.setFixedSize(40, 30)
+        self._openButton.clicked.connect(self._openPycharmPath)
+
+        self._layout.addWidget(self._openButton)
+
+        pycharmPathInSettings = getPyCharmPath()
+        if not pycharmPathInSettings:
+            pycharmPathInSettings = findDefaultPycharmPath()
+
+        self._valueLineEdit.setText(pycharmPathInSettings)
+
+    def _openPycharmPath(self):
+        pycharmPath = QtWidgets.QFileDialog.getOpenFileName(self, "Select PyCharm Path",
+                                                            self._valueLineEdit.text(),
+                                                            "PyCharm Executable Program (*.exe)")
+        if pycharmPath:
+            self._valueLineEdit.setText(pycharmPath[0])
+
+    def _isValueValid(self) -> bool:
+        path = self._valueLineEdit.text()
+        if not path:
+            return False
+        return os.path.exists(path) and os.path.isfile(path)
+
+
 class SettingWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -49,8 +83,9 @@ class SettingWindow(QtWidgets.QDialog):
         self._mainLayout = QtWidgets.QVBoxLayout(self)
         self._mainLayout.setContentsMargins(0, 0, 0, 0)
         self._mainLayout.setSpacing(5)
+        self._mainLayout.addSpacing(4)
 
-        self._pycharmPathLine = SimpleSettingLineEdit(self, "PyCharm Path: ")
+        self._pycharmPathLine = PycharmPathSettingLineEdit(self)
         pycharmPathInSettings = getPyCharmPath()
         if not pycharmPathInSettings:
             pycharmPathInSettings = findDefaultPycharmPath()
@@ -78,7 +113,12 @@ class SettingWindow(QtWidgets.QDialog):
         self._mainLayout.addLayout(self._buttonLayout)
 
     def saveSettings(self):
-        setPyCharmPath(self._pycharmPathLine.getValue())
+        if self._pycharmPathLine._isValueValid():
+            setPyCharmPath(self._pycharmPathLine.getValue())
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Invalid PyCharm Path")
+            return
+        self.close()
 
 
 if __name__ == '__main__':

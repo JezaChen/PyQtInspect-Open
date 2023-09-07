@@ -26,6 +26,7 @@ import ctypes
 
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
+from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha'  # arbitrary string
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -188,11 +189,13 @@ class BriefLine(QtWidgets.QWidget):
         self._keyLabel.setText(key)
         self._keyLabel.setAlignment(QtCore.Qt.AlignCenter)
         self._keyLabel.setWordWrap(True)
+        self._keyLabel.setMinimumWidth(80)
         self._keyLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         self._layout.addWidget(self._keyLabel)
 
         self._valueLineEdit = QtWidgets.QLineEdit(self)
+        self._valueLineEdit.setObjectName("codeStyleLineEdit")
         self._valueLineEdit.setText(defaultValue)
         self._valueLineEdit.setAlignment(QtCore.Qt.AlignCenter)
         self._valueLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
@@ -265,6 +268,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
 class CreateStacksListWidget(QtWidgets.QListWidget):
     def __init__(self, parent):
         super().__init__(parent)
+        self.setObjectName("stacksListWidget")
         self.setMinimumHeight(200)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
@@ -335,7 +339,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainContainer = QtWidgets.QWidget(self)
         self.setCentralWidget(self._mainContainer)
         self._mainLayout = QtWidgets.QVBoxLayout(self._mainContainer)
-        self._mainLayout.setContentsMargins(0, 0, 0, 0)
+        self._mainLayout.setContentsMargins(4, 4, 4, 4)
         self._mainLayout.setSpacing(0)
 
         self._topContainer = QtWidgets.QWidget(self)
@@ -371,16 +375,39 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._mainLayout.addWidget(self._topContainer)
 
+        self._widgetInfoGroupBox = QtWidgets.QGroupBox(self)
+        self._widgetInfoGroupBox.setTitle("Widget Brief Info")
+
+        self._widgetInfoGroupBoxLayout = QtWidgets.QVBoxLayout(self._widgetInfoGroupBox)
+        self._widgetInfoGroupBoxLayout.setContentsMargins(0, 4, 0, 6)
+        self._widgetInfoGroupBoxLayout.setSpacing(0)
+
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._widgetBriefWidget.sigCode.connect(self._notifyExecCodeInSelectedWidget)
 
-        self._mainLayout.addWidget(self._widgetBriefWidget)
+        self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
+
+        self._mainLayout.addSpacing(3)
+        self._mainLayout.addWidget(self._widgetInfoGroupBox)
+
+        # ====================
+        # Create Stack
+        # ====================
+        self._createStackGroupBox = QtWidgets.QGroupBox(self)
+        self._createStackGroupBox.setTitle("Create Stacks")
+
+        self._createStackGroupBoxLayout = QtWidgets.QVBoxLayout(self._createStackGroupBox)
+        self._createStackGroupBoxLayout.setContentsMargins(4, 4, 4, 6)
+        self._createStackGroupBoxLayout.setSpacing(0)
 
         self._createStacksListWidget = CreateStacksListWidget(self)
         self._createStacksListWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
-        self._mainLayout.addWidget(self._createStacksListWidget)
+        self._createStackGroupBoxLayout.addWidget(self._createStacksListWidget)
+
+        self._mainLayout.addSpacing(3)
+        self._mainLayout.addWidget(self._createStackGroupBox)
 
         # self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
         # self._bottomStatusTextBrowser.setFixedHeight(100)
@@ -390,6 +417,8 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
+
+        self.setStyleSheet(GLOBAL_STYLESHEET)
 
     def runWorker(self):
         if self._worker is not None:
