@@ -244,10 +244,10 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._posLine = BriefLine(self, "pos")
         self._mainLayout.addWidget(self._posLine)
 
-        self._parentLine = BriefLine(self, "parent")
+        self._parentLine = BriefLine(self, "parents")
         self._mainLayout.addWidget(self._parentLine)
 
-        self._styleSheetLine = BriefLine(self, "style_sheet")
+        self._styleSheetLine = BriefLine(self, "stylesheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
         self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
@@ -261,7 +261,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._objectNameLine.setValue(info["object_name"])
         width, height = info["size"]
         self._sizeLine.setValue(f"{width}, {height}")
-        self._posLine.setValue(str(info["pos"]))
+        posX, posY = info["pos"]
+        self._posLine.setValue(f"{posX}, {posY}")
         self._parentLine.setValue(str(info["parent_classes"]))
 
 
