@@ -327,7 +327,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
                 self._pqi_highlight_bg.hide()
             self.mouseReleaseEvent = self._oldMouseReleaseEvent
 
-        # setattr(_mouseReleaseEvent, '_pqi_hooked', True)
+        setattr(_mouseReleaseEvent, '_pqi_hooked', True)
 
         if self.objectName() == "_pqi_highlight_bg":
             return oldEnterEvent(self, event)
@@ -354,7 +354,8 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         self._pqi_highlight_bg.show()
         lastHighlightWidget = self._pqi_highlight_bg
 
-        self._oldMouseReleaseEvent = self.mouseReleaseEvent
+        if not hasattr(self.mouseReleaseEvent, '_pqi_hooked'):
+            self._oldMouseReleaseEvent = self.mouseReleaseEvent
         self.mouseReleaseEvent = _mouseReleaseEvent
 
         return oldEnterEvent(self, event)

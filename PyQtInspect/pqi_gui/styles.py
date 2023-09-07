@@ -1,9 +1,5 @@
 # -*- encoding:utf-8 -*-
-# ==============================================
-# Author: 陈建彰
-# Time: 2023/9/7 19:09
-# Description: 
-# ==============================================
+# https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
 GLOBAL_STYLESHEET2 = """
 QPushButton {
@@ -44,6 +40,10 @@ QPushButton:hover {
 }
 
 QPushButton:pressed {
+    background-color: #EDEFF2;
+}
+
+QPushButton:checked {
     background-color: #EDEFF2;
 }
 
