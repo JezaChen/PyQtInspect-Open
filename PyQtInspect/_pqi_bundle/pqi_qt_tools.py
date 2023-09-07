@@ -42,9 +42,9 @@ def get_stylesheet(widget: QtWidgets.QWidget):
     return widget.styleSheet()
 
 
-def set_widget_size(widget: QtWidgets.QWidget, width: int, height: int):
-    print(f"set_widget_size: {widget}, {width}, {height}")
+def exec_code_in_widget(widget: QtWidgets.QWidget, code: str):
     if not isinstance(widget, QtWidgets.QWidget):
         return
 
-    widget.setFixedSize(width, height)
+    if hasattr(widget, '_pqi_exec'):
+        widget._pqi_exec(code)

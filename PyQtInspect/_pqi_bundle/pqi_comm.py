@@ -158,7 +158,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     CMD_REDIRECT_OUTPUT, CMD_GET_NEXT_STATEMENT_TARGETS, CMD_SET_PROJECT_ROOTS, CMD_VERSION,
     CMD_RETURN, CMD_SET_PROTOCOL, CMD_ERROR, CMD_GET_SMART_STEP_INTO_VARIANTS, CMD_DATAVIEWER_ACTION,
     CMD_TABLE_EXEC, CMD_INTERRUPT_DEBUG_CONSOLE, CMD_SET_USER_TYPE_RENDERERS, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
-    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_WIDGET_RESIZE)
+    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -347,10 +347,9 @@ class ReaderThread(PyDBDaemonThread):
             global_dbg.enable_inspect()
         elif cmd_id == CMD_DISABLE_INSPECT:
             global_dbg.disable_inspect()
-        elif cmd_id == CMD_WIDGET_RESIZE:
-            new_size_info = json.loads(unquote(text))
-            width, height = new_size_info['width'], new_size_info['height']
-            global_dbg.set_selected_widget_size(width, height)
+        elif cmd_id == CMD_EXEC_CODE:
+            code = unquote(text)
+            global_dbg.exec_code_in_selected_widget(code)
 
 
 # ----------------------------------------------------------------------------------- SOCKET UTILITIES - WRITER
@@ -591,11 +590,12 @@ class NetCommandFactory:
         ))
         return cmd
 
-    def make_widget_resize_message(self, width: int, height: int):
-        cmd = NetCommand(CMD_WIDGET_RESIZE, 0, self.make_json(
-            width=width,
-            height=height,
-        ))
+    def make_exec_code_message(self, code: str):
+        cmd = NetCommand(CMD_EXEC_CODE, 0, code)
+        return cmd
+
+    def make_exec_code_err_message(self, err_msg: str):
+        cmd = NetCommand(CMD_EXEC_CODE_ERROR, 0, err_msg)
         return cmd
 
     def make_enable_inspect_message(self):

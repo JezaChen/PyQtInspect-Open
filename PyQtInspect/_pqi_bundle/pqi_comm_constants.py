@@ -110,7 +110,8 @@ CMD_WIDGET_INFO = 1001
 CMD_ENABLE_INSPECT = 1002
 CMD_DISABLE_INSPECT = 1003
 CMD_INSPECT_FINISHED = 1004
-CMD_WIDGET_RESIZE = 1005
+CMD_EXEC_CODE = 1006
+CMD_EXEC_CODE_ERROR = 1007
 
 
 from PyQtInspect._pqi_bundle._pqi_filesystem_encoding import getfilesystemencoding

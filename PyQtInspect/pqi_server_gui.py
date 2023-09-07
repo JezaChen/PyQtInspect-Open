@@ -19,7 +19,7 @@ from PyQt5.QtGui import QColor
 from _socket import SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
-from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED
+from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
@@ -68,8 +68,8 @@ class Dispatcher(QtCore.QThread):
     def sendDisableInspect(self):
         self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
 
-    def sendWidgetResizeEvent(self, width: int, height: int):
-        self.writer.add_command(self.net_command_factory.make_widget_resize_message(width, height))
+    def sendExecCodeEvent(self, code: str):
+        self.writer.add_command(self.net_command_factory.make_exec_code_message(code))
 
     def notifyDelete(self):
         self.reader.do_kill_pydev_thread()
@@ -158,9 +158,9 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
 
-    def sendWidgetResizeEvent(self, width: int, height: int):
+    def sendExecCodeEvent(self, code: str):
         for dispatcher in self.dispatchers:
-            dispatcher.sendWidgetResizeEvent(width, height)
+            dispatcher.sendExecCodeEvent(code)
 
     def _onDispatcherDelete(self, id: int):
         dispatcher = self.idToDispatcher.pop(id)
@@ -215,7 +215,7 @@ class BriefLineWithEditButton(BriefLine):
 
 
 class WidgetBriefWidget(QtWidgets.QWidget):
-    sigSelectedWidgetResize = QtCore.pyqtSignal(int, int)  # width, height
+    sigCode = QtCore.pyqtSignal(str)  # run code in widget
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -229,8 +229,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._objectNameLine = BriefLine(self, "object_name")
         self._mainLayout.addWidget(self._objectNameLine)
 
-        self._sizeLine = BriefLineWithEditButton(self, "size")
-        self._sizeLine.sigEditButtonClicked.connect(self._onPosLineEditButtonClicked)
+        self._sizeLine = BriefLine(self, "size")
         self._mainLayout.addWidget(self._sizeLine)
 
         self._posLine = BriefLine(self, "pos")
@@ -242,6 +241,10 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._styleSheetLine = BriefLine(self, "style_sheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
+        self._codeLine = BriefLineWithEditButton(self, "code")
+        self._codeLine.sigEditButtonClicked.connect(self.sigCode)
+        self._mainLayout.addWidget(self._codeLine)
+
         self._mainLayout.addStretch(1)
 
     def setInfo(self, info):
@@ -251,14 +254,6 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._sizeLine.setValue(f"{width}, {height}")
         self._posLine.setValue(str(info["pos"]))
         self._parentLine.setValue(str(info["parent_classes"]))
-
-    def _onPosLineEditButtonClicked(self, text: str):
-        """ emit the width and height when the button of pos line edit is clicked """
-        try:
-            width, height = text.split(",")
-            self.sigSelectedWidgetResize.emit(int(width), int(height))
-        except:
-            QtWidgets.QMessageBox.critical(self, "Error", "Invalid pos format")
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -359,7 +354,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self._widgetBriefWidget.sigSelectedWidgetResize.connect(self._onSelectedWidgetResize)
+        self._widgetBriefWidget.sigCode.connect(self._notifyExecCodeInSelectedWidget)
 
         self._mainLayout.addWidget(self._widgetBriefWidget)
 
@@ -407,6 +402,9 @@ class PQIWindow(QtWidgets.QMainWindow):
         elif cmdId == CMD_INSPECT_FINISHED:
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
+        elif cmdId == CMD_EXEC_CODE_ERROR:
+            errMsg = info.get("text")
+            QtWidgets.QMessageBox.critical(self, "Error", errMsg)
         # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
@@ -428,11 +426,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         else:
             self._worker.sendDisableInspect()
 
-    def _onSelectedWidgetResize(self, width: int, height: int):
+    def _notifyExecCodeInSelectedWidget(self, code: str):
         if self._worker is None:
             return
 
-        self._worker.sendWidgetResizeEvent(width, height)
+        self._worker.sendExecCodeEvent(code)
 
 
 if __name__ == '__main__':

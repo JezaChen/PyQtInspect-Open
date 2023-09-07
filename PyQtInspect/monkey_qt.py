@@ -376,6 +376,14 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
         return oldLeaveEvent(self, event)
 
+    def _pqi_exec(self: QtWidgets.QWidget, code):
+        try:
+            exec(code, globals(), locals())
+        except Exception as e:
+            debugger = get_global_debugger()
+            if debugger is not None:
+                debugger.notify_exec_code_error_message(str(e))
+
     # hook QWidget mouseReleaseEvent
     def _mouseReleaseEvent(self: QtWidgets.QWidget, event):
         if event.button() != QtCore.Qt.LeftButton:
@@ -399,4 +407,5 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget.enterEvent = _enterEvent
     QtWidgets.QWidget.leaveEvent = _leaveEvent
+    QtWidgets.QWidget._pqi_exec = _pqi_exec
     print("patched")

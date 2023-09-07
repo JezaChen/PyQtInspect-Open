@@ -10,18 +10,14 @@ import time
 import typing
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
-from PyQtInspect._pqi_bundle.pqi_qt_tools import set_widget_size
+from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect._pqi_bundle import fix_getpass
-from PyQtInspect._pqi_bundle import pqi_vm_type
 from PyQtInspect.pqi_contants import IS_JYTH_LESS25, IS_PYCHARM, get_thread_id, get_current_thread_id, \
     dict_keys, dict_iter_items, DebugInfoHolder, PYTHON_SUSPEND, STATE_SUSPEND, STATE_RUN, get_frame, xrange, \
     clear_cached_thread_id, INTERACTIVE_MODE_AVAILABLE, SHOW_DEBUG_INFO_ENV, IS_PY34_OR_GREATER, IS_PY36_OR_GREATER, \
     IS_PY2, NULL, NO_FTRACE, dummy_excepthook, IS_CPYTHON, GOTO_HAS_RESPONSE, set_global_debugger, IS_PY3K
 import PyQtInspect.pqi_log as pqi_log
-from PyQtInspect._pqi_bundle.pqi_comm import CMD_SET_BREAK, CMD_SET_NEXT_STATEMENT, CMD_STEP_INTO, CMD_STEP_OVER, \
-    CMD_STEP_RETURN, CMD_STEP_INTO_MY_CODE, CMD_THREAD_SUSPEND, CMD_RUN_TO_LINE, \
-    CMD_ADD_EXCEPTION_BREAK, CMD_SMART_STEP_INTO, PyDBDaemonThread, ReaderThread, GetGlobalDebugger, \
+from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, GetGlobalDebugger, \
     get_global_debugger, set_global_debugger, WriterThread, pydevd_log, \
     start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread, NetCommand, NetCommandFactory
 import traceback
@@ -654,8 +650,12 @@ class PyDB(object):
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
 
-    def set_selected_widget_size(self, width, height):
-        set_widget_size(self._selectedWidget, width, height)
+    def exec_code_in_selected_widget(self, code):
+        exec_code_in_widget(self._selectedWidget, code)
+
+    def notify_exec_code_error_message(self, err_msg):
+        cmd = self.cmd_factory.make_exec_code_err_message(err_msg)
+        self.writer.add_command(cmd)
 
 
 def set_debug(setup):
