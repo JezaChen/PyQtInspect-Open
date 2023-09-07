@@ -310,11 +310,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         _original_QWidget_init(self, *args, **kwargs)
         if sip.ispycreated(self):
             frames = inspect.stack()
-            frame = inspect.currentframe()
-            previousFrame = frame.f_back
-            previousFrameInfo = inspect.getframeinfo(previousFrame)
-            # 不要直接保存frame引用, 因为调用后frame会走到最后一行, 失去了回溯意义
-            setattr(self, '_pqi_stacks_when_create', _filter_trace_stack(frames))
+            setattr(self, '_pqi_stacks_when_create', frames)
 
     # hook QWidget enterEvent
     def _enterEvent(self: QtWidgets.QWidget, event):
@@ -343,7 +339,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         widget_info = QWidgetInfo(
             class_name=self.__class__.__name__,
             object_name=self.objectName(),
-            stacks_when_create=self._pqi_stacks_when_create,
+            stacks_when_create=_filter_trace_stack(self._pqi_stacks_when_create),
             size=get_widget_size(self),
             pos=get_widget_pos(self),
             parent_classes=list(get_parent_classes(self)),

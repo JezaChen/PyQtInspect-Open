@@ -23,8 +23,13 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSP
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
-myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha' # arbitrary string
+
+from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
+from PyQtInspect.pqi_gui.settings_window import SettingWindow
+
+myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha'  # arbitrary string
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 
 class DispatcherThread(QtCore.QThread):
     def run(self) -> None:
@@ -32,7 +37,7 @@ class DispatcherThread(QtCore.QThread):
 
 
 class Dispatcher(QtCore.QThread):
-    sigMsg = QtCore.pyqtSignal(dict)
+    sigMsg = QtCore.pyqtSignal(int, dict)  # dispatcher_id, info
     sigDelete = QtCore.pyqtSignal(int)
 
     def __init__(self, parent, sock, id):
@@ -60,7 +65,7 @@ class Dispatcher(QtCore.QThread):
             pass
 
     def notify(self, cmd_id, seq, text):
-        self.sigMsg.emit({"cmd_id": cmd_id, "seq": seq, "text": text})
+        self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
 
     def sendEnableInspect(self):
         self.writer.add_command(self.net_command_factory.make_enable_inspect_message())
@@ -158,8 +163,9 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
 
-    def sendExecCodeEvent(self, code: str):
-        for dispatcher in self.dispatchers:
+    def sendExecCodeEvent(self, dispatcherId: int, code: str):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
             dispatcher.sendExecCodeEvent(code)
 
     def _onDispatcherDelete(self, id: int):
@@ -241,7 +247,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._styleSheetLine = BriefLine(self, "style_sheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
-        self._codeLine = BriefLineWithEditButton(self, "code")
+        self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
         self._codeLine.sigEditButtonClicked.connect(self.sigCode)
         self._mainLayout.addWidget(self._codeLine)
 
@@ -285,11 +291,10 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
                     self.openFile(fileName, lineNo)
 
     def findPycharm(self):
-        import os
-        for path in os.environ["PATH"].split(";"):
-            if "pycharm" in path.lower():
-                return path + "\\pycharm64.exe"
-        return None
+        pycharmPath = getPyCharmPath()
+        if not pycharmPath:
+            pycharmPath = findDefaultPycharmPath()
+        return pycharmPath
 
     def openFile(self, fileName: str, lineNo: int):
         # open in Pycharm
@@ -312,6 +317,20 @@ class PQIWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("PyQtInspect")
         self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
         self.resize(700, 1000)
+
+        self._menuBar = QtWidgets.QMenuBar(self)
+        self.setMenuBar(self._menuBar)
+
+        self._moreMenu = QtWidgets.QMenu(self._menuBar)
+        self._moreMenu.setTitle("More")
+        self._menuBar.addMenu(self._moreMenu)
+
+        self._settingAction = QtWidgets.QAction(self)
+        self._settingAction.setText("Settings")
+        self._moreMenu.addAction(self._settingAction)
+        self._settingAction.triggered.connect(self._openSettingWindow)
+
+        self._settingWindow = None
 
         self._mainContainer = QtWidgets.QWidget(self)
         self.setCentralWidget(self._mainContainer)
@@ -363,13 +382,14 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._mainLayout.addWidget(self._createStacksListWidget)
 
-        self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
-        self._bottomStatusTextBrowser.setFixedHeight(100)
-        self._bottomStatusTextBrowser.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-        self._mainLayout.addWidget(self._bottomStatusTextBrowser)
+        # self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
+        # self._bottomStatusTextBrowser.setFixedHeight(100)
+        # self._bottomStatusTextBrowser.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        #
+        # self._mainLayout.addWidget(self._bottomStatusTextBrowser)
 
         self._worker = None
+        self._currDispatcherIdForSelectedWidget = None
 
     def runWorker(self):
         if self._worker is not None:
@@ -395,11 +415,12 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._workerThread.start()
 
-    def on_widget_info_recv(self, info: dict):
+    def on_widget_info_recv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")
         if cmdId == CMD_WIDGET_INFO:
             self.handle_widget_info_msg(json.loads(info["text"]))
         elif cmdId == CMD_INSPECT_FINISHED:
+            self._currDispatcherIdForSelectedWidget = dispatcherId
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
         elif cmdId == CMD_EXEC_CODE_ERROR:
@@ -425,12 +446,18 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._worker.sendEnableInspect()
         else:
             self._worker.sendDisableInspect()
+            self._currDispatcherIdForSelectedWidget = None
 
     def _notifyExecCodeInSelectedWidget(self, code: str):
-        if self._worker is None:
+        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
-        self._worker.sendExecCodeEvent(code)
+        self._worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
+
+    def _openSettingWindow(self):
+        if self._settingWindow is None:
+            self._settingWindow = SettingWindow(self)
+        self._settingWindow.show()
 
 
 if __name__ == '__main__':
