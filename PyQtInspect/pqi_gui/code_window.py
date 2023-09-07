@@ -5,11 +5,17 @@
 # Description: 
 # ==============================================
 from PyQt5 import QtWidgets, QtGui, QtCore
+from io import StringIO
+from contextlib import redirect_stdout
 
 from PyQtInspect.pqi_gui.syntax import PythonHighlighter
 
 CODE_TEXT_EDIT_STYLESHEET = """
 QTextEdit#CodeTextEdit {
+    font: 14px "Consolas";
+}
+
+QTextEdit#ResultTextBrowser {
     font: 14px "Consolas";
 }
 """
@@ -26,6 +32,13 @@ class CodeTextEdit(QtWidgets.QTextEdit):
                 self.insertPlainText("    ")
                 return True
         return super().event(e)
+
+
+class ResultTextBrowser(QtWidgets.QTextBrowser):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ResultTextBrowser")
+        self.setReadOnly(True)
 
 
 class CodeWindow(QtWidgets.QDialog):
@@ -46,14 +59,19 @@ class CodeWindow(QtWidgets.QDialog):
         self._highlight = PythonHighlighter(self._codeTextEdit.document())
         self._mainLayout.addWidget(self._codeTextEdit)
 
+        self._resultTextBrowser = ResultTextBrowser(self)
+        self._resultTextBrowser.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self._mainLayout.addWidget(self._resultTextBrowser)
+
         self._buttonLayout = QtWidgets.QHBoxLayout()
         self._buttonLayout.setContentsMargins(0, 0, 0, 0)
         self._buttonLayout.setSpacing(5)
 
-        self._saveButton = QtWidgets.QPushButton(self)
-        self._saveButton.setFixedSize(100, 40)
-        self._saveButton.setText("Save")
-        self._buttonLayout.addWidget(self._saveButton)
+        self._runButton = QtWidgets.QPushButton(self)
+        self._runButton.setFixedSize(100, 40)
+        self._runButton.setText("Run")
+        self._runButton.clicked.connect(self._runCode)
+        self._buttonLayout.addWidget(self._runButton)
 
         self._cancelButton = QtWidgets.QPushButton(self)
         self._cancelButton.setFixedSize(100, 40)
@@ -64,6 +82,16 @@ class CodeWindow(QtWidgets.QDialog):
         self._mainLayout.addLayout(self._buttonLayout)
 
         self.setStyleSheet(CODE_TEXT_EDIT_STYLESHEET)
+
+    def _runCode(self):
+        code = self._codeTextEdit.toPlainText()
+        try:
+            f = StringIO()
+            with redirect_stdout(f):
+                exec(code)
+            self._resultTextBrowser.setText(f.getvalue())
+        except Exception as e:
+            self._resultTextBrowser.setText(str(e))
 
 
 if __name__ == '__main__':
