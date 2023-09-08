@@ -96,13 +96,6 @@ class CodeWindow(QtWidgets.QDialog):
     def _runCode(self):
         code = self._codeTextEdit.toPlainText()
         self.sigExecCode.emit(code)
-        # try:
-        #     f = StringIO()
-        #     with redirect_stdout(f):
-        #         exec(code)
-        #     self._resultTextBrowser.setText(f.getvalue())
-        # except Exception as e:
-        #     self._resultTextBrowser.setText(str(e))
 
     def notifyResult(self, isErr: bool, result: str):
         """ if isErr is True, print the result with the color red, else green. """

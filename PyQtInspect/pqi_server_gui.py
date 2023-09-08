@@ -112,6 +112,7 @@ class PQYWorker(QtCore.QObject):
     start = QtCore.pyqtSignal()
     widgetInfoRecv = QtCore.pyqtSignal(dict)
     sigNewDispatcher = QtCore.pyqtSignal(Dispatcher)
+    socketError = QtCore.pyqtSignal(str)
 
     def __init__(self, parent, port):
         super().__init__(parent)
@@ -126,18 +127,17 @@ class PQYWorker(QtCore.QObject):
         s = socket(AF_INET, SOCK_STREAM)
         s.settimeout(None)
 
+        # try:
+        #     from socket import SO_REUSEPORT
+        #     s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        # except ImportError:
+        #     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
-            from socket import SO_REUSEPORT
-            s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
-        except ImportError:
-            s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            s.bind(('', self.port))
+            s.listen(1)
 
-        s.bind(('', self.port))
-        s.listen(1)
+            dispatcherId = 0
 
-        dispatcherId = 0
-
-        try:
             while True:
                 newSock, _addr = s.accept()
                 # 新建个线程来处理
@@ -150,10 +150,11 @@ class PQYWorker(QtCore.QObject):
                 dispatcher.start()
                 dispatcherId += 1
 
-        except:
+        except Exception as e:
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
             sys.stderr.flush()
             traceback.print_exc()
+            self.socketError.emit(str(e))
 
     def onMsg(self, info: dict):
         self.widgetInfoRecv.emit(info)
@@ -457,12 +458,22 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker = PQYWorker(None, port)
         self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
         self._worker.sigNewDispatcher.connect(self.onNewDispatcher)
+        self._worker.socketError.connect(self._onWorkerSocketError)
         self._workerThread = QtCore.QThread()
 
         self._worker.moveToThread(self._workerThread)
         self._workerThread.started.connect(self._worker.run)
 
         self._workerThread.start()
+
+    def _onWorkerSocketError(self, msg):
+        QtWidgets.QMessageBox.critical(self, "Error", msg)
+        self._portLineEdit.setEnabled(True)
+        self._serveButton.setEnabled(True)
+        self._inspectButton.setEnabled(False)
+        self._workerThread.quit()
+        self._worker.deleteLater()
+        self._worker = None
 
     def on_widget_info_recv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")

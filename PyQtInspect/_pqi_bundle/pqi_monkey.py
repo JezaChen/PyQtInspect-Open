@@ -9,8 +9,8 @@ import os
 import sys
 import traceback
 import threading
-from PyQtInspect.pqi_contants import get_global_debugger, IS_WINDOWS, IS_MACOS, \
-    IS_JYTHON, IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER, \
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, IS_WINDOWS, IS_MACOS, \
+    IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER, \
     get_current_thread_id, IS_PY311_OR_GREATER
 
 # from _pydev_bundle import pydev_log
@@ -21,7 +21,7 @@ PYTHON_NAMES = ['python', 'jython', 'pypy']
 # ===============================================================================
 # Things that are dependent on having the pydevd debugger
 # ===============================================================================
-import PyQtInspect.pqi_log as pqi_log
+import PyQtInspect._pqi_bundle.pqi_log as pqi_log
 
 
 def log_debug(msg):
@@ -252,7 +252,7 @@ def patch_args(args):
         # Original args should be something as:
         # ['X:\\pysrc\\pydevd.py', '--multiprocess', '--print-in-debugger-startup',
         #  '--vm_type', 'python', '--client', '127.0.0.1', '--port', '56352', '--file', 'x:\\snippet1.py']
-        from _pqi_bundle.pqi_command_line_handling import setup_to_argv
+        from PyQtInspect._pqi_bundle.pqi_command_line_handling import setup_to_argv
         SetupHolder.setup['module'] = False  # clean module param from parent process
         original = setup_to_argv(SetupHolder.setup) + ['--file']
         while i < len(args):
@@ -738,21 +738,20 @@ def patch_new_process_functions():
         monkey_patch_os('posix_spawn', create_posix_spawn)
         monkey_patch_os('posix_spawnp', create_posix_spawn)
 
-    if not IS_JYTHON:
-        if not IS_WINDOWS:
-            monkey_patch_os('fork', create_fork)
-            try:
-                import _posixsubprocess
-                monkey_patch_module(_posixsubprocess, 'fork_exec', create_fork_exec)
-            except ImportError:
-                pass
-        else:
-            # Windows
-            try:
-                import _subprocess
-            except ImportError:
-                import _winapi as _subprocess
-            monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcess)
+    if not IS_WINDOWS:
+        monkey_patch_os('fork', create_fork)
+        try:
+            import _posixsubprocess
+            monkey_patch_module(_posixsubprocess, 'fork_exec', create_fork_exec)
+        except ImportError:
+            pass
+    else:
+        # Windows
+        try:
+            import _subprocess
+        except ImportError:
+            import _winapi as _subprocess
+        monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcess)
 
 
 def patch_new_process_functions_with_warning():
@@ -777,21 +776,20 @@ def patch_new_process_functions_with_warning():
         monkey_patch_os('posix_spawn', create_warn_multiproc)
         monkey_patch_os('posix_spawnp', create_warn_multiproc)
 
-    if not IS_JYTHON:
-        if not IS_WINDOWS:
-            monkey_patch_os('fork', create_warn_multiproc)
-            try:
-                import _posixsubprocess
-                monkey_patch_module(_posixsubprocess, 'fork_exec', create_warn_fork_exec)
-            except ImportError:
-                pass
-        else:
-            # Windows
-            try:
-                import _subprocess
-            except ImportError:
-                import _winapi as _subprocess
-            monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcessWarnMultiproc)
+    if not IS_WINDOWS:
+        monkey_patch_os('fork', create_warn_multiproc)
+        try:
+            import _posixsubprocess
+            monkey_patch_module(_posixsubprocess, 'fork_exec', create_warn_fork_exec)
+        except ImportError:
+            pass
+    else:
+        # Windows
+        try:
+            import _subprocess
+        except ImportError:
+            import _winapi as _subprocess
+        monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcessWarnMultiproc)
 
 
 class _NewThreadStartupWithTrace:
@@ -913,44 +911,3 @@ def patch_thread_module(thread_module):
 def patch_thread_modules():
     for t in threading_modules_to_patch:
         patch_thread_module(t)
-
-
-def undo_patch_thread_modules():
-    for t in threading_modules_to_patch:
-        try:
-            t.start_new_thread = t._original_start_new_thread
-        except:
-            pass
-
-        try:
-            t.start_new = t._original_start_new_thread
-        except:
-            pass
-
-        try:
-            t._start_new_thread = t._original_start_new_thread
-        except:
-            pass
-
-
-def disable_trace_thread_modules():
-    '''
-    Can be used to temporarily stop tracing threads created with thread.start_new_thread.
-    '''
-    global _UseNewThreadStartup
-    _UseNewThreadStartup = _NewThreadStartupWithoutTrace
-
-
-def enable_trace_thread_modules():
-    '''
-    Can be used to start tracing threads created with thread.start_new_thread again.
-    '''
-    global _UseNewThreadStartup
-    _UseNewThreadStartup = _NewThreadStartupWithTrace
-
-
-def get_original_start_new_thread(threading_module):
-    try:
-        return threading_module._original_start_new_thread
-    except:
-        return threading_module.start_new_thread

@@ -34,23 +34,6 @@ class DebugInfoHolder:
 
 IS_CPYTHON = platform.python_implementation() == 'CPython'
 
-# Hold a reference to the original _getframe (because psyco will change that as soon as it's imported)
-IS_IRONPYTHON = sys.platform == 'cli'
-try:
-    get_frame = sys._getframe
-    if IS_IRONPYTHON:
-
-        def get_frame():
-            try:
-                return sys._getframe()
-            except ValueError:
-                pass
-
-except AttributeError:
-
-    def get_frame():
-        raise AssertionError('sys._getframe not available (possible causes: enable -X:Frames on IronPython?)')
-
 # Used to determine the maximum size of each variable passed to eclipse -- having a big value here may make
 # the communication slower -- as the variables are being gathered lazily in the latest version of eclipse,
 # this value was raised from 200 to 1000.
@@ -67,22 +50,8 @@ def dummy_excepthook(exctype, value, traceback):
 
 import os
 
-from PyQtInspect._pqi_bundle import pqi_vm_type
-
 # Constant detects when running on Jython/windows properly later on.
 IS_WINDOWS = sys.platform == 'win32'
-
-IS_JYTHON = pqi_vm_type.get_vm_type() == pqi_vm_type.PydevdVmType.JYTHON
-IS_JYTH_LESS25 = False
-
-if IS_JYTHON:
-    import java.lang.System  # @UnresolvedImport
-    IS_WINDOWS = java.lang.System.getProperty("os.name").lower().startswith("windows")
-    if sys.version_info[0] == 2 and sys.version_info[1] < 5:
-        IS_JYTH_LESS25 = True
-elif IS_IRONPYTHON:
-    import System
-    IS_WINDOWS = "windows" in System.Environment.OSVersion.VersionString.lower()
 
 IS_64BIT_PROCESS = sys.maxsize > (2 ** 32)
 
@@ -394,26 +363,6 @@ def get_current_thread_id(thread):
         tid = _get_or_compute_thread_id_with_lock(thread, is_current_thread=True)
 
     return tid
-
-
-def get_thread_id(thread):
-    try:
-        # Fast path without getting lock.
-        tid = thread.__pydevd_id__
-        if tid is None:
-            # Fix for https://www.brainwy.com/tracker/PyDev/645
-            # if __pydevd_id__ is None, recalculate it... also, use an heuristic
-            # that gives us always the same id for the thread (using thread.ident or id(thread)).
-            raise AttributeError()
-    except AttributeError:
-        tid = _get_or_compute_thread_id_with_lock(thread, is_current_thread=False)
-
-    return tid
-
-
-def set_thread_id(thread, thread_id):
-    with _thread_id_lock:
-        thread.__pydevd_id__ = thread_id
 
 
 #=======================================================================================================================

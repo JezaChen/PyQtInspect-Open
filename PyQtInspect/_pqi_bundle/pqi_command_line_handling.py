@@ -56,7 +56,6 @@ class ArgHandlerBool:
 
 ACCEPTED_ARG_HANDLERS = [
     ArgHandlerWithParam('port', int, 0),
-    ArgHandlerWithParam('vm_type'),
     ArgHandlerWithParam('client'),
     ArgHandlerWithParam('stack-max-depth', int, 0),
 
@@ -64,11 +63,6 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('DEBUG_RECORD_SOCKET_READS'),
     ArgHandlerBool('multiproc'),  # Used by PyCharm (reuses connection: ssh tunneling)
     ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
-    ArgHandlerBool('save-signatures'),
-    ArgHandlerBool('save-threading'),
-    ArgHandlerBool('save-asyncio'),
-    ArgHandlerBool('print-in-debugger-startup'),
-    ArgHandlerBool('cmd-line'),
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
 ]

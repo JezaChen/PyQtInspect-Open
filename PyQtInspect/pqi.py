@@ -7,28 +7,22 @@
 import sys
 import os
 import time
-import typing
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect.pqi_contants import IS_JYTH_LESS25, IS_PYCHARM, get_thread_id, get_current_thread_id, \
-    dict_keys, dict_iter_items, DebugInfoHolder, PYTHON_SUSPEND, STATE_SUSPEND, STATE_RUN, get_frame, xrange, \
-    clear_cached_thread_id, INTERACTIVE_MODE_AVAILABLE, SHOW_DEBUG_INFO_ENV, IS_PY34_OR_GREATER, IS_PY36_OR_GREATER, \
-    IS_PY2, NULL, NO_FTRACE, dummy_excepthook, IS_CPYTHON, GOTO_HAS_RESPONSE, set_global_debugger, IS_PY3K
-import PyQtInspect.pqi_log as pqi_log
-from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, GetGlobalDebugger, \
-    get_global_debugger, set_global_debugger, WriterThread, pydevd_log, \
-    start_client, start_server, CommunicationRole, run_as_pydevd_daemon_thread, NetCommand, NetCommandFactory
+from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
+from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
+    WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 import traceback
 
-from PyQtInspect.pqi_structures import QWidgetInfo
+from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
 
 threadingCurrentThread = threading.current_thread
 
 
 def enable_qt_support(qt_support_mode):
-    import PyQtInspect.monkey_qt as monkey_qt
+    import PyQtInspect._pqi_bundle.pqi_monkey_qt as monkey_qt
     monkey_qt.patch_qt(qt_support_mode)
 
 
@@ -138,6 +132,9 @@ class TrackedLock(object):
         return self._tls.is_lock_acquired
 
 
+connected = False
+
+
 class PyDB(object):
     """ Main debugging class
     Lots of stuff going on here:
@@ -167,109 +164,15 @@ class PyDB(object):
 
         self.breakpoints = {}
 
-        self.__user_type_renderers = {}
-
-        # mtime to be raised when breakpoints change
-        self.mtime = 0
-
-        self.file_to_id_to_line_breakpoint = {}
-        self.file_to_id_to_plugin_breakpoint = {}
-
-        # Note: breakpoints dict should not be mutated: a copy should be created
-        # and later it should be assigned back (to prevent concurrency issues).
-        self.break_on_uncaught_exceptions = {}
-        self.break_on_caught_exceptions = {}
-
         self.ready_to_run = True
-        self._main_lock = TrackedLock()
-        self._lock_running_thread_ids = thread.allocate_lock()
-        self._py_db_command_thread_event = threading.Event()
-        # if set_as_global:
-        #     CustomFramesContainer._py_db_command_thread_event = self._py_db_command_thread_event
 
         self._finish_debugging_session = False
-        self._termination_event_set = False
-        self.signature_factory = None
-        # self.SetTrace = pydevd_tracing.SetTrace
-        self.SetTrace = sys.settrace  # todo
-        self.skip_on_exceptions_thrown_in_same_context = False
-        self.ignore_exceptions_thrown_in_lines_with_ignore_exception = True
-
-        # Suspend debugger even if breakpoint condition raises an exception.
-        # May be changed with CMD_PYDEVD_JSON_CONFIG.
-        self.skip_suspend_on_breakpoint_exception = ()  # By default suspend on any Exception.
-        self.skip_print_breakpoint_exception = ()  # By default print on any Exception.
-
-        # By default user can step into properties getter/setter/deleter methods
-        self.disable_property_trace = False
-        self.disable_property_getter_trace = False
-        self.disable_property_setter_trace = False
-        self.disable_property_deleter_trace = False
-
-        # this is a dict of thread ids pointing to thread ids. Whenever a command is passed to the java end that
-        # acknowledges that a thread was created, the thread id should be passed here -- and if at some time we do not
-        # find that thread alive anymore, we must remove it from this list and make the java side know that the thread
-        # was killed.
-        self._running_thread_ids = {}
-        self._set_breakpoints_with_id = False
-
-        # This attribute holds the file-> lines which have an @IgnoreException.
-        self.filename_to_lines_where_exceptions_are_ignored = {}
-
-        # working with plugins (lazily initialized)
-        self.plugin = None
-        self.has_plugin_line_breaks = False
-        self.has_plugin_exception_breaks = False
-        self.thread_analyser = None
-        self.asyncio_analyser = None
-
-        # matplotlib support in debugger and debug console
-        self.mpl_in_use = False
-        self.mpl_hooks_in_debug_console = False
-        self.mpl_modules_for_patching = {}
-
-        self._filename_to_not_in_scope = {}
-        self.first_breakpoint_reached = False
-        # self.is_filter_enabled = pydevd_utils.is_filter_enabled()
-        # self.is_filter_libraries = pydevd_utils.is_filter_libraries()
-        self.show_return_values = False
-        self.remove_return_values_flag = False
-        self.redirect_output = False
-
-        # this flag disables frame evaluation even if it's available
-        self.use_frame_eval = True
-        self.stop_on_start = False
-
-        # If True, pydevd will send a single notification when all threads are suspended/resumed.
-        # self._threads_suspended_single_notification = ThreadsSuspendedSingleNotification(self)
-
-        self._local_thread_trace_func = threading.local()
-
-        # sequence id of `CMD_PROCESS_CREATED` command -> threading.Event
-        self.process_created_msg_received_events = dict()
-        # the role PyDB plays in the communication with IDE
-        self.communication_role = None
-
-        # self.collect_return_info = collect_return_info
-
-        # If True, pydevd will stop on assertion errors in tests.
-        self.stop_on_failed_tests = False
-
-        # If True, pydevd finished all work and only waits output_checker_thread
-        self.wait_output_checker_thread = False
 
         # the role PyDB plays in the communication with IDE
         self.communication_role = None
 
         self.inspect_enabled = False
-        self._selectedWidget = None
-
-    def get_thread_local_trace_func(self):
-        try:
-            thread_trace_func = self._local_thread_trace_func.thread_trace_func
-        except AttributeError:
-            thread_trace_func = self.trace_dispatch
-        return thread_trace_func
+        self._selected_widget = None
 
     def enable_tracing(self, thread_trace_func=None, apply_to_all_threads=False):
         '''
@@ -283,58 +186,9 @@ class PyDB(object):
         # set_fallback_excepthook()
         pass
 
-    def disable_tracing(self):
-        pass
-
-    def on_breakpoints_changed(self, removed=False):
-        '''
-        When breakpoints change, we have to re-evaluate all the assumptions we've made so far.
-        '''
-        if not self.ready_to_run:
-            # No need to do anything if we're still not running.
-            return
-
-        self.mtime += 1
-        if not removed:
-            # When removing breakpoints we can leave tracing as was, but if a breakpoint was added
-            # we have to reset the tracing for the existing functions to be re-evaluated.
-            self.set_tracing_for_untraced_contexts()
-
     def set_tracing_for_untraced_contexts(self, ignore_current_thread=False):
         # Enable the tracing for existing threads (because there may be frames being executed that
         # are currently untraced).
-        pass
-
-    @property
-    def multi_threads_single_notification(self):
-        return self._threads_suspended_single_notification.multi_threads_single_notification
-
-    @multi_threads_single_notification.setter
-    def multi_threads_single_notification(self, notify):
-        self._threads_suspended_single_notification.multi_threads_single_notification = notify
-
-    def get_plugin_lazy_init(self):
-        pass
-
-    def in_project_scope(self, filename):
-        pass
-
-    def is_ignored_by_filters(self, filename):
-        pass
-
-    def is_exception_trace_in_project_scope(self, trace):
-        pass
-
-    def is_top_level_trace_in_project_scope(self, trace):
-        pass
-
-    def is_test_item_or_set_up_caller(self, frame):
-        pass
-
-    def set_unit_tests_debugging_mode(self):
-        self.stop_on_failed_tests = True
-
-    def has_threads_alive(self):
         pass
 
     def finish_debugging_session(self):
@@ -369,33 +223,10 @@ class PyDB(object):
             thread_id = thread_id[thread_id.rfind('|') + 1:]
         return self._cmd_queue[thread_id]
 
-    def post_internal_command(self, int_cmd, thread_id):
-        """ if thread_id is *, post to the '*' queue"""
-        queue = self.get_internal_queue(thread_id)
-        queue.put(int_cmd)
-
-    def enable_output_redirection(self, redirect_stdout, redirect_stderr):
-        pass
-
     def check_output_redirect(self):
         pass
 
-    def init_matplotlib_in_debug_console(self):
-        pass
-
-    def init_matplotlib_support(self):
-        pass
-
-    def _activate_mpl_if_needed(self):
-        pass
-
-    def _call_mpl_hook(self):
-        pass
-
     def notify_thread_created(self, thread_id, thread, use_lock=True):
-        pass
-
-    def notify_thread_not_alive(self, thread_id, use_lock=True):
         pass
 
     def send_process_created_message(self):
@@ -404,52 +235,6 @@ class PyDB(object):
         cmdText = '<process/>'
         cmd = NetCommand(CMD_PROCESS_CREATED, 0, cmdText)
         self.writer.add_command(cmd)
-
-    def send_process_will_be_substituted(self):
-        """When `PyDB` works in server mode this method sends a message that a
-        new process is going to be created. After that it waits for the
-        response from the IDE to be sure that the IDE received this message.
-        Waiting for the response is required because the current process might
-        become substituted before it actually sends the message and the IDE
-        will not try to connect to `PyDB` in this case.
-
-        When `PyDB` works in client mode this method does nothing because the
-        substituted process will try to connect to the IDE itself.
-        """
-        pass
-
-    def set_next_statement(self, frame, event, func_name, next_line):
-        pass
-
-    def cancel_async_evaluation(self, thread_id, frame_id):
-        pass
-
-    def do_wait_suspend(self, thread, frame, event, arg, send_suspend_message=True,
-                        is_unhandled_exception=False):  # @UnusedVariable
-        """ busy waits until the thread state changes to RUN
-        it expects thread's state as attributes of the thread.
-        Upon running, processes any outstanding Stepping commands.
-
-        :param is_unhandled_exception:
-            If True we should use the line of the exception instead of the current line in the frame
-            as the paused location on the top-level frame (exception info must be passed on 'arg').
-        """
-        pass
-
-    def _do_wait_suspend(self, thread, frame, event, arg, suspend_type, from_this_thread):
-        pass
-
-    def stop_on_unhandled_exception(self, thread, frame, frames_byid, arg):
-        pass
-
-    def set_trace_for_frame_and_parents(self, frame, **kwargs):
-        pass
-
-    def _create_pydb_command_thread(self):
-        pass
-
-    def _create_check_output_thread(self):
-        pass
 
     def start_auxiliary_daemon_threads(self):
         pass
@@ -465,7 +250,7 @@ class PyDB(object):
         except:
             pass
 
-        from PyQtInspect.pqi_monkey import patch_thread_modules
+        from PyQtInspect._pqi_bundle.pqi_monkey import patch_thread_modules
         patch_thread_modules()
 
     def run(self, file, globals=None, locals=None, is_module=False, set_trace=True):
@@ -554,12 +339,6 @@ class PyDB(object):
             while not self.ready_to_run:
                 time.sleep(0.1)  # busy wait until we receive run command
 
-            if self.break_on_caught_exceptions or self.has_plugin_line_breaks or self.has_plugin_exception_breaks \
-                    or self.signature_factory:
-                # disable frame evaluation if there are exception breakpoints with 'On raise' activation policy
-                # or if there are plugin exception breakpoints or if collecting run-time types is enabled
-                self.frame_eval_func = None
-
             # call prepare_to_run when we already have all information about breakpoints
             self.prepare_to_run()
 
@@ -620,9 +399,6 @@ class PyDB(object):
         cmd = self.cmd_factory.make_exit_message()
         self.writer.add_command(cmd)
 
-    def wait_for_commands(self, globals):
-        pass
-
     def send_widget_message(self, widget_info: QWidgetInfo):
         cmd = self.cmd_factory.make_widget_info_message(widget_info)
         self.writer.add_command(cmd)
@@ -645,13 +421,13 @@ class PyDB(object):
         self.inspect_enabled = False
 
     def notify_inspect_finished(self, widget):
-        self._selectedWidget = widget
+        self._selected_widget = widget
 
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
 
     def exec_code_in_selected_widget(self, code):
-        exec_code_in_widget(self._selectedWidget, code)
+        exec_code_in_widget(self._selected_widget, code)
 
     def notify_exec_code_result(self, result):
         cmd = self.cmd_factory.make_exec_code_result_message(result)
@@ -748,21 +524,21 @@ def _locked_settrace(
 
     if patch_multiprocessing:
         try:
-            import PyQtInspect.pqi_monkey
+            import PyQtInspect._pqi_bundle.pqi_monkey
         except:
             pass
         else:
-            PyQtInspect.pqi_monkey.patch_new_process_functions()
+            PyQtInspect._pqi_bundle.pqi_monkey.patch_new_process_functions()
 
     try:
         print('pydev_monkey_qt')
-        import PyQtInspect.monkey_qt
+        import PyQtInspect._pqi_bundle.pqi_monkey_qt
     except:
         pass
     else:
-        PyQtInspect.monkey_qt.patch_qt("pyqt5")
+        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt("pyqt5")
 
-    # global connected
+    global connected
     # global bufferStdOutToServer
     # global bufferStdErrToServer
     connected = False
@@ -789,29 +565,8 @@ def _locked_settrace(
         bufferStdOutToServer = stdoutToServer
         bufferStdErrToServer = stderrToServer
 
-        # if bufferStdOutToServer:
-        #     init_stdout_redirect()
-        #
-        # if bufferStdErrToServer:
-        #     init_stderr_redirect()
-        #
-        # patch_stdin(debugger)
-        #
-        # t = threadingCurrentThread()
-        # additional_info = set_additional_thread_info(t)
-
         while not debugger.ready_to_run:
             time.sleep(0.1)  # busy wait until we receive run command
-
-        # Set the tracing only
-        debugger.set_trace_for_frame_and_parents(get_frame().f_back)
-
-        # CustomFramesContainer.custom_frames_lock.acquire()  # @UndefinedVariable
-        # try:
-        #     for _frameId, custom_frame in dict_iter_items(CustomFramesContainer.custom_frames):
-        #         debugger.set_trace_for_frame_and_parents(custom_frame.frame)
-        # finally:
-        #     CustomFramesContainer.custom_frames_lock.release()  # @UndefinedVariable
 
         debugger.start_auxiliary_daemon_threads()
 
@@ -831,8 +586,6 @@ def _locked_settrace(
         # ok, we're already in debug mode, with all set, so, let's just set the break
         debugger = get_global_debugger()
 
-        debugger.set_trace_for_frame_and_parents(get_frame().f_back)
-
         t = threadingCurrentThread()
         # additional_info = set_additional_thread_info(t)
 
@@ -841,6 +594,7 @@ def _locked_settrace(
         if not trace_only_current_thread:
             # Trace future threads?
             debugger.patch_threads()
+
 
 # =======================================================================================================================
 # main
@@ -874,10 +628,10 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-    import PyQtInspect.pqi_monkey
+    import PyQtInspect._pqi_bundle.pqi_monkey
 
     if setup['multiprocess']:
-        PyQtInspect.pqi_monkey.patch_new_process_functions()
+        PyQtInspect._pqi_bundle.pqi_monkey.patch_new_process_functions()
 
     is_module = setup['module']
 
