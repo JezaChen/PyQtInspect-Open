@@ -5,6 +5,8 @@ from __future__ import nested_scopes
 import os
 import threading  # todo used by only python3
 import sys
+from contextlib import redirect_stdout
+from io import StringIO
 
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_classes, get_stylesheet
 from PyQtInspect.pqi_contants import get_global_debugger
@@ -374,10 +376,14 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         return oldLeaveEvent(self, event)
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
+        debugger = get_global_debugger()
         try:
-            exec(code, globals(), locals())
+            f = StringIO()
+            with redirect_stdout(f):
+                exec(code, globals(), locals())
+            if debugger is not None:
+                debugger.notify_exec_code_result(f.getvalue())
         except Exception as e:
-            debugger = get_global_debugger()
             if debugger is not None:
                 debugger.notify_exec_code_error_message(str(e))
 

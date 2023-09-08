@@ -158,7 +158,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     CMD_REDIRECT_OUTPUT, CMD_GET_NEXT_STATEMENT_TARGETS, CMD_SET_PROJECT_ROOTS, CMD_VERSION,
     CMD_RETURN, CMD_SET_PROTOCOL, CMD_ERROR, CMD_GET_SMART_STEP_INTO_VARIANTS, CMD_DATAVIEWER_ACTION,
     CMD_TABLE_EXEC, CMD_INTERRUPT_DEBUG_CONSOLE, CMD_SET_USER_TYPE_RENDERERS, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
-    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR)
+    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -592,6 +592,10 @@ class NetCommandFactory:
 
     def make_exec_code_message(self, code: str):
         cmd = NetCommand(CMD_EXEC_CODE, 0, code)
+        return cmd
+
+    def make_exec_code_result_message(self, result: str):
+        cmd = NetCommand(CMD_EXEC_CODE_RESULT, 0, result)
         return cmd
 
     def make_exec_code_err_message(self, err_msg: str):

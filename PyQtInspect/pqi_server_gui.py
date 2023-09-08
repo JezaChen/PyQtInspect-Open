@@ -19,11 +19,13 @@ from PyQt5.QtGui import QColor
 from _socket import SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
-from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR
+from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR, \
+    CMD_EXEC_CODE_RESULT
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
 
+from PyQtInspect.pqi_gui.code_window import CodeWindow
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
@@ -224,7 +226,7 @@ class BriefLineWithEditButton(BriefLine):
 
 
 class WidgetBriefWidget(QtWidgets.QWidget):
-    sigCode = QtCore.pyqtSignal(str)  # run code in widget
+    sigOpenCodeWindow = QtCore.pyqtSignal()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -250,9 +252,22 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._styleSheetLine = BriefLine(self, "stylesheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
-        self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
-        self._codeLine.sigEditButtonClicked.connect(self.sigCode)
-        self._mainLayout.addWidget(self._codeLine)
+        # self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
+        # self._codeLine.sigEditButtonClicked.connect(self.sigCode)
+        # self._mainLayout.addWidget(self._codeLine)
+
+        self._executionButtonsLayout = QtWidgets.QHBoxLayout()
+        self._executionButtonsLayout.setContentsMargins(4, 0, 4, 0)
+        self._executionButtonsLayout.setSpacing(5)
+
+        self._execCodeButton = QtWidgets.QPushButton(self)
+        self._execCodeButton.setText("Run Code")
+        self._execCodeButton.setFixedHeight(30)
+        self._execCodeButton.clicked.connect(self.sigOpenCodeWindow)
+
+        self._executionButtonsLayout.addWidget(self._execCodeButton)
+
+        self._mainLayout.addLayout(self._executionButtonsLayout)
 
         self._mainLayout.addStretch(1)
 
@@ -336,6 +351,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._settingAction.triggered.connect(self._openSettingWindow)
 
         self._settingWindow = None
+        self._codeWindow = None
 
         self._mainContainer = QtWidgets.QWidget(self)
         self.setCentralWidget(self._mainContainer)
@@ -343,6 +359,9 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.setContentsMargins(4, 4, 4, 4)
         self._mainLayout.setSpacing(0)
 
+        # ====================
+        # Top Container
+        # ====================
         self._topContainer = QtWidgets.QWidget(self)
         self._topContainer.setFixedHeight(30)
         self._topContainer.move(0, 0)
@@ -385,7 +404,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self._widgetBriefWidget.sigCode.connect(self._notifyExecCodeInSelectedWidget)
+        self._widgetBriefWidget.sigOpenCodeWindow.connect(self._openCodeWindow)
 
         self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
 
@@ -454,8 +473,11 @@ class PQIWindow(QtWidgets.QMainWindow):
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
         elif cmdId == CMD_EXEC_CODE_ERROR:
-            errMsg = info.get("text")
-            QtWidgets.QMessageBox.critical(self, "Error", errMsg)
+            errMsg = info.get("text", "")
+            self._notifyResultToCodeWindow(True, errMsg)
+        elif cmdId == CMD_EXEC_CODE_RESULT:
+            result = info.get("text", "")
+            self._notifyResultToCodeWindow(False, result)
         # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
@@ -488,6 +510,17 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._settingWindow is None:
             self._settingWindow = SettingWindow(self)
         self._settingWindow.show()
+
+    def _openCodeWindow(self):
+        if self._codeWindow is None:
+            self._codeWindow = CodeWindow(self)
+            self._codeWindow.sigExecCode.connect(self._notifyExecCodeInSelectedWidget)
+        self._codeWindow.show()
+
+    def _notifyResultToCodeWindow(self, isErr: bool, result: str):
+        if self._codeWindow is None:
+            return
+        self._codeWindow.notifyResult(isErr, result)
 
 
 if __name__ == '__main__':

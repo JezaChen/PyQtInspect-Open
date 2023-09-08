@@ -20,6 +20,10 @@ QTextEdit#ResultTextBrowser {
 }
 """
 
+PROMPT = """# In the following code, self refers to the selected widget. 
+# For example, if you want to resize the widget, you can type self.setFixedSize(10, 10).
+"""
+
 
 class CodeTextEdit(QtWidgets.QTextEdit):
     def __init__(self, parent=None):
@@ -42,11 +46,13 @@ class ResultTextBrowser(QtWidgets.QTextBrowser):
 
 
 class CodeWindow(QtWidgets.QDialog):
+    sigExecCode = QtCore.pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Exec Code For Selected Widget")
         self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
-        self.resize(500, 300)
+        self.resize(800, 500)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)
         self._mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -55,6 +61,8 @@ class CodeWindow(QtWidgets.QDialog):
 
         self._codeTextEdit = CodeTextEdit(self)
         self._codeTextEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self._codeTextEdit.setText(PROMPT)
+        self._codeTextEdit.setWordWrapMode(QtGui.QTextOption.NoWrap)
 
         self._highlight = PythonHighlighter(self._codeTextEdit.document())
         self._mainLayout.addWidget(self._codeTextEdit)
@@ -75,23 +83,34 @@ class CodeWindow(QtWidgets.QDialog):
 
         self._cancelButton = QtWidgets.QPushButton(self)
         self._cancelButton.setFixedSize(100, 40)
-        self._cancelButton.setText("Cancel")
+        self._cancelButton.setText("Close")
         self._cancelButton.clicked.connect(self.close)
         self._buttonLayout.addWidget(self._cancelButton)
 
         self._mainLayout.addLayout(self._buttonLayout)
 
+        self._mainLayout.addSpacing(4)
+
         self.setStyleSheet(CODE_TEXT_EDIT_STYLESHEET)
 
     def _runCode(self):
         code = self._codeTextEdit.toPlainText()
-        try:
-            f = StringIO()
-            with redirect_stdout(f):
-                exec(code)
-            self._resultTextBrowser.setText(f.getvalue())
-        except Exception as e:
-            self._resultTextBrowser.setText(str(e))
+        self.sigExecCode.emit(code)
+        # try:
+        #     f = StringIO()
+        #     with redirect_stdout(f):
+        #         exec(code)
+        #     self._resultTextBrowser.setText(f.getvalue())
+        # except Exception as e:
+        #     self._resultTextBrowser.setText(str(e))
+
+    def notifyResult(self, isErr: bool, result: str):
+        """ if isErr is True, print the result with the color red, else green. """
+        if isErr:
+            self._resultTextBrowser.setTextColor(QtGui.QColor(255, 0, 0))
+        else:
+            self._resultTextBrowser.setTextColor(QtGui.QColor(0, 0, 0))
+        self._resultTextBrowser.setText(result)
 
 
 if __name__ == '__main__':

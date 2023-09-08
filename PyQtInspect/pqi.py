@@ -653,6 +653,10 @@ class PyDB(object):
     def exec_code_in_selected_widget(self, code):
         exec_code_in_widget(self._selectedWidget, code)
 
+    def notify_exec_code_result(self, result):
+        cmd = self.cmd_factory.make_exec_code_result_message(result)
+        self.writer.add_command(cmd)
+
     def notify_exec_code_error_message(self, err_msg):
         cmd = self.cmd_factory.make_exec_code_err_message(err_msg)
         self.writer.add_command(cmd)
