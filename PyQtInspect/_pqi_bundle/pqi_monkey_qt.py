@@ -7,8 +7,10 @@ from io import StringIO
 
 from PyQt5 import QtGui
 
+from PyQtInspect._pqi_bundle._pqi_test_utils import avg_time
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_classes, get_stylesheet
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
+from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
 
 
@@ -408,10 +410,9 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         for frame in stacks:
             filteredStacks.append(
                 {
-                    'filename': frame.filename,
-                    'lineno': frame.lineno,
-                    'function': frame.function,
-                    'code_context': frame.code_context,
+                    'filename': inspect.getsourcefile(frame),
+                    'lineno': frame.f_lineno,
+                    'function': frame.f_code.co_name,
                 }
             )
         return filteredStacks
@@ -419,7 +420,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     def _new_QWidget_init(self, *args, **kwargs):
         _original_QWidget_init(self, *args, **kwargs)
         if sip.ispycreated(self):
-            frames = inspect.stack()
+            frames = getStackFrame()
             setattr(self, '_pqi_stacks_when_create', frames)
         self._pqi_event_listener = EventListener()
         self.installEventFilter(self._pqi_event_listener)
@@ -440,167 +441,3 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     QtWidgets.QWidget._pqi_exec = _pqi_exec
     print("patched")
 
-
-def _internal_patch_qt_widgets_new(QtWidgets, QtCore, qt_support_mode='auto'):
-    import inspect, sip
-    _original_QWidget = QtWidgets.QWidget
-    _original_QWidget_init = QtWidgets.QWidget.__init__
-    _original_QWidget_init_subclass = QtWidgets.QWidget.__init_subclass__
-
-    lastHighlightWidget = None
-
-    def _hideLastHighlightWidget():
-        nonlocal lastHighlightWidget
-        if isinstance(lastHighlightWidget, QtWidgets.QWidget) and not sip.isdeleted(lastHighlightWidget):
-            lastHighlightWidget.hide()
-        lastHighlightWidget = None
-
-    def _createHighlightWidget(parent: QtWidgets.QWidget):
-        widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
-        _original_QWidget_init(widget, parent)
-        widget.setFixedSize(parent.size())
-        widget.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
-        widget.setObjectName("_pqi_highlight_bg")
-        widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
-        return widget
-
-    def _filter_trace_stack(traceStacks):
-        filteredStacks = []
-        from PyQtInspect.pqi import SetupHolder
-        stackMaxDepth = SetupHolder.setup["stack-max-depth"]
-        stacks = traceStacks[1:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[1:]
-        for frame in stacks:
-            filteredStacks.append(
-                {
-                    'filename': frame.filename,
-                    'lineno': frame.lineno,
-                    'function': frame.function,
-                    'code_context': frame.code_context,
-                }
-            )
-        return filteredStacks
-
-    def _new_QWidget_init(self, *args, **kwargs):
-        _original_QWidget_init(self, *args, **kwargs)
-        if sip.ispycreated(self):
-            frames = inspect.stack()
-            setattr(self, '_pqi_stacks_when_create', frames)
-
-    # hook QWidget enterEvent
-    def _enterEvent(self: QtWidgets.QWidget, event):
-        nonlocal lastHighlightWidget
-        oldEnterEvent = self.__class__._original_enterEvent
-
-        def _mouseReleaseEvent(event):
-            if event.button() != QtCore.Qt.LeftButton:
-                return self._oldMouseReleaseEvent(event)
-            debugger = get_global_debugger()
-            if debugger is None or not debugger.inspect_enabled:
-                return self._oldMouseReleaseEvent(event)
-            debugger.notify_inspect_finished(self)
-            if hasattr(self, '_pqi_highlight_bg'):
-                self._pqi_highlight_bg.hide()
-            if hasattr(self, '_pqi_transparent_for_mouse_events'):
-                self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, self._pqi_transparent_for_mouse_events)
-            self.mouseReleaseEvent = self._oldMouseReleaseEvent
-
-        setattr(_mouseReleaseEvent, '_pqi_hooked', True)
-
-        if self.objectName() == "_pqi_highlight_bg":
-            return oldEnterEvent(self, event)
-
-        debugger = get_global_debugger()
-        if debugger is None or not debugger.inspect_enabled:
-            return oldEnterEvent(self, event)
-
-        # === send widget info === #
-        widget_info = QWidgetInfo(
-            class_name=self.__class__.__name__,
-            object_name=self.objectName(),
-            stacks_when_create=_filter_trace_stack(self._pqi_stacks_when_create),
-            size=get_widget_size(self),
-            pos=get_widget_pos(self),
-            parent_classes=list(get_parent_classes(self)),
-            stylesheet=get_stylesheet(self)
-        )
-        debugger.send_widget_message(widget_info)
-
-        # === highlight widget === #
-        if not hasattr(self, '_pqi_highlight_bg'):
-            self._pqi_highlight_bg = _createHighlightWidget(self)
-
-        self._pqi_highlight_bg.setFixedSize(self.size())
-        _hideLastHighlightWidget()
-        self._pqi_highlight_bg.show()
-        lastHighlightWidget = self._pqi_highlight_bg
-
-        setattr(self, '_pqi_transparent_for_mouse_events', self.testAttribute(QtCore.Qt.WA_TransparentForMouseEvents))
-        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
-
-        if not hasattr(self.mouseReleaseEvent, '_pqi_hooked'):
-            self._oldMouseReleaseEvent = self.mouseReleaseEvent
-        self.mouseReleaseEvent = _mouseReleaseEvent
-
-        return oldEnterEvent(self, event)
-
-    # hook QWidget leaveEvent
-    def _leaveEvent(self: QtWidgets.QWidget, event):
-        oldLeaveEvent = self.__class__._original_leaveEvent
-        if self.objectName() == "_pqi_highlight_bg":
-            return oldLeaveEvent(self, event)
-
-        if hasattr(self, '_pqi_highlight_bg'):
-            self._pqi_highlight_bg.hide()
-
-        if hasattr(self, '_oldMouseReleaseEvent'):
-            self.mouseReleaseEvent = self._oldMouseReleaseEvent
-
-        if hasattr(self, '_pqi_transparent_for_mouse_events'):
-            self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, self._pqi_transparent_for_mouse_events)
-
-        return oldLeaveEvent(self, event)
-
-    def _pqi_exec(self: QtWidgets.QWidget, code):
-        debugger = get_global_debugger()
-        try:
-            f = StringIO()
-            with redirect_stdout(f):
-                exec(code, globals(), locals())
-            if debugger is not None:
-                debugger.notify_exec_code_result(f.getvalue())
-        except Exception as e:
-            if debugger is not None:
-                debugger.notify_exec_code_error_message(str(e))
-
-    class QWidgetMetaWrapper(type(QtWidgets.QWidget)):
-        def __subclasscheck__(self, subclass):
-            return _original_QWidget.__subclasscheck__(subclass)
-
-        def __instancecheck__(self, instance):
-            return _original_QWidget.__instancecheck__(instance)
-
-    class QWidgetWrapper(QtWidgets.QWidget, metaclass=QWidgetMetaWrapper):
-        def __init__(self, *args, **kwargs):
-            _original_QWidget_init(self, *args, **kwargs)
-            if sip.ispycreated(self):
-                frames = inspect.stack()
-                setattr(self, '_pqi_stacks_when_create', frames)
-
-        def __init_subclass__(cls, **kwargs):
-            super().__init_subclass__(**kwargs)
-            if not hasattr(cls, '_original_enterEvent'):  # todo 防止递归
-                cls._original_enterEvent = cls.enterEvent
-                cls._original_leaveEvent = cls.leaveEvent
-
-                cls.enterEvent = _enterEvent
-                cls.leaveEvent = _leaveEvent
-                cls._pqi_exec = _pqi_exec
-
-        def paintEvent(self, paintEvent):
-            opt = QtWidgets.QStyleOption()
-            opt.initFrom(self)
-            painter = QtGui.QPainter(self)
-            self.style().drawPrimitive(QtWidgets.QStyle.PE_Widget, opt, painter, self)
-
-    QtWidgets.QWidget = QWidgetWrapper
-    print("patched")
