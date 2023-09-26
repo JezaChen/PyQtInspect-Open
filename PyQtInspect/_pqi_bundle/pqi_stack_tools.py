@@ -6,6 +6,10 @@ import sys
 import inspect
 
 
+def getFrameLineNo(frame):
+    return frame.f_lineno
+
+
 def getStackFrame(useGetFrame=True):
     '''
     Brief:
@@ -17,10 +21,10 @@ def getStackFrame(useGetFrame=True):
     # All should have inspect, though it is really slow
     if useGetFrame and hasattr(sys, '_getframe'):
         frame = sys._getframe(0)
-        frames = [frame]
+        frames = [(frame, frame.f_lineno),]  # 需要在创建期间获取stack就捕获行号, 否则后续的f_lineno会走到最后一行去
 
         while frame.f_back is not None:
-            frames.append(frame.f_back)
+            frames.append((frame.f_back, frame.f_back.f_lineno))
             frame = frame.f_back
 
         return frames

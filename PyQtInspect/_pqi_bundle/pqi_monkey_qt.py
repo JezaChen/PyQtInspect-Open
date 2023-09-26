@@ -406,12 +406,12 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         filteredStacks = []
         from PyQtInspect.pqi import SetupHolder
         stackMaxDepth = SetupHolder.setup["stack-max-depth"]
-        stacks = traceStacks[1:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[1:]
-        for frame in stacks:
+        stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
+        for frame, lineno in stacks:
             filteredStacks.append(
                 {
                     'filename': inspect.getsourcefile(frame),
-                    'lineno': frame.f_lineno,
+                    'lineno': lineno,
                     'function': frame.f_code.co_name,
                 }
             )

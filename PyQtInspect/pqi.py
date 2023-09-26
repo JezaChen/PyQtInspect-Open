@@ -437,6 +437,9 @@ class PyDB(object):
         cmd = self.cmd_factory.make_exec_code_err_message(err_msg)
         self.writer.add_command(cmd)
 
+    def notify_thread_not_alive(self, thread_id):
+        ...
+
 
 def set_debug(setup):
     setup['DEBUG_RECORD_SOCKET_READS'] = True
