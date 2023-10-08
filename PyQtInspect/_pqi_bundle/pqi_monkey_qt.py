@@ -5,9 +5,6 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 
-from PyQt5 import QtGui
-
-from PyQtInspect._pqi_bundle._pqi_test_utils import avg_time
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_classes, get_stylesheet
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
@@ -288,7 +285,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         nonlocal enteredWidgetStack
         enteredWidgetStack.clear()
 
-
     def _showLastHighlightWidget():
         nonlocal lastHighlightWidget
         _filterEnteredWidgetStack()
@@ -393,7 +389,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         lastHighlightWidget = None
 
     def _createHighlightWidget(parent: QtWidgets.QWidget):
-        # 先new再init
+        # 先new再调用之前的__init__
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
         _original_QWidget_init(widget, parent)
         widget.setFixedSize(parent.size())
@@ -425,6 +421,11 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         self._pqi_event_listener = EventListener()
         self.installEventFilter(self._pqi_event_listener)
 
+        # === register widget === #
+        debugger = get_global_debugger()
+        if debugger is not None:
+            debugger.register_widget(self)
+
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
         try:
@@ -439,5 +440,5 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget._pqi_exec = _pqi_exec
-    print("patched")
+    print("<patched>")
 

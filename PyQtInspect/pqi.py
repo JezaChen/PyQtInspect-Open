@@ -173,6 +173,7 @@ class PyDB(object):
 
         self.inspect_enabled = False
         self._selected_widget = None
+        self._id_to_widget = {}
 
     def enable_tracing(self, thread_trace_func=None, apply_to_all_threads=False):
         '''
@@ -439,6 +440,9 @@ class PyDB(object):
 
     def notify_thread_not_alive(self, thread_id):
         ...
+
+    def register_widget(self, widget):
+        self._id_to_widget[id(widget)] = widget
 
 
 def set_debug(setup):
