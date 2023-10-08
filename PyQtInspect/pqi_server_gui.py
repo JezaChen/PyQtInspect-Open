@@ -280,6 +280,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         posX, posY = info["pos"]
         self._posLine.setValue(f"{posX}, {posY}")
         self._parentLine.setValue(str(info["parent_classes"]))
+        self._styleSheetLine.setValue(info["stylesheet"])
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
