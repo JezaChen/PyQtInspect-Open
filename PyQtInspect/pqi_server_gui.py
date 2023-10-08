@@ -253,6 +253,12 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._styleSheetLine = BriefLine(self, "stylesheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
+        self._hierarchyComboBox = QtWidgets.QComboBox(self)
+        self._hierarchyComboBox.setFixedHeight(30)
+        self._hierarchyComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        self._mainLayout.addWidget(self._hierarchyComboBox)
+
         # self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
         # self._codeLine.sigEditButtonClicked.connect(self.sigCode)
         # self._mainLayout.addWidget(self._codeLine)
@@ -281,6 +287,11 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._posLine.setValue(f"{posX}, {posY}")
         self._parentLine.setValue(str(info["parent_classes"]))
         self._styleSheetLine.setValue(info["stylesheet"])
+
+        self._hierarchyComboBox.clear()
+        self._hierarchyComboBox.addItem(f"{info['class_name']} ({info['id']})")
+        for parentInfo in zip(info["parent_classes"], info["parent_ids"]):
+            self._hierarchyComboBox.addItem(f"{parentInfo[0]} ({parentInfo[1]})")
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):

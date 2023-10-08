@@ -25,7 +25,7 @@ def get_widget_pos(widget: QtWidgets.QWidget):
     return widget.pos().x(), widget.pos().y()
 
 
-def get_parent_classes(widget: QtWidgets.QWidget):
+def get_parent_info(widget: QtWidgets.QWidget):
     while True:
         try:
             parent = widget.parent()
@@ -35,7 +35,7 @@ def get_parent_classes(widget: QtWidgets.QWidget):
         if parent is None:
             break
         widget = parent
-        yield widget.__class__.__name__
+        yield widget.__class__.__name__, id(widget)
 
 
 def get_stylesheet(widget: QtWidgets.QWidget):

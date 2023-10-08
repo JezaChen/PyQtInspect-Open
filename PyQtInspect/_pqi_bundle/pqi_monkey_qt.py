@@ -5,7 +5,7 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 
-from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_classes, get_stylesheet
+from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
@@ -319,13 +319,19 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             return
 
         # === send widget info === #
+        parent_info = list(get_parent_info(obj))
+        parent_classes, parent_ids = [], []
+        if parent_info:
+            parent_classes, parent_ids = zip(*get_parent_info(obj))
         widget_info = QWidgetInfo(
             class_name=obj.__class__.__name__,
             object_name=obj.objectName(),
+            id=id(obj),
             stacks_when_create=_filter_trace_stack(obj._pqi_stacks_when_create),
             size=get_widget_size(obj),
             pos=get_widget_pos(obj),
-            parent_classes=list(get_parent_classes(obj)),
+            parent_classes=parent_classes,
+            parent_ids=parent_ids,
             stylesheet=get_stylesheet(obj)
         )
         debugger.send_widget_message(widget_info)
