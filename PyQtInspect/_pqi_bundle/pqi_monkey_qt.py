@@ -380,9 +380,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             _showLastHighlightWidget()
 
         def eventFilter(self, obj, event):
-            if event.type() == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
-                ...
-            elif event.type() == QtCore.QEvent.Enter:
+            if event.type() == QtCore.QEvent.Enter:
                 self._handleEnterEvent(obj, event)
             elif event.type() == QtCore.QEvent.Leave:
                 self._handleLeaveEvent(obj, event)
@@ -444,7 +442,18 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             if debugger is not None:
                 debugger.notify_exec_code_error_message(str(e))
 
+    def _pqi_highlight_self(self: QtWidgets.QWidget):
+        nonlocal lastHighlightWidget
+        if not hasattr(self, '_pqi_highlight_bg'):
+            self._pqi_highlight_bg = _createHighlightWidget(self)
+
+        self._pqi_highlight_bg.setFixedSize(self.size())
+        _hideLastHighlightWidget()
+        self._pqi_highlight_bg.show()
+        lastHighlightWidget = self._pqi_highlight_bg
+
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget._pqi_exec = _pqi_exec
+    QtWidgets.QWidget._pqi_highlight_self = _pqi_highlight_self
     print("<patched>")
 

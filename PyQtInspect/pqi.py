@@ -422,10 +422,13 @@ class PyDB(object):
         self.inspect_enabled = False
 
     def notify_inspect_finished(self, widget):
-        self._selected_widget = widget
+        self.select_widget(widget)
 
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
+
+    def select_widget(self, widget):
+        self._selected_widget = widget
 
     def exec_code_in_selected_widget(self, code):
         exec_code_in_widget(self._selected_widget, code)
@@ -443,6 +446,11 @@ class PyDB(object):
 
     def register_widget(self, widget):
         self._id_to_widget[id(widget)] = widget
+
+    def highlight_widget_by_id(self, widget_id):
+        widget = self._id_to_widget.get(widget_id, None)
+        if widget is not None and hasattr(widget, '_pqi_highlight_self'):
+            widget._pqi_highlight_self()
 
 
 def set_debug(setup):

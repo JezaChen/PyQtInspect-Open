@@ -7,7 +7,8 @@ import threading
 import time
 import socket
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR
-from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, IS_PY2, GlobalDebuggerHolder, get_global_debugger, set_global_debugger
+from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, IS_PY2, GlobalDebuggerHolder, get_global_debugger, \
+    set_global_debugger
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 import json
 
@@ -17,7 +18,6 @@ try:
     from urllib import quote_plus, unquote, unquote_plus
 except:
     from urllib.parse import quote_plus, unquote, unquote_plus  # @Reimport @UnresolvedImport
-
 
 import sys
 import traceback
@@ -35,7 +35,8 @@ except:
 # CMD_XXX constants imported for backward compatibility
 from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
-    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT)
+    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
+    CMD_HIGHLIGHT_WIDGET)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -227,6 +228,9 @@ class ReaderThread(PyDBDaemonThread):
         elif cmd_id == CMD_EXEC_CODE:
             code = unquote(text)
             global_dbg.exec_code_in_selected_widget(code)
+        elif cmd_id == CMD_HIGHLIGHT_WIDGET:
+            widget_id = int(text)
+            global_dbg.highlight_widget_by_id(widget_id)
 
 
 # ----------------------------------------------------------------------------------- SOCKET UTILITIES - WRITER
@@ -487,6 +491,9 @@ class NetCommandFactory:
 
     def make_inspect_finished_message(self):
         return NetCommand(CMD_INSPECT_FINISHED, 0, '')
+
+    def make_select_widget_message(self, widget_id: int):
+        return NetCommand(CMD_HIGHLIGHT_WIDGET, 0, str(widget_id))
 
 
 INTERNAL_TERMINATE_THREAD = 1

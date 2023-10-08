@@ -114,6 +114,8 @@ CMD_INSPECT_FINISHED = 1004
 CMD_EXEC_CODE = 1006
 CMD_EXEC_CODE_RESULT = 1007
 CMD_EXEC_CODE_ERROR = 1008
+# === HIERARCHY ===
+CMD_HIGHLIGHT_WIDGET = 1009
 
 
 from PyQtInspect._pqi_bundle._pqi_filesystem_encoding import getfilesystemencoding

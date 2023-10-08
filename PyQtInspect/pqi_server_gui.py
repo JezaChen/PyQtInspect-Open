@@ -79,6 +79,9 @@ class Dispatcher(QtCore.QThread):
     def sendExecCodeEvent(self, code: str):
         self.writer.add_command(self.net_command_factory.make_exec_code_message(code))
 
+    def sendSelectWidgetEvent(self, widgetId: int):
+        self.writer.add_command(self.net_command_factory.make_select_widget_message(widgetId))
+
     def notifyDelete(self):
         self.reader.do_kill_pydev_thread()
         self.writer.do_kill_pydev_thread()
@@ -172,6 +175,11 @@ class PQYWorker(QtCore.QObject):
         if dispatcher:
             dispatcher.sendExecCodeEvent(code)
 
+    def sendSelectWidgetEvent(self, dispatcherId: int, widgetId: int):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendSelectWidgetEvent(widgetId)
+
     def _onDispatcherDelete(self, id: int):
         dispatcher = self.idToDispatcher.pop(id)
         self.dispatchers.remove(dispatcher)
@@ -228,6 +236,7 @@ class BriefLineWithEditButton(BriefLine):
 
 class WidgetBriefWidget(QtWidgets.QWidget):
     sigOpenCodeWindow = QtCore.pyqtSignal()
+    sigHighlightAncestorWidget = QtCore.pyqtSignal(str)  # it will be a very long int, so use str
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -256,6 +265,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._hierarchyComboBox = QtWidgets.QComboBox(self)
         self._hierarchyComboBox.setFixedHeight(30)
         self._hierarchyComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self._hierarchyComboBox.highlighted.connect(self._onHierarchyComboBoxHighlighted)
 
         self._mainLayout.addWidget(self._hierarchyComboBox)
 
@@ -288,10 +298,17 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._parentLine.setValue(str(info["parent_classes"]))
         self._styleSheetLine.setValue(info["stylesheet"])
 
+        # set hierarchy
         self._hierarchyComboBox.clear()
-        self._hierarchyComboBox.addItem(f"{info['class_name']} ({info['id']})")
-        for parentInfo in zip(info["parent_classes"], info["parent_ids"]):
-            self._hierarchyComboBox.addItem(f"{parentInfo[0]} ({parentInfo[1]})")
+
+        self._hierarchyComboBox.addItem(f"{info['class_name']} ({info['id']})", info['id'])
+
+        for ancestorCls, ancestorId in zip(info["parent_classes"], info["parent_ids"]):
+            self._hierarchyComboBox.addItem(f"{ancestorCls} ({ancestorId})", ancestorId)
+
+    def _onHierarchyComboBoxHighlighted(self, index: int):
+        ancestorId = self._hierarchyComboBox.itemData(index)
+        self.sigHighlightAncestorWidget.emit(str(ancestorId))
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -418,6 +435,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._widgetBriefWidget.sigOpenCodeWindow.connect(self._openCodeWindow)
+        self._widgetBriefWidget.sigHighlightAncestorWidget.connect(self._notifySelectWidget)
 
         self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
 
@@ -528,6 +546,13 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
+
+    def _notifySelectWidget(self, widgetId: str):
+        widgetId = int(widgetId)
+        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+            return
+
+        self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _openSettingWindow(self):
         if self._settingWindow is None:

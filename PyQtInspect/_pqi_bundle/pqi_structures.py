@@ -32,3 +32,11 @@ class QWidgetInfo:
 
     # The stylesheet of the QWidget.
     stylesheet: str
+
+
+@dataclasses.dataclass
+class QWidgetHierarchyInfo:
+    """A dataclass for storing information about a QWidget's ancestor."""
+    ancestor_classes: list
+
+    ancestor_ids: list
