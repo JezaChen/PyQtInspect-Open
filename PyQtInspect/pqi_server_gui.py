@@ -79,8 +79,14 @@ class Dispatcher(QtCore.QThread):
     def sendExecCodeEvent(self, code: str):
         self.writer.add_command(self.net_command_factory.make_exec_code_message(code))
 
+    def sendHighlightWidgetEvent(self, widgetId: int, isHighlight: bool):
+        self.writer.add_command(self.net_command_factory.make_set_widget_highlight_message(widgetId, isHighlight))
+
     def sendSelectWidgetEvent(self, widgetId: int):
         self.writer.add_command(self.net_command_factory.make_select_widget_message(widgetId))
+
+    def sendRequestWidgetInfoEvent(self, widgetId: int, extra: dict = None):
+        self.writer.add_command(self.net_command_factory.make_req_widget_info_message(widgetId, extra))
 
     def notifyDelete(self):
         self.reader.do_kill_pydev_thread()
@@ -175,10 +181,20 @@ class PQYWorker(QtCore.QObject):
         if dispatcher:
             dispatcher.sendExecCodeEvent(code)
 
+    def sendHighlightWidgetEvent(self, dispatcherId: int, widgetId: int, isHighlight: bool):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendHighlightWidgetEvent(widgetId, isHighlight)
+
     def sendSelectWidgetEvent(self, dispatcherId: int, widgetId: int):
         dispatcher = self.idToDispatcher.get(dispatcherId)
         if dispatcher:
             dispatcher.sendSelectWidgetEvent(widgetId)
+
+    def sendRequestWidgetInfoEvent(self, dispatcherId: int, widgetId: int, extra: dict = None):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendRequestWidgetInfoEvent(widgetId, extra)
 
     def _onDispatcherDelete(self, id: int):
         dispatcher = self.idToDispatcher.pop(id)
@@ -236,7 +252,11 @@ class BriefLineWithEditButton(BriefLine):
 
 class WidgetBriefWidget(QtWidgets.QWidget):
     sigOpenCodeWindow = QtCore.pyqtSignal()
-    sigHighlightAncestorWidget = QtCore.pyqtSignal(str)  # it will be a very long int, so use str
+    sigAncestorWidgetItemHighlight = QtCore.pyqtSignal(str)  # it will be a very long int, so use str
+    sigAncestorWidgetItemClicked = QtCore.pyqtSignal(str)
+
+    sigChildWidgetItemHighlight = QtCore.pyqtSignal(str)
+    sigChildWidgetItemClicked = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -266,8 +286,17 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._hierarchyComboBox.setFixedHeight(30)
         self._hierarchyComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._hierarchyComboBox.highlighted.connect(self._onHierarchyComboBoxHighlighted)
+        self._hierarchyComboBox.activated.connect(self._onHierarchyComboBoxClicked)
 
         self._mainLayout.addWidget(self._hierarchyComboBox)
+
+        self._childrenComboBox = QtWidgets.QComboBox(self)
+        self._childrenComboBox.setFixedHeight(30)
+        self._childrenComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self._childrenComboBox.highlighted.connect(self._onChildrenComboBoxHighlighted)
+        self._childrenComboBox.activated.connect(self._onChildrenComboBoxClicked)
+
+        self._mainLayout.addWidget(self._childrenComboBox)
 
         # self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
         # self._codeLine.sigEditButtonClicked.connect(self.sigCode)
@@ -290,7 +319,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
 
     def setInfo(self, info):
         self._classNameLine.setValue(info["class_name"])
-        self._objectNameLine.setValue(info["object_name"])
+        objName = info["object_name"]
+        self._objectNameLine.setValue(objName)
         width, height = info["size"]
         self._sizeLine.setValue(f"{width}, {height}")
         posX, posY = info["pos"]
@@ -299,16 +329,35 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._styleSheetLine.setValue(info["stylesheet"])
 
         # set hierarchy
-        self._hierarchyComboBox.clear()
+        if info.get("extra", {}).get("from", "") != "ancestor":
+            self._hierarchyComboBox.clear()
+            # todo 这里也要整合在一起
+            self._hierarchyComboBox.addItem(f"{info['class_name']}{objName and f'#{objName}'} ({info['id']})", info['id'])
 
-        self._hierarchyComboBox.addItem(f"{info['class_name']} ({info['id']})", info['id'])
+            for ancestorCls, ancestorId, ancestorObjName in zip(info["parent_classes"], info["parent_ids"],
+                                                                info["parent_object_names"]):
+                self._hierarchyComboBox.addItem(f"{ancestorCls}{ancestorObjName and f'#{ancestorObjName}'} ({ancestorId})", ancestorId)
 
-        for ancestorCls, ancestorId in zip(info["parent_classes"], info["parent_ids"]):
-            self._hierarchyComboBox.addItem(f"{ancestorCls} ({ancestorId})", ancestorId)
+        # set children
+        self._childrenComboBox.clear()
+        for childId in info["children"]:
+            self._childrenComboBox.addItem(str(childId), childId)
 
     def _onHierarchyComboBoxHighlighted(self, index: int):
         ancestorId = self._hierarchyComboBox.itemData(index)
-        self.sigHighlightAncestorWidget.emit(str(ancestorId))
+        self.sigAncestorWidgetItemHighlight.emit(str(ancestorId))
+
+    def _onHierarchyComboBoxClicked(self, index: int):
+        ancestorId = self._hierarchyComboBox.itemData(index)
+        self.sigAncestorWidgetItemClicked.emit(str(ancestorId))
+
+    def _onChildrenComboBoxHighlighted(self, index: int):
+        childId = self._childrenComboBox.itemData(index)
+        self.sigChildWidgetItemHighlight.emit(str(childId))
+
+    def _onChildrenComboBoxClicked(self, index: int):
+        childId = self._childrenComboBox.itemData(index)
+        self.sigChildWidgetItemClicked.emit(str(childId))
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -435,7 +484,12 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._widgetBriefWidget = WidgetBriefWidget(self)
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._widgetBriefWidget.sigOpenCodeWindow.connect(self._openCodeWindow)
-        self._widgetBriefWidget.sigHighlightAncestorWidget.connect(self._notifySelectWidget)
+
+        self._widgetBriefWidget.sigAncestorWidgetItemHighlight.connect(self._onAncestorWidgetItemHighlight)
+        self._widgetBriefWidget.sigAncestorWidgetItemClicked.connect(self._onAncestorWidgetItemClicked)
+
+        self._widgetBriefWidget.sigChildWidgetItemHighlight.connect(self._onChildWidgetItemHighlight)
+        self._widgetBriefWidget.sigChildWidgetItemClicked.connect(self._onChildWidgetItemClicked)
 
         self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
 
@@ -547,12 +601,39 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
 
-    def _notifySelectWidget(self, widgetId: str):
+    def _onAncestorWidgetItemHighlight(self, widgetId: str):
+        widgetId = int(widgetId)
+        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+            return
+
+        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+
+    def _onAncestorWidgetItemClicked(self, widgetId: str):
         widgetId = int(widgetId)
         if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
+        self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
+            "from": "ancestor"
+        })
+
+    def _onChildWidgetItemHighlight(self, widgetId: str):
+        widgetId = int(widgetId)
+        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+            return
+
+        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+
+    def _onChildWidgetItemClicked(self, widgetId: str):
+        widgetId = int(widgetId)
+        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+            return
+
+        self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
+        self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _openSettingWindow(self):
         if self._settingWindow is None:

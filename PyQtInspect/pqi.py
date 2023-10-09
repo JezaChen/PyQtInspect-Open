@@ -8,8 +8,10 @@ import sys
 import os
 import time
 
+from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
-from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget
+from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
+    get_stylesheet, get_children
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -447,10 +449,51 @@ class PyDB(object):
     def register_widget(self, widget):
         self._id_to_widget[id(widget)] = widget
 
-    def highlight_widget_by_id(self, widget_id):
+    def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
         widget = self._id_to_widget.get(widget_id, None)
-        if widget is not None and hasattr(widget, '_pqi_highlight_self'):
-            widget._pqi_highlight_self()
+        if widget is not None:
+            # todo 使用事件驱动
+            from PyQt5 import QtCore
+            if is_highlight and hasattr(widget, '_pqi_highlight_self'):
+                event = QtCore.QEvent(QtCore.QEvent.User)
+                event._pqi_is_highlight = True
+                QtCore.QCoreApplication.postEvent(widget, event)
+                # widget._pqi_highlight_self()
+            elif not is_highlight and hasattr(widget, '_pqi_unhighlight_self'):
+                event = QtCore.QEvent(QtCore.QEvent.User)
+                event._pqi_is_highlight = False
+                QtCore.QCoreApplication.postEvent(widget, event)
+                # widget._pqi_unhighlight_self()
+
+    def select_widget_by_id(self, widget_id):
+        widget = self._id_to_widget.get(widget_id, None)
+        if widget is not None:
+            self.select_widget(widget)
+
+    def notify_widget_info(self, widget_id, extra):
+        widget = self._id_to_widget.get(widget_id, None)
+        if widget is None:
+            return
+
+        parent_info = list(get_parent_info(widget))
+        parent_classes, parent_ids = [], []
+        if parent_info:
+            parent_classes, parent_ids = zip(*get_parent_info(widget))
+
+        widget_info = QWidgetInfo(
+            class_name=widget.__class__.__name__,
+            object_name=widget.objectName(),
+            id=id(widget),
+            stacks_when_create=_filter_trace_stack(getattr(widget, '_pqi_stacks_when_create', [])),
+            size=get_widget_size(widget),
+            pos=get_widget_pos(widget),
+            parent_classes=parent_classes,
+            parent_ids=parent_ids,
+            stylesheet=get_stylesheet(widget),
+            extra=extra,
+            children=get_children(widget),
+        )
+        self.send_widget_message(widget_info)
 
 
 def set_debug(setup):

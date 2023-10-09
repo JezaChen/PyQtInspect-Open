@@ -6,6 +6,7 @@ import queue
 import threading
 import time
 import socket
+import typing
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR
 from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, IS_PY2, GlobalDebuggerHolder, get_global_debugger, \
     set_global_debugger
@@ -36,7 +37,7 @@ except:
 from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
     CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
-    CMD_HIGHLIGHT_WIDGET)
+    CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -228,9 +229,18 @@ class ReaderThread(PyDBDaemonThread):
         elif cmd_id == CMD_EXEC_CODE:
             code = unquote(text)
             global_dbg.exec_code_in_selected_widget(code)
-        elif cmd_id == CMD_HIGHLIGHT_WIDGET:
-            widget_id = int(text)
-            global_dbg.highlight_widget_by_id(widget_id)
+        elif cmd_id == CMD_SET_WIDGET_HIGHLIGHT:
+            jsonMsg = json.loads(unquote(text))
+            widget_id, is_highlight = jsonMsg['widget_id'], jsonMsg['is_highlight']
+            global_dbg.set_widget_highlight_by_id(widget_id, is_highlight)
+        elif cmd_id == CMD_SELECT_WIDGET:
+            widget_id = int(unquote(text))
+            global_dbg.select_widget_by_id(widget_id)
+        elif cmd_id == CMD_REQ_WIDGET_INFO:
+            jsonMsg = json.loads(unquote(text))
+            widget_id, extra = jsonMsg['widget_id'], jsonMsg['extra']
+            global_dbg.notify_widget_info(widget_id, extra)
+
 
 
 # ----------------------------------------------------------------------------------- SOCKET UTILITIES - WRITER
@@ -492,8 +502,22 @@ class NetCommandFactory:
     def make_inspect_finished_message(self):
         return NetCommand(CMD_INSPECT_FINISHED, 0, '')
 
+    def make_set_widget_highlight_message(self, widget_id: int, is_highlight: bool):
+        return NetCommand(CMD_SET_WIDGET_HIGHLIGHT, 0, self.make_json(
+            widget_id=widget_id,
+            is_highlight=is_highlight
+        ))
+
     def make_select_widget_message(self, widget_id: int):
-        return NetCommand(CMD_HIGHLIGHT_WIDGET, 0, str(widget_id))
+        return NetCommand(CMD_SELECT_WIDGET, 0, str(widget_id))
+
+    def make_req_widget_info_message(self, widget_id: int, extra: typing.Optional[dict] = None):
+        if extra is None:
+            extra = {}
+        return NetCommand(CMD_REQ_WIDGET_INFO, 0, self.make_json(
+            widget_id=widget_id,
+            extra=extra,
+        ))
 
 
 INTERNAL_TERMINATE_THREAD = 1

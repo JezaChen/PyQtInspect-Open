@@ -5,7 +5,8 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 
-from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet
+from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet, \
+    get_children
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
@@ -319,20 +320,23 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             return
 
         # === send widget info === #
+        # todo parent信息貌似可以缓存? changeParent可能会导致parent信息变化
         parent_info = list(get_parent_info(obj))
-        parent_classes, parent_ids = [], []
+        parent_classes, parent_ids, parent_obj_names = [], [], []
         if parent_info:
-            parent_classes, parent_ids = zip(*get_parent_info(obj))
+            parent_classes, parent_ids, parent_obj_names = zip(*parent_info)
         widget_info = QWidgetInfo(
             class_name=obj.__class__.__name__,
             object_name=obj.objectName(),
             id=id(obj),
-            stacks_when_create=_filter_trace_stack(obj._pqi_stacks_when_create),
+            stacks_when_create=_filter_trace_stack(getattr(obj, '_pqi_stacks_when_create', [])),
             size=get_widget_size(obj),
             pos=get_widget_pos(obj),
             parent_classes=parent_classes,
             parent_ids=parent_ids,
-            stylesheet=get_stylesheet(obj)
+            parent_object_names=parent_obj_names,
+            stylesheet=get_stylesheet(obj),
+            children=get_children(obj),
         )
         debugger.send_widget_message(widget_info)
 
@@ -384,6 +388,14 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
                 self._handleEnterEvent(obj, event)
             elif event.type() == QtCore.QEvent.Leave:
                 self._handleLeaveEvent(obj, event)
+            elif event.type() == QtCore.QEvent.User:
+                if hasattr(event, '_pqi_is_highlight'):
+                    # TODo TODO
+                    is_highlight = event._pqi_is_highlight
+                    if is_highlight:
+                        obj._pqi_highlight_self()
+                    else:
+                        obj._pqi_unhighlight_self()
             return False
 
     def _hideLastHighlightWidget():
@@ -452,8 +464,15 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         self._pqi_highlight_bg.show()
         lastHighlightWidget = self._pqi_highlight_bg
 
+    def _pqi_unhighlight_self(self: QtWidgets.QWidget):
+        nonlocal lastHighlightWidget
+        if hasattr(self, '_pqi_highlight_bg'):
+            self._pqi_highlight_bg.hide()
+            lastHighlightWidget = None
+
     QtWidgets.QWidget.__init__ = _new_QWidget_init
     QtWidgets.QWidget._pqi_exec = _pqi_exec
     QtWidgets.QWidget._pqi_highlight_self = _pqi_highlight_self
+    QtWidgets.QWidget._pqi_unhighlight_self = _pqi_unhighlight_self
     print("<patched>")
 

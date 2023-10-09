@@ -35,11 +35,15 @@ def get_parent_info(widget: QtWidgets.QWidget):
         if parent is None:
             break
         widget = parent
-        yield widget.__class__.__name__, id(widget)
+        yield get_widget_class_name(widget), id(widget), get_widget_object_name(widget)
 
 
 def get_stylesheet(widget: QtWidgets.QWidget):
     return widget.styleSheet()
+
+
+def get_children(widget: QtWidgets.QWidget):
+    return [id(child) for child in widget.children()]
 
 
 def exec_code_in_widget(widget: QtWidgets.QWidget, code: str):
