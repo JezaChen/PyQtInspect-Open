@@ -26,9 +26,11 @@ from PyQtInspect._pqi_bundle.pqi_override import overrides
 import ctypes
 
 from PyQtInspect.pqi_gui.code_window import CodeWindow
+from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
+from PyQtInspect.pqi_gui._pqi_res import resources
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha'  # arbitrary string
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -260,11 +262,6 @@ class BriefLineWithEditButton(BriefLine):
 
 class WidgetBriefWidget(QtWidgets.QWidget):
     sigOpenCodeWindow = QtCore.pyqtSignal()
-    sigAncestorWidgetItemHighlight = QtCore.pyqtSignal(str)  # it will be a very long int, so use str
-    sigAncestorWidgetItemClicked = QtCore.pyqtSignal(str)
-
-    sigChildWidgetItemHighlight = QtCore.pyqtSignal(str)
-    sigChildWidgetItemClicked = QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -272,10 +269,10 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._mainLayout.setContentsMargins(0, 0, 0, 0)
         self._mainLayout.setSpacing(5)
 
-        self._classNameLine = BriefLine(self, "class_name")
+        self._classNameLine = BriefLine(self, "class name")
         self._mainLayout.addWidget(self._classNameLine)
 
-        self._objectNameLine = BriefLine(self, "object_name")
+        self._objectNameLine = BriefLine(self, "object name")
         self._mainLayout.addWidget(self._objectNameLine)
 
         self._sizeLine = BriefLine(self, "size")
@@ -284,31 +281,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._posLine = BriefLine(self, "pos")
         self._mainLayout.addWidget(self._posLine)
 
-        self._parentLine = BriefLine(self, "parents")
-        self._mainLayout.addWidget(self._parentLine)
-
         self._styleSheetLine = BriefLine(self, "stylesheet")
         self._mainLayout.addWidget(self._styleSheetLine)
-
-        self._hierarchyComboBox = QtWidgets.QComboBox(self)
-        self._hierarchyComboBox.setFixedHeight(30)
-        self._hierarchyComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self._hierarchyComboBox.highlighted.connect(self._onHierarchyComboBoxHighlighted)
-        self._hierarchyComboBox.activated.connect(self._onHierarchyComboBoxClicked)
-
-        self._mainLayout.addWidget(self._hierarchyComboBox)
-
-        self._childrenComboBox = QtWidgets.QComboBox(self)
-        self._childrenComboBox.setFixedHeight(30)
-        self._childrenComboBox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self._childrenComboBox.highlighted.connect(self._onChildrenComboBoxHighlighted)
-        self._childrenComboBox.activated.connect(self._onChildrenComboBoxClicked)
-
-        self._mainLayout.addWidget(self._childrenComboBox)
-
-        # self._codeLine = BriefLineWithEditButton(self, "code", buttonText="Run")
-        # self._codeLine.sigEditButtonClicked.connect(self.sigCode)
-        # self._mainLayout.addWidget(self._codeLine)
 
         self._executionButtonsLayout = QtWidgets.QHBoxLayout()
         self._executionButtonsLayout.setContentsMargins(4, 0, 4, 0)
@@ -333,43 +307,7 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._sizeLine.setValue(f"{width}, {height}")
         posX, posY = info["pos"]
         self._posLine.setValue(f"{posX}, {posY}")
-        self._parentLine.setValue(str(info["parent_classes"]))
         self._styleSheetLine.setValue(info["stylesheet"])
-
-        # set hierarchy
-        if info.get("extra", {}).get("from", "") != "ancestor":
-            self._hierarchyComboBox.clear()
-            # todo 这里也要整合在一起
-            self._hierarchyComboBox.addItem(f"{info['class_name']}{objName and f'#{objName}'} ({info['id']})",
-                                            info['id'])
-
-            for ancestorCls, ancestorId, ancestorObjName in zip(info["parent_classes"], info["parent_ids"],
-                                                                info["parent_object_names"]):
-                self._hierarchyComboBox.addItem(
-                    f"{ancestorCls}{ancestorObjName and f'#{ancestorObjName}'} ({ancestorId})", ancestorId)
-
-    def setChildrenInfo(self, info: dict):
-        """ 子控件信息是走另外的协议获取 """
-        self._childrenComboBox.clear()
-        for childCls, childId, childObjName in zip(info["child_classes"], info["child_ids"],
-                                                   info["child_object_names"]):
-            self._childrenComboBox.addItem(f"{childCls}{childObjName and f'#{childObjName}'} ({childId})", childId)
-
-    def _onHierarchyComboBoxHighlighted(self, index: int):
-        ancestorId = self._hierarchyComboBox.itemData(index)
-        self.sigAncestorWidgetItemHighlight.emit(str(ancestorId))
-
-    def _onHierarchyComboBoxClicked(self, index: int):
-        ancestorId = self._hierarchyComboBox.itemData(index)
-        self.sigAncestorWidgetItemClicked.emit(str(ancestorId))
-
-    def _onChildrenComboBoxHighlighted(self, index: int):
-        childId = self._childrenComboBox.itemData(index)
-        self.sigChildWidgetItemHighlight.emit(str(childId))
-
-    def _onChildrenComboBoxClicked(self, index: int):
-        childId = self._childrenComboBox.itemData(index)
-        self.sigChildWidgetItemClicked.emit(str(childId))
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -497,12 +435,6 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._widgetBriefWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._widgetBriefWidget.sigOpenCodeWindow.connect(self._openCodeWindow)
 
-        self._widgetBriefWidget.sigAncestorWidgetItemHighlight.connect(self._onAncestorWidgetItemHighlight)
-        self._widgetBriefWidget.sigAncestorWidgetItemClicked.connect(self._onAncestorWidgetItemClicked)
-
-        self._widgetBriefWidget.sigChildWidgetItemHighlight.connect(self._onChildWidgetItemHighlight)
-        self._widgetBriefWidget.sigChildWidgetItemClicked.connect(self._onChildWidgetItemClicked)
-
         self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
 
         self._mainLayout.addSpacing(3)
@@ -526,11 +458,16 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._createStackGroupBox)
 
-        # self._bottomStatusTextBrowser = QtWidgets.QTextBrowser(self)
-        # self._bottomStatusTextBrowser.setFixedHeight(100)
-        # self._bottomStatusTextBrowser.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        #
-        # self._mainLayout.addWidget(self._bottomStatusTextBrowser)
+        self._hierarchyBar = HierarchyBar(self)
+        self._hierarchyBar.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self._hierarchyBar.sigAncestorItemHovered.connect(self._onAncestorWidgetItemHighlight)
+        self._hierarchyBar.sigAncestorItemChanged.connect(self._onAncestorWidgetItemClicked)
+        self._hierarchyBar.sigChildMenuActionHovered.connect(self._onChildWidgetItemHighlight)
+        self._hierarchyBar.sigChildMenuActionTriggered.connect(self._onChildWidgetItemClicked)
+        self._hierarchyBar.sigReqChildWidgetsInfo.connect(self._reqChildWidgetsInfo)
+
+        self._mainLayout.addSpacing(3)
+        self._mainLayout.addWidget(self._hierarchyBar)
 
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
@@ -576,12 +513,11 @@ class PQIWindow(QtWidgets.QMainWindow):
     def on_widget_info_recv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")
         if cmdId == CMD_WIDGET_INFO:
-            self.handle_widget_info_msg(json.loads(info["text"]))
+            self.handleWidgetInfoMsg(json.loads(info["text"]))
         elif cmdId == CMD_INSPECT_FINISHED:
             self._currDispatcherIdForSelectedWidget = dispatcherId
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
-            self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)  # todo
         elif cmdId == CMD_EXEC_CODE_ERROR:
             errMsg = info.get("text", "")
             self._notifyResultToCodeWindow(True, errMsg)
@@ -589,13 +525,25 @@ class PQIWindow(QtWidgets.QMainWindow):
             result = info.get("text", "")
             self._notifyResultToCodeWindow(False, result)
         elif cmdId == CMD_CHILDREN_INFO:
-            self._widgetBriefWidget.setChildrenInfo(json.loads(info["text"]))
+            childrenInfoDict = json.loads(info["text"])
+            widgetId = childrenInfoDict["widget_id"]
+            self._hierarchyBar.setMenuData(widgetId, childrenInfoDict["child_classes"],
+                                           childrenInfoDict["child_object_names"],
+                                           childrenInfoDict["child_ids"])
         # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
-    def handle_widget_info_msg(self, info):
+    def handleWidgetInfoMsg(self, info):
         self._curWidgetId = info["id"]
         self._widgetBriefWidget.setInfo(info)
         self._createStacksListWidget.setStacks(info.get("stacks_when_create", []))
+
+        # set hierarchy
+        if info.get("extra", {}).get("from",
+                                     "") != "ancestor":  # 如果为"ancestor", 则意味着用户是通过bar来点击回溯获取祖先控件的信息, 此时无需覆盖祖先控件信息
+            classes = [*reversed(info["parent_classes"]), info["class_name"]]
+            objNames = [*reversed(info["parent_object_names"]), info["object_name"]]
+            ids = [*reversed(info["parent_ids"]), info["id"]]
+            self._hierarchyBar.setData(classes, objNames, ids)
 
     def handle_inspect_finished_msg(self):
         self._inspectButton.setChecked(False)
@@ -635,7 +583,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
             "from": "ancestor"
-        })
+        })  # 通过bar来点击回溯获取祖先控件的信息, 带上from字段, 避免覆盖祖先控件信息(点击前面的类后, 后面的类全都无了)
         self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo 会不会有时序问题
 
     def _onChildWidgetItemHighlight(self, widgetId: str):
@@ -670,6 +618,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._codeWindow is None:
             return
         self._codeWindow.notifyResult(isErr, result)
+
+    def _reqChildWidgetsInfo(self, widgetIdStr: str):
+        if self._worker is not None and self._currDispatcherIdForSelectedWidget is not None:
+            widgetId = int(widgetIdStr)
+            self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
 
 if __name__ == '__main__':
