@@ -250,8 +250,12 @@ class HierarchyBar(QtWidgets.QWidget):
             self._containerLayout.addWidget(item)
         self._containerLayout.addStretch()
 
-        if self._buttonGroup.buttons():  # not empty
-            self._buttonGroup.buttons()[-1].setChecked(True)
+        if self._buttonGroup.buttons():  # not empty, set last item checked by default
+            lastItem = self._buttonGroup.buttons()[-1]
+            # 之所以在这里设置, 是因为避免数据变更后emit sigAncestorItemChanged信号
+            # 导致重复获取数据
+            self._curCheckedItem = lastItem
+            lastItem.setChecked(True)
 
         self.update()
 
@@ -283,7 +287,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self.sigAncestorItemHovered.emit(str(itemWidget.getWidgetId()))
 
     def _onButtonToggled(self, btn, checked):
-        if checked:
+        if checked and btn != self._curCheckedItem:
             self._curCheckedItem = btn
             self.sigAncestorItemChanged.emit(str(btn.getWidgetId()))
 

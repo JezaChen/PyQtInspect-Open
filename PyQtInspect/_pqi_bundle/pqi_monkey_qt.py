@@ -306,8 +306,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             if hasattr(obj, '_pqi_highlight_bg'):
                 obj._pqi_highlight_bg.hide()
                 _clearEnteredWidgetStack()
-            if hasattr(obj, '_pqi_transparent_for_mouse_events'):
-                obj.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, obj._pqi_transparent_for_mouse_events)
             obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
 
         setattr(_mouseReleaseEvent, '_pqi_hooked', True)
@@ -348,10 +346,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         obj._pqi_highlight_bg.show()
         lastHighlightWidget = obj._pqi_highlight_bg
 
-        setattr(obj, '_pqi_transparent_for_mouse_events',
-                obj.testAttribute(QtCore.Qt.WA_TransparentForMouseEvents))
-        obj.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)
-
         if not hasattr(obj.mouseReleaseEvent, '_pqi_hooked'):
             obj._oldMouseReleaseEvent = obj.mouseReleaseEvent
         obj.mouseReleaseEvent = _mouseReleaseEvent
@@ -376,9 +370,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
             if hasattr(obj, '_oldMouseReleaseEvent'):
                 obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-
-            if hasattr(obj, '_pqi_transparent_for_mouse_events'):
-                obj.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, obj._pqi_transparent_for_mouse_events)
 
             _showLastHighlightWidget()
 
