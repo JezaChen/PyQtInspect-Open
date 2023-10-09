@@ -6,7 +6,7 @@
 # ==============================================
 import typing
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtWidgets import QPushButton, QMenu, QWidgetAction, QApplication, QAction
 from PyQt5.QtGui import QPixmap, QPainter, QFontMetrics, QColor, QBrush, QFont, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, QPoint
@@ -147,6 +147,25 @@ QScrollArea { background: transparent; border:none;}
 """
 
 
+class HierarchyBarScrollArea(QtWidgets.QScrollArea):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setFixedHeight(21)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setObjectName("hierarchyBarScrollArea")
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+    def wheelEvent(self, event):
+        # 响应鼠标滚轮事件, 倒置事件的坐标系, 使得横向滚动条也能滚动
+        newEvent = QtGui.QWheelEvent(event.pos(), event.globalPos(),
+                                     QtCore.QPoint(event.pixelDelta().y(), event.pixelDelta().x()),
+                                     QtCore.QPoint(event.angleDelta().y(), event.angleDelta().x()),
+                                     event.buttons(), event.modifiers(), event.phase(), event.inverted())
+        QtWidgets.QApplication.sendEvent(self.horizontalScrollBar(), newEvent)
+
+
 class HierarchyBar(QtWidgets.QWidget):
     sigAncestorItemChanged = pyqtSignal(str)  # widgetId
     sigAncestorItemHovered = pyqtSignal(str)  # widgetId
@@ -182,14 +201,8 @@ class HierarchyBar(QtWidgets.QWidget):
         self._containerLayout.setContentsMargins(0, 0, 0, 0)
         self._containerLayout.setSpacing(0)
 
-        self._scrollArea = QtWidgets.QScrollArea(self)
-        self._scrollArea.setFixedHeight(21)
-        self._scrollArea.setContentsMargins(0, 0, 0, 0)
-        self._scrollArea.setObjectName("hierarchyBarScrollArea")
+        self._scrollArea = HierarchyBarScrollArea(self)
         self._scrollArea.setWidget(self._container)
-        self._scrollArea.setWidgetResizable(True)
-        self._scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self._scrollArea.horizontalScrollBar().rangeChanged.connect(self._handleScrollButtonVisible)
         self._scrollArea.horizontalScrollBar().rangeChanged.connect(self._scrollToEndWhenRangeChanged)
 
