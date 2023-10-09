@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet, \
-    get_children
+    get_children_info
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
@@ -336,7 +336,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             parent_ids=parent_ids,
             parent_object_names=parent_obj_names,
             stylesheet=get_stylesheet(obj),
-            children=get_children(obj),
         )
         debugger.send_widget_message(widget_info)
 

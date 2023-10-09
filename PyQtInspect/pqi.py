@@ -11,14 +11,14 @@ import time
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
-    get_stylesheet, get_children
+    get_stylesheet, get_children_info
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 import traceback
 
-from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
+from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
 
 threadingCurrentThread = threading.current_thread
 
@@ -476,9 +476,9 @@ class PyDB(object):
             return
 
         parent_info = list(get_parent_info(widget))
-        parent_classes, parent_ids = [], []
+        parent_classes, parent_ids, parent_obj_names = [], [], []
         if parent_info:
-            parent_classes, parent_ids = zip(*get_parent_info(widget))
+            parent_classes, parent_ids, parent_obj_names = zip(*get_parent_info(widget))
 
         widget_info = QWidgetInfo(
             class_name=widget.__class__.__name__,
@@ -489,11 +489,31 @@ class PyDB(object):
             pos=get_widget_pos(widget),
             parent_classes=parent_classes,
             parent_ids=parent_ids,
+            parent_object_names=parent_obj_names,
             stylesheet=get_stylesheet(widget),
             extra=extra,
-            children=get_children(widget),
         )
         self.send_widget_message(widget_info)
+
+    def notify_children_info(self, widget_id):
+        widget = self._id_to_widget.get(widget_id, None)
+        if widget is None:
+            return
+
+        children_info_list = list(get_children_info(widget))
+        child_classes, child_ids, child_object_names = [], [], []
+        if children_info_list:
+            child_classes, child_ids, child_object_names = zip(*children_info_list)
+
+        children_info = QWidgetChildrenInfo(
+            widget_id=widget_id,
+            child_classes=child_classes,
+            child_ids=child_ids,
+            child_object_names=child_object_names,
+        )
+
+        cmd = self.cmd_factory.make_children_info_message(children_info)
+        self.writer.add_command(cmd)
 
 
 def set_debug(setup):

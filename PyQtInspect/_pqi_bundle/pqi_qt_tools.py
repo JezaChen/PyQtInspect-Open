@@ -42,8 +42,9 @@ def get_stylesheet(widget: QtWidgets.QWidget):
     return widget.styleSheet()
 
 
-def get_children(widget: QtWidgets.QWidget):
-    return [id(child) for child in widget.children()]
+def get_children_info(widget: QtWidgets.QWidget):
+    for child in widget.children():
+        yield get_widget_class_name(child), id(child), get_widget_object_name(child)
 
 
 def exec_code_in_widget(widget: QtWidgets.QWidget, code: str):

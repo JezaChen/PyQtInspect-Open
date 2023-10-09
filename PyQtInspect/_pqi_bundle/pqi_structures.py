@@ -39,9 +39,6 @@ class QWidgetInfo:
     # The stylesheet of the QWidget.
     stylesheet: str
 
-    # The children of the QWidget.
-    children: list
-
     # extra data from sender
     extra: dict = dataclasses.field(default_factory=dict)
 
@@ -49,6 +46,10 @@ class QWidgetInfo:
 @dataclasses.dataclass
 class QWidgetChildrenInfo:
     """A dataclass for storing information about a QWidget's ancestor."""
-    ancestor_classes: list
+    widget_id: int
 
-    ancestor_ids: list
+    child_classes: list
+
+    child_ids: list
+
+    child_object_names: list

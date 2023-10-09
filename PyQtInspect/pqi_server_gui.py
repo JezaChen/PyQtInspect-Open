@@ -20,7 +20,7 @@ from _socket import SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR, \
-    CMD_EXEC_CODE_RESULT
+    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
@@ -87,6 +87,9 @@ class Dispatcher(QtCore.QThread):
 
     def sendRequestWidgetInfoEvent(self, widgetId: int, extra: dict = None):
         self.writer.add_command(self.net_command_factory.make_req_widget_info_message(widgetId, extra))
+
+    def sendRequestChildrenInfoEvent(self, widgetId: int):
+        self.writer.add_command(self.net_command_factory.make_req_children_info_message(widgetId))
 
     def notifyDelete(self):
         self.reader.do_kill_pydev_thread()
@@ -195,6 +198,11 @@ class PQYWorker(QtCore.QObject):
         dispatcher = self.idToDispatcher.get(dispatcherId)
         if dispatcher:
             dispatcher.sendRequestWidgetInfoEvent(widgetId, extra)
+
+    def sendRequestChildrenInfoEvent(self, dispatcherId: int, widgetId: int):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendRequestChildrenInfoEvent(widgetId)
 
     def _onDispatcherDelete(self, id: int):
         dispatcher = self.idToDispatcher.pop(id)
@@ -332,16 +340,20 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         if info.get("extra", {}).get("from", "") != "ancestor":
             self._hierarchyComboBox.clear()
             # todo 这里也要整合在一起
-            self._hierarchyComboBox.addItem(f"{info['class_name']}{objName and f'#{objName}'} ({info['id']})", info['id'])
+            self._hierarchyComboBox.addItem(f"{info['class_name']}{objName and f'#{objName}'} ({info['id']})",
+                                            info['id'])
 
             for ancestorCls, ancestorId, ancestorObjName in zip(info["parent_classes"], info["parent_ids"],
                                                                 info["parent_object_names"]):
-                self._hierarchyComboBox.addItem(f"{ancestorCls}{ancestorObjName and f'#{ancestorObjName}'} ({ancestorId})", ancestorId)
+                self._hierarchyComboBox.addItem(
+                    f"{ancestorCls}{ancestorObjName and f'#{ancestorObjName}'} ({ancestorId})", ancestorId)
 
-        # set children
+    def setChildrenInfo(self, info: dict):
+        """ 子控件信息是走另外的协议获取 """
         self._childrenComboBox.clear()
-        for childId in info["children"]:
-            self._childrenComboBox.addItem(str(childId), childId)
+        for childCls, childId, childObjName in zip(info["child_classes"], info["child_ids"],
+                                                   info["child_object_names"]):
+            self._childrenComboBox.addItem(f"{childCls}{childObjName and f'#{childObjName}'} ({childId})", childId)
 
     def _onHierarchyComboBoxHighlighted(self, index: int):
         ancestorId = self._hierarchyComboBox.itemData(index)
@@ -523,6 +535,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
 
+        self._curWidgetId = 0
+
         self.setStyleSheet(GLOBAL_STYLESHEET)
 
     def runWorker(self):
@@ -567,15 +581,19 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._currDispatcherIdForSelectedWidget = dispatcherId
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
+            self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)  # todo
         elif cmdId == CMD_EXEC_CODE_ERROR:
             errMsg = info.get("text", "")
             self._notifyResultToCodeWindow(True, errMsg)
         elif cmdId == CMD_EXEC_CODE_RESULT:
             result = info.get("text", "")
             self._notifyResultToCodeWindow(False, result)
+        elif cmdId == CMD_CHILDREN_INFO:
+            self._widgetBriefWidget.setChildrenInfo(json.loads(info["text"]))
         # self._bottomStatusTextBrowser.append(f"recv: {info}")
 
     def handle_widget_info_msg(self, info):
+        self._curWidgetId = info["id"]
         self._widgetBriefWidget.setInfo(info)
         self._createStacksListWidget.setStacks(info.get("stacks_when_create", []))
 
@@ -618,6 +636,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
             "from": "ancestor"
         })
+        self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo 会不会有时序问题
 
     def _onChildWidgetItemHighlight(self, widgetId: str):
         widgetId = int(widgetId)
@@ -634,6 +653,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _openSettingWindow(self):
         if self._settingWindow is None:
