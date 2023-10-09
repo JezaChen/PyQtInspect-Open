@@ -205,6 +205,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._scrollArea.setWidget(self._container)
         self._scrollArea.horizontalScrollBar().rangeChanged.connect(self._handleScrollButtonVisible)
         self._scrollArea.horizontalScrollBar().rangeChanged.connect(self._scrollToEndWhenRangeChanged)
+        self._scrollArea.horizontalScrollBar().valueChanged.connect(self._handleScrollButtonEnabled)
 
         self._mainLayout.addWidget(self._scrollArea)
 
@@ -239,13 +240,24 @@ class HierarchyBar(QtWidgets.QWidget):
             self._scrollArea.horizontalScrollBar().value() + self._scrollArea.width() // 2
         )
 
-    def _handleScrollButtonVisible(self):
+    def _handleScrollButtonVisible(self, *_):
         if self._container.width() > self._scrollArea.width():
             self._goLeftButton.show()
             self._goRightButton.show()
         else:
             self._goLeftButton.hide()
             self._goRightButton.hide()
+
+    def _handleScrollButtonEnabled(self, value):
+        if value == 0:
+            self._goLeftButton.setEnabled(False)
+        else:
+            self._goLeftButton.setEnabled(True)
+
+        if value == self._scrollArea.horizontalScrollBar().maximum():
+            self._goRightButton.setEnabled(False)
+        else:
+            self._goRightButton.setEnabled(True)
 
     def setData(self,
                 ancestorClsNameList: typing.List[str],
@@ -272,8 +284,8 @@ class HierarchyBar(QtWidgets.QWidget):
 
         self.update()
 
-    def _scrollToEndWhenRangeChanged(self):
-        self._scrollArea.horizontalScrollBar().setValue(self._scrollArea.horizontalScrollBar().maximum())
+    def _scrollToEndWhenRangeChanged(self, _min, _max):
+        self._scrollArea.horizontalScrollBar().setValue(_max)
 
     def notifyShowMenu(self, itemWidget: HierarchyItem, posX: int, posY: int):
         self._curItemWithMenuShowed = itemWidget
