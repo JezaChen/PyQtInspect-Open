@@ -41,7 +41,7 @@ class HierarchyItem(QPushButton):
         self._objName = objName
         self._widgetId = widgetId
 
-        self._text = f"{clsName}#{objName}"
+        self._text = f"{clsName}{objName and f'#{objName}'}"
 
         self.m_font = parent.font()
         if self._text == "":
@@ -57,7 +57,7 @@ class HierarchyItem(QPushButton):
 
         self.setMouseTracking(True)
         self.setCheckable(True)
-        self.setToolTip(f"{clsName}#{objName} (id {widgetId})")
+        self.setToolTip(f"{self._text} (id {widgetId})")
 
         self.arrowClicked.connect(self._onArrowClicked)
 
@@ -318,8 +318,8 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menu.clear()
         for clsName, objName, widgetId in zip(childClsNameList, childObjNameList, childWidgetIdList):
             action = QAction(self._menu)
-            action.setText(f"{clsName}#{objName}")
-            action.setToolTip(f"{clsName}#{objName} (id {widgetId})")
+            action.setText(f"{clsName}{objName and f'#{objName}'}")
+            action.setToolTip(f"{clsName}{objName and f'#{objName}'} (id {widgetId})")
 
             # 注意这里的lambda函数的参数传递方式
             action.triggered.connect(lambda _, _wgtId=widgetId: self.sigChildMenuActionTriggered.emit(str(_wgtId)))
