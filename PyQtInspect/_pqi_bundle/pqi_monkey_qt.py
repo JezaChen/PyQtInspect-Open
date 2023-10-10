@@ -7,7 +7,7 @@ from io import StringIO
 
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet, \
     get_children_info
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
 
@@ -271,7 +271,7 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
 
 def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     import inspect
-    _original_QWidget_init = QtWidgets.QWidget.__init__
+    # _original_QWidget_init = QtWidgets.QWidget.__init__
 
     lastHighlightWidget = None
     enteredWidgetStack = []
@@ -409,7 +409,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
     def _createHighlightWidget(parent: QtWidgets.QWidget):
         # 先new再调用之前的__init__
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
-        _original_QWidget_init(widget, parent)
+        QtWidgets.QWidget._original_QWidget_init(widget, parent)
         widget.setFixedSize(parent.size())
         widget.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         widget.setObjectName("_pqi_highlight_bg")
@@ -432,7 +432,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         return filteredStacks
 
     def _new_QWidget_init(self, *args, **kwargs):
-        _original_QWidget_init(self, *args, **kwargs)
+        self._original_QWidget_init(*args, **kwargs)
         if ispycreated(self):
             frames = getStackFrame()
             setattr(self, '_pqi_stacks_when_create', frames)
@@ -472,9 +472,15 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             self._pqi_highlight_bg.hide()
             lastHighlightWidget = None
 
-    QtWidgets.QWidget.__init__ = _new_QWidget_init
-    QtWidgets.QWidget._pqi_exec = _pqi_exec
-    QtWidgets.QWidget._pqi_highlight_self = _pqi_highlight_self
-    QtWidgets.QWidget._pqi_unhighlight_self = _pqi_unhighlight_self
-    print("<patched>")
+    # 对于PyQt, 仅需patch基类QWidget即可
+    # 但对于PySide, 则需要给所有的QWidget子类都打上补丁
+    classesToPatch = QtWidgetClasses if qt_support_mode.startswith('pyside') else ['QWidget']
 
+    for widgetClsName in classesToPatch:
+        widgetCls = getattr(QtWidgets, widgetClsName)
+        widgetCls._original_QWidget_init = widgetCls.__init__
+        widgetCls.__init__ = _new_QWidget_init
+        widgetCls._pqi_exec = _pqi_exec
+        widgetCls._pqi_highlight_self = _pqi_highlight_self
+        widgetCls._pqi_unhighlight_self = _pqi_unhighlight_self
+    print("<patched>")
