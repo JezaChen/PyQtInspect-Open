@@ -49,11 +49,9 @@ def _get_python_c_args(host, port, indC, args, setup):
 
 
 def _get_host_port():
-    # todo
-    return "127.0.0.1", 19394
-    # import pydevd
-    # host, port = pydevd.dispatch()
-    # return host, port
+    from PyQtInspect.pqi import SetupHolder
+    setup = SetupHolder.setup
+    return setup["client"], setup["port"]
 
 
 def _is_managed_arg(arg):
