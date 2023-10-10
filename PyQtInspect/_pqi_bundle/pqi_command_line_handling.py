@@ -65,6 +65,8 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
+
+    ArgHandlerWithParam('qt-support'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
 ]
 
 ARGV_REP_TO_HANDLER = {}

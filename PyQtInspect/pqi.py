@@ -599,6 +599,7 @@ def _locked_settrace(
             'server': False,
             'port': int(port),
             'multiprocess': patch_multiprocessing,
+            'qt-support': qt_support,
         }
         SetupHolder.setup = setup
 
@@ -634,6 +635,7 @@ def _locked_settrace(
                 'server': False,
                 'port': int(port),
                 'multiprocess': patch_multiprocessing,
+                'qt-support': qt_support,
             }
             SetupHolder.setup = setup
 
