@@ -11,7 +11,7 @@ import time
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
-    get_stylesheet, get_children_info
+    get_stylesheet, get_children_info, import_Qt
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -452,8 +452,7 @@ class PyDB(object):
     def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
         widget = self._id_to_widget.get(widget_id, None)
         if widget is not None:
-            # todo 使用事件驱动
-            from PyQt5 import QtCore
+            QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
             if is_highlight and hasattr(widget, '_pqi_highlight_self'):
                 event = QtCore.QEvent(QtCore.QEvent.User)
                 event._pqi_is_highlight = True
@@ -535,6 +534,7 @@ def settrace(
         overwrite_prev_trace=False,
         patch_multiprocessing=False,
         stop_at_frame=None,
+        qt_support="pyqt5",
 ):
     '''Sets the tracing function with the pydev debug function and initializes needed facilities.
 
@@ -573,6 +573,7 @@ def settrace(
             trace_only_current_thread,
             patch_multiprocessing,
             stop_at_frame,
+            qt_support
         )
     finally:
         _set_trace_lock.release()
@@ -590,6 +591,7 @@ def _locked_settrace(
         trace_only_current_thread,
         patch_multiprocessing,
         stop_at_frame,
+        qt_support,
 ):
     if SetupHolder.setup is None:
         setup = {
@@ -614,7 +616,7 @@ def _locked_settrace(
     except:
         pass
     else:
-        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt("pyqt5")
+        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt(qt_support)
 
     global connected
     # global bufferStdOutToServer
@@ -713,7 +715,7 @@ def main():
 
     is_module = setup['module']
 
-    enable_qt_support("pyqt5")
+    enable_qt_support(setup['qt-support'])
     if setup['file']:
         debugger.run(setup["file"], None, None, is_module)
 

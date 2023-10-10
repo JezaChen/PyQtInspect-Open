@@ -1,6 +1,6 @@
 # -*- encoding:utf-8 -*-
-from PyQt5 import QtCore, QtWidgets
-import inspect, sip
+import inspect
+
 
 def _filter_trace_stack(traceStacks):
     filteredStacks = []

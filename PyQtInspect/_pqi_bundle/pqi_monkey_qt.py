@@ -105,7 +105,9 @@ def patch_qt(qt_support_mode):
             return
         try:
             import PySide2.QtCore  # @UnresolvedImport
+            import PySide2.QtWidgets
             _internal_patch_qt(PySide2.QtCore, qt_support_mode)
+            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, qt_support_mode)
         except:
             return
 
@@ -129,11 +131,12 @@ def patch_qt(qt_support_mode):
             import PyQt5.QtWidgets  # @UnresolvedImport
 
             _internal_patch_qt(PyQt5.QtCore)
-            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore)
+            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, qt_support_mode)
         except Exception as e:
             print(e)
             return
 
+    # todo PyQt4
     # elif qt_support_mode == 'pyqt4':
     #     # Ok, we have an issue here:
     #     # PyDev-452: Selecting PyQT API version using sip.setapi fails in debug mode
@@ -267,17 +270,26 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
 
 
 def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
-    import inspect, sip
+    import inspect
     _original_QWidget_init = QtWidgets.QWidget.__init__
 
     lastHighlightWidget = None
     enteredWidgetStack = []
 
+    if qt_support_mode.startswith("pyqt"):
+        import sip
+        isdeleted = sip.isdeleted
+        ispycreated = sip.ispycreated
+    elif qt_support_mode.startswith("pyside"):  # todo pyside6 also use this?
+        import shiboken2  # todo: or shiboken?
+        isdeleted = lambda obj: not shiboken2.isValid(obj)
+        ispycreated = shiboken2.createdByPython
+
     def _filterEnteredWidgetStack():
         nonlocal enteredWidgetStack
         while enteredWidgetStack:
             wgt = enteredWidgetStack[-1]
-            if sip.isdeleted(wgt):
+            if isdeleted(wgt):
                 enteredWidgetStack.pop()
             else:
                 break
@@ -390,7 +402,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     def _hideLastHighlightWidget():
         nonlocal lastHighlightWidget
-        if isinstance(lastHighlightWidget, QtWidgets.QWidget) and not sip.isdeleted(lastHighlightWidget):
+        if isinstance(lastHighlightWidget, QtWidgets.QWidget) and not isdeleted(lastHighlightWidget):
             lastHighlightWidget.hide()
         lastHighlightWidget = None
 
@@ -421,7 +433,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
 
     def _new_QWidget_init(self, *args, **kwargs):
         _original_QWidget_init(self, *args, **kwargs)
-        if sip.ispycreated(self):
+        if ispycreated(self):
             frames = getStackFrame()
             setattr(self, '_pqi_stacks_when_create', frames)
         self._pqi_event_listener = EventListener()
