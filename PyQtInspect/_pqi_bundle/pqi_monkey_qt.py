@@ -391,13 +391,17 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             elif event.type() == QtCore.QEvent.Leave:
                 self._handleLeaveEvent(obj, event)
             elif event.type() == QtCore.QEvent.User:
+                # handle highlight
                 if hasattr(event, '_pqi_is_highlight'):
-                    # TODo TODO
                     is_highlight = event._pqi_is_highlight
                     if is_highlight:
                         obj._pqi_highlight_self()
                     else:
                         obj._pqi_unhighlight_self()
+                # handle code exec
+                if hasattr(event, '_pqi_exec_code'):
+                    code = event._pqi_exec_code
+                    obj._pqi_exec(code)
             return False
 
     def _hideLastHighlightWidget():

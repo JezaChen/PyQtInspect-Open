@@ -433,7 +433,11 @@ class PyDB(object):
         self._selected_widget = widget
 
     def exec_code_in_selected_widget(self, code):
-        exec_code_in_widget(self._selected_widget, code)
+        QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
+        if hasattr(self._selected_widget, '_pqi_exec'):
+            event = QtCore.QEvent(QtCore.QEvent.User)
+            event._pqi_exec_code = code
+            QtCore.QCoreApplication.postEvent(self._selected_widget, event)
 
     def notify_exec_code_result(self, result):
         cmd = self.cmd_factory.make_exec_code_result_message(result)
@@ -453,16 +457,11 @@ class PyDB(object):
         widget = self._id_to_widget.get(widget_id, None)
         if widget is not None:
             QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
-            if is_highlight and hasattr(widget, '_pqi_highlight_self'):
+            attribute = '_pqi_highlight_self' if is_highlight else '_pqi_unhighlight_self'
+            if hasattr(widget, attribute):
                 event = QtCore.QEvent(QtCore.QEvent.User)
-                event._pqi_is_highlight = True
+                event._pqi_is_highlight = is_highlight
                 QtCore.QCoreApplication.postEvent(widget, event)
-                # widget._pqi_highlight_self()
-            elif not is_highlight and hasattr(widget, '_pqi_unhighlight_self'):
-                event = QtCore.QEvent(QtCore.QEvent.User)
-                event._pqi_is_highlight = False
-                QtCore.QCoreApplication.postEvent(widget, event)
-                # widget._pqi_unhighlight_self()
 
     def select_widget_by_id(self, widget_id):
         widget = self._id_to_widget.get(widget_id, None)
@@ -691,7 +690,7 @@ def usage(do_exit=True, exit_code=0):
 def main():
     # parse the command line. --file is our last argument that is required
     try:
-        from _pqi_bundle.pqi_command_line_handling import process_command_line
+        from PyQtInspect._pqi_bundle.pqi_command_line_handling import process_command_line
         setup = process_command_line(sys.argv)
         SetupHolder.setup = setup
     except ValueError:
