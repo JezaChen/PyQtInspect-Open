@@ -462,8 +462,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._hierarchyBar.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._hierarchyBar.sigAncestorItemHovered.connect(self._onAncestorWidgetItemHighlight)
         self._hierarchyBar.sigAncestorItemChanged.connect(self._onAncestorWidgetItemClicked)
-        self._hierarchyBar.sigChildMenuActionHovered.connect(self._onChildWidgetItemHighlight)
-        self._hierarchyBar.sigChildMenuActionTriggered.connect(self._onChildWidgetItemClicked)
+        self._hierarchyBar.sigChildMenuItemHovered.connect(self._onChildWidgetItemHighlight)
+        self._hierarchyBar.sigChildMenuItemClicked.connect(self._onChildWidgetItemClicked)
         self._hierarchyBar.sigReqChildWidgetsInfo.connect(self._reqChildWidgetsInfo)
 
         self._mainLayout.addSpacing(3)

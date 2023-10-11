@@ -11,6 +11,8 @@ from PyQt5.QtWidgets import QPushButton, QMenu, QWidgetAction, QApplication, QAc
 from PyQt5.QtGui import QPixmap, QPainter, QFontMetrics, QColor, QBrush, QFont, QIcon
 from PyQt5.QtCore import Qt, QRect, pyqtSignal, QPoint
 
+from PyQtInspect.pqi_gui.children_menu_widget import ChildrenMenuWidget
+
 ARROW_WIDTH = 17
 SPACE_WIDTH = 8
 ITEM_HEIGHT = 20
@@ -171,8 +173,8 @@ class HierarchyBar(QtWidgets.QWidget):
     sigAncestorItemHovered = pyqtSignal(str)  # widgetId
 
     sigReqChildWidgetsInfo = pyqtSignal(str)  # widgetId
-    sigChildMenuActionTriggered = pyqtSignal(str)  # widgetId
-    sigChildMenuActionHovered = pyqtSignal(str)  # widgetId
+    sigChildMenuItemClicked = pyqtSignal(str)  # widgetId
+    sigChildMenuItemHovered = pyqtSignal(str)  # widgetId
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -219,8 +221,14 @@ class HierarchyBar(QtWidgets.QWidget):
 
         self._menu = QMenu(self)
         self._menu.setWindowFlags(Qt.Popup)
-        self._menu.addAction("aaa", lambda: print("aaa"))
         self._menu.aboutToHide.connect(self._menuAboutToHide)
+        action = QWidgetAction(self._menu)
+        self._menuWidget = ChildrenMenuWidget(self, self._menu)
+        action.setDefaultWidget(self._menuWidget)
+        self._menu.addAction(action)
+
+        self._menuWidget.sigClickChild.connect(self._handleChildMenuItemClicked)
+        self._menuWidget.sigHoverChild.connect(self._handleChildMenuItemHovered)
 
         self._curItemWithMenuShowed: typing.Optional[HierarchyItem] = None
         self._curCheckedItem: typing.Optional[HierarchyItem] = None
@@ -293,9 +301,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menu.move(posX, posY)
         if self._widgetIdOfCurrMenu != itemWidget.getWidgetId():
             # 脏数据
-            self._menu.clear()
-            self._menu.addAction("loading...")
-            self._menu.adjustSize()
+            self._menuWidget.setLoading()
             self.sigReqChildWidgetsInfo.emit(str(itemWidget.getWidgetId()))
         self._menu.show()
 
@@ -326,25 +332,22 @@ class HierarchyBar(QtWidgets.QWidget):
             return
 
         self._widgetIdOfCurrMenu = widgetId
+        self._menuWidget.setMenuData(childClsNameList, childObjNameList, childWidgetIdList)
 
-        self._menu.clear()
-        for clsName, objName, widgetId in zip(childClsNameList, childObjNameList, childWidgetIdList):
-            action = QAction(self._menu)
-            action.setText(f"{clsName}{objName and f'#{objName}'}")
-            action.setToolTip(f"{clsName}{objName and f'#{objName}'} (id {widgetId})")
+    def _handleChildMenuItemHovered(self, widgetId: str):
+        if widgetId == "-1":
+            return
 
-            # 注意这里的lambda函数的参数传递方式
-            action.triggered.connect(lambda _, _wgtId=widgetId: self.sigChildMenuActionTriggered.emit(str(_wgtId)))
-            action.hovered.connect(lambda _wgtId=widgetId: self._handleChildMenuActionHovered(_wgtId))
-
-            self._menu.addAction(action)
-
-    def _handleChildMenuActionHovered(self, widgetId: int):
         if self._lastHoveredChildItemWidgetId == widgetId:
             return
 
         self._lastHoveredChildItemWidgetId = widgetId
-        self.sigChildMenuActionHovered.emit(str(widgetId))
+        self.sigChildMenuItemHovered.emit(widgetId)
+
+    def _handleChildMenuItemClicked(self, widgetId: str):
+        self._menu.hide()
+        if widgetId != "-1":
+            self.sigChildMenuItemClicked.emit(widgetId)
 
 
 class TestWindow(QtWidgets.QMainWindow):
@@ -362,8 +365,8 @@ class TestWindow(QtWidgets.QMainWindow):
         )
         self._widget.sigAncestorItemHovered.connect(lambda widgetId: print(f"hovered {widgetId}"))
         self._widget.sigAncestorItemChanged.connect(lambda widgetId: print(f"changed {widgetId}"))
-        self._widget.sigChildMenuActionTriggered.connect(lambda widgetId: print(f"triggered {widgetId}"))
-        self._widget.sigChildMenuActionHovered.connect(lambda widgetId: print(f"hovered {widgetId}"))
+        self._widget.sigChildMenuItemClicked.connect(lambda widgetId: print(f"triggered {widgetId}"))
+        self._widget.sigChildMenuItemHovered.connect(lambda widgetId: print(f"hovered {widgetId}"))
 
         self._setMenuDataBtn = QtWidgets.QPushButton(self)
         self._setMenuDataBtn.setText("setMenuData")
@@ -372,10 +375,9 @@ class TestWindow(QtWidgets.QMainWindow):
 
     def _onSetMenuDataBtnClicked(self):
         self._widget.setMenuData(9,
-                                 ["QWidget", "QWidget", "QWidget", "QWidget", "QWidget", "QWidget", "QWidget"],
-                                 ["testWidget", "testWidget", "testWidget", "testWidget", "testWidget", "testWidget",
-                                  "testWidget"],
-                                 [1, 2, 3, 4, 5, 6, 7])
+                                 ["QWidget"] * 30,
+                                 ["testWidget"] * 30,
+                                 [i for i in range(30)])
 
 
 if __name__ == '__main__':
