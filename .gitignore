@@ -1,0 +1,4 @@
+dist/**
+dst/**
+build/**
+*.egg-info/**
