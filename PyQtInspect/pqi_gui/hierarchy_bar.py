@@ -176,6 +176,8 @@ class HierarchyBar(QtWidgets.QWidget):
     sigChildMenuItemClicked = pyqtSignal(str)  # widgetId
     sigChildMenuItemHovered = pyqtSignal(str)  # widgetId
 
+    sigMouseLeaveBarAndMenu = pyqtSignal()  # The mouse leaves both the bar and the popup menu.
+
     def __init__(self, parent):
         super().__init__(parent)
         self.setFixedHeight(21)
@@ -229,6 +231,7 @@ class HierarchyBar(QtWidgets.QWidget):
 
         self._menuWidget.sigClickChild.connect(self._handleChildMenuItemClicked)
         self._menuWidget.sigHoverChild.connect(self._handleChildMenuItemHovered)
+        self._menuWidget.sigMouseLeave.connect(self._checkMouseLeave)
 
         self._curItemWithMenuShowed: typing.Optional[HierarchyItem] = None
         self._curCheckedItem: typing.Optional[HierarchyItem] = None
@@ -348,6 +351,18 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menu.hide()
         if widgetId != "-1":
             self.sigChildMenuItemClicked.emit(widgetId)
+
+    def leaveEvent(self, event):
+        super().enterEvent(event)
+        self._checkMouseLeave()
+
+    def _checkMouseLeave(self):
+        """ Check if the mouse has left the bar and menu.
+        If so, emit a signal.
+        """
+        if not self.underMouse() and not self._menuWidget.underMouse():
+            print("all leave")
+            self.sigMouseLeaveBarAndMenu.emit()
 
 
 class TestWindow(QtWidgets.QMainWindow):

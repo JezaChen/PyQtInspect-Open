@@ -17,6 +17,8 @@ class ChildrenMenuWidget(QWidget):
     sigClickChild = QtCore.pyqtSignal(str)
     sigHoverChild = QtCore.pyqtSignal(str)
 
+    sigMouseLeave = QtCore.pyqtSignal()
+
     def __init__(self, parent, menu):
         super().__init__(parent)
 
@@ -108,3 +110,7 @@ class ChildrenMenuWidget(QWidget):
         if widgetId is None:
             widgetId = -1  # loading项的id为-1, 由外部处理点击事件(需要隐藏的)
         self.sigHoverChild.emit(str(widgetId))
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.sigMouseLeave.emit()

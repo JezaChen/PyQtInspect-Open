@@ -465,6 +465,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._hierarchyBar.sigChildMenuItemHovered.connect(self._onChildWidgetItemHighlight)
         self._hierarchyBar.sigChildMenuItemClicked.connect(self._onChildWidgetItemClicked)
         self._hierarchyBar.sigReqChildWidgetsInfo.connect(self._reqChildWidgetsInfo)
+        self._hierarchyBar.sigMouseLeaveBarAndMenu.connect(self._unhighlightPrevWidget)
 
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._hierarchyBar)
@@ -472,7 +473,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
 
-        self._curWidgetId = 0
+        self._curWidgetId = -1
+        self._curHighlightedWidgetId = -1
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
 
@@ -573,6 +575,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+        self._curHighlightedWidgetId = widgetId
 
     def _onAncestorWidgetItemClicked(self, widgetId: str):
         widgetId = int(widgetId)
@@ -581,6 +584,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
+        self._curHighlightedWidgetId = -1
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
             "from": "ancestor"
         })  # 通过bar来点击回溯获取祖先控件的信息, 带上from字段, 避免覆盖祖先控件信息(点击前面的类后, 后面的类全都无了)
@@ -592,6 +596,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+        self._curHighlightedWidgetId = widgetId
 
     def _onChildWidgetItemClicked(self, widgetId: str):
         widgetId = int(widgetId)
@@ -600,6 +605,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
+        self._curHighlightedWidgetId = -1
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
@@ -623,6 +629,19 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._worker is not None and self._currDispatcherIdForSelectedWidget is not None:
             widgetId = int(widgetIdStr)
             self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+
+    def _unhighlightPrevWidget(self):
+        conditions_met = (
+            self._worker is not None,
+            self._currDispatcherIdForSelectedWidget is not None,
+            self._curHighlightedWidgetId != -1
+        )
+
+        if all(conditions_met):
+            self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget,
+                                                  self._curHighlightedWidgetId,
+                                                  False)
+            self._curHighlightedWidgetId = -1
 
 
 if __name__ == '__main__':
