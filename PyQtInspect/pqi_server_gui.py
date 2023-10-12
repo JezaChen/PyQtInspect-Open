@@ -574,6 +574,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
+        # unhighlight prev widget, and highlight current widget
+        self._unhighlightPrevWidget()
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
@@ -583,8 +585,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
-        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
-        self._curHighlightedWidgetId = -1
+        self._unhighlightPrevWidget()
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
             "from": "ancestor"
         })  # 通过bar来点击回溯获取祖先控件的信息, 带上from字段, 避免覆盖祖先控件信息(点击前面的类后, 后面的类全都无了)
@@ -595,6 +596,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
+        # unhighlight prev widget, and highlight current widget
+        self._unhighlightPrevWidget()
         self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
@@ -604,8 +607,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
-        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, False)
-        self._curHighlightedWidgetId = -1
+        self._unhighlightPrevWidget()
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
