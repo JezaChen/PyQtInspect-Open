@@ -611,7 +611,6 @@ def _locked_settrace(
             PyQtInspect._pqi_bundle.pqi_monkey.patch_new_process_functions()
 
     try:
-        print('pydev_monkey_qt')
         import PyQtInspect._pqi_bundle.pqi_monkey_qt
     except:
         pass

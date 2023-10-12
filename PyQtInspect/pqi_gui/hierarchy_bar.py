@@ -361,7 +361,6 @@ class HierarchyBar(QtWidgets.QWidget):
         If so, emit a signal.
         """
         if not self.underMouse() and not self._menuWidget.underMouse():
-            print("all leave")
             self.sigMouseLeaveBarAndMenu.emit()
 
 

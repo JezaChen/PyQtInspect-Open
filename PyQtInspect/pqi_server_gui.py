@@ -54,7 +54,6 @@ class Dispatcher(QtCore.QThread):
         self.writer = None
 
     def run(self):
-        print("run")
         self.writer = WriterThread(self.sock)
         self.writer.pydev_do_not_trace = False  # We run writer in the same thread so we don't want to loose tracing.
         self.writer.start()
@@ -118,7 +117,6 @@ class DispatchReader(ReaderThread):
         # unquote text
         from urllib.parse import unquote
         text = unquote(text)
-        print(cmd_id, seq, text)
         self.dispatcher.notify(cmd_id, seq, text)
 
 
