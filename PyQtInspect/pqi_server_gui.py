@@ -135,9 +135,13 @@ class PQYWorker(QtCore.QObject):
 
         self.start.connect(self.run)
 
+        self._isServing = False
+        self._socket = None
+
     def run(self):
-        s = socket(AF_INET, SOCK_STREAM)
-        s.settimeout(None)
+        self._isServing = True
+        self._socket = socket(AF_INET, SOCK_STREAM)
+        self._socket.settimeout(None)
 
         # try:
         #     from socket import SO_REUSEPORT
@@ -145,13 +149,13 @@ class PQYWorker(QtCore.QObject):
         # except ImportError:
         #     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
-            s.bind(('', self.port))
-            s.listen(1)
+            self._socket.bind(('', self.port))
+            self._socket.listen(1)
 
             dispatcherId = 0
 
-            while True:
-                newSock, _addr = s.accept()
+            while self._isServing:
+                newSock, _addr = self._socket.accept()
                 # 新建个线程来处理
                 dispatcher = Dispatcher(None, newSock, dispatcherId)
                 dispatcher.sigDelete.connect(self._onDispatcherDelete)
@@ -163,10 +167,21 @@ class PQYWorker(QtCore.QObject):
                 dispatcherId += 1
 
         except Exception as e:
+            if getattr(e, 'errno') == 10038:
+                return  # Socket closed.
+
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
             sys.stderr.flush()
             traceback.print_exc()
             self.socketError.emit(str(e))
+
+    def stop(self):
+        self._isServing = False
+        for dispatcher in self.dispatchers:
+            dispatcher.close()
+
+        if self._socket:
+            self._socket.close()
 
     def onMsg(self, info: dict):
         self.widgetInfoRecv.emit(info)
@@ -307,6 +322,13 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._posLine.setValue(f"{posX}, {posY}")
         self._styleSheetLine.setValue(info["stylesheet"])
 
+    def clearInfo(self):
+        self._classNameLine.setValue("")
+        self._objectNameLine.setValue("")
+        self._sizeLine.setValue("")
+        self._posLine.setValue("")
+        self._styleSheetLine.setValue("")
+
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
     def __init__(self, parent):
@@ -326,6 +348,9 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
             # set property
             item.setData(QtCore.Qt.UserRole, (fileName, lineNo))
             self.addItem(item)
+
+    def clearStacks(self):
+        self.clear()
 
     # double click to open file
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
@@ -407,7 +432,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._serveButton = QtWidgets.QPushButton(self)
         self._serveButton.setText("Serve")
         self._serveButton.setFixedHeight(30)
-        self._serveButton.clicked.connect(self.runWorker)
+        self._serveButton.setCheckable(True)
+        self._serveButton.clicked.connect(self._onServeButtonToggled)
 
         self._topLayout.addWidget(self._serveButton)
 
@@ -476,7 +502,14 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
 
-    def runWorker(self):
+    # region For Serve Button
+    def _onServeButtonToggled(self, checked: bool):
+        if checked:
+            self._runWorker()
+        else:
+            self._askStopWorkerConfirmation()
+
+    def _runWorker(self):
         if self._worker is not None:
             return
 
@@ -487,10 +520,10 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         self._portLineEdit.setEnabled(False)
-        self._serveButton.setEnabled(False)
+        # self._serveButton.setEnabled(False)
         self._inspectButton.setEnabled(True)
 
-        self._worker = PQYWorker(None, port)
+        self._worker = PQYWorker(None, port)  # The parent of worker must be None!
         self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
         self._worker.sigNewDispatcher.connect(self.onNewDispatcher)
         self._worker.socketError.connect(self._onWorkerSocketError)
@@ -501,14 +534,45 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._workerThread.start()
 
+    def _cleanUpWhenWorkerStopped(self):
+        if self._worker is None:
+            return
+
+        # clear worker and its thread
+        if self._worker is not None:
+            self._worker.stop()
+            self._worker.deleteLater()
+            self._worker = None
+
+        if self._workerThread is not None:
+            self._workerThread.quit()
+            self._workerThread = None
+
+        # set buttons status to default
+        self._portLineEdit.setEnabled(True)
+        self._inspectButton.setEnabled(False)
+
+        # clear ui
+        self._widgetBriefWidget.clearInfo()
+        self._createStacksListWidget.clearStacks()
+        self._hierarchyBar.clearData()
+
+    def _askStopWorkerConfirmation(self):
+        """ Ask the user for confirmation to stop the server. """
+        self._serveButton.setChecked(True)  # hold the button checked before user's choice
+
+        reply = QtWidgets.QMessageBox.question(self, "PyQtInspect", "Are you sure to stop serving?",
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                               QtWidgets.QMessageBox.No)
+        if reply == QtWidgets.QMessageBox.Yes:
+            self._cleanUpWhenWorkerStopped()
+            self._serveButton.setChecked(False)
+
     def _onWorkerSocketError(self, msg):
         QtWidgets.QMessageBox.critical(self, "Error", msg)
-        self._portLineEdit.setEnabled(True)
-        self._serveButton.setEnabled(True)
-        self._inspectButton.setEnabled(False)
-        self._workerThread.quit()
-        self._worker.deleteLater()
-        self._worker = None
+        self._cleanUpWhenWorkerStopped()
+
+    # endregion
 
     def on_widget_info_recv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")

@@ -363,6 +363,14 @@ class HierarchyBar(QtWidgets.QWidget):
         if not self.underMouse() and not self._menuWidget.underMouse():
             self.sigMouseLeaveBarAndMenu.emit()
 
+    def clearData(self):
+        clearLayout(self._containerLayout)
+        self._buttonGroup.buttons().clear()
+        self._curItemWithMenuShowed = None
+        self._curCheckedItem = None
+        self._widgetIdOfCurrMenu = -1
+        self._lastHoveredChildItemWidgetId = -1
+
 
 class TestWindow(QtWidgets.QMainWindow):
     def __init__(self, parent):
