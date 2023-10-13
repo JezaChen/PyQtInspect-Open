@@ -64,7 +64,9 @@ class Dispatcher(QtCore.QThread):
 
     def close(self):
         try:
+            self.writer.do_kill_pydev_thread()
             self.reader.do_kill_pydev_thread()
+            self.sock.close()
         except:
             pass
 

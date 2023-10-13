@@ -156,6 +156,9 @@ class PyDB(object):
             set_global_debugger(self)
             # pydevd_tracing.replace_sys_set_trace_func()
 
+        self._last_host = None
+        self._last_port = None
+
         self.reader = None
         self.writer = None
         self.output_checker_thread = None
@@ -194,20 +197,37 @@ class PyDB(object):
         # are currently untraced).
         pass
 
+    def _try_reconnect(self):
+        """
+        Attempts to reconnect to the last host and port used for connection.
+        Retries up to 10 times with a delay between retries. If a successful
+        reconnection is made, it prints a message indicating the reconnection.
+        Returns True if reconnection was successful, False otherwise.
+        """
+        retry_count = 0
+        while retry_count <= 10:
+            try:
+                self.connect(self._last_host, self._last_port)
+                print("Reconnected to %s:%s" % (self._last_host, self._last_port))
+                return True  # success
+            except:
+                retry_count += 1
+        return False
+
     def finish_debugging_session(self):
-        self._finish_debugging_session = True
+        if not self._try_reconnect():
+            self._finish_debugging_session = True
 
     def initialize_network(self, sock):
-        try:
-            sock.settimeout(None)  # infinite, no timeouts from now on - jython does not have it
-        except:
-            pass
+        sock.settimeout(None)
+
         self.writer = WriterThread(sock)
         self.reader = ReaderThread(sock)
         self.writer.start()
         self.reader.start()
 
     def connect(self, host, port):
+        self._last_host, self._last_port = host, port
         if host:
             self.communication_role = CommunicationRole.CLIENT
             s = start_client(host, port)
