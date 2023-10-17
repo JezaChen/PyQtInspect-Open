@@ -237,33 +237,40 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
             # In PyQt5 the program hangs when we try to call original run method of QThread class.
             # So we need to distinguish instances of QThread class and instances of QThread inheritors.
             if self.__class__.run == _original_QThread.run:
-                self.run = self._exec_run
+                self.run = self._pqi_exec_run
             else:
-                self._original_run = self.run
-                self.run = self._new_run
+                # MUST ADD PREFIX '_pqi_' to the method name, otherwise it will cause infinite recursion
+                # 如果使用和pydevd相同的变量名
+                # 则根据继承关系 QThead的子类 -> QThreadWrapper in pqi -> QThreadWrapper in pydevd -> QThread
+                # pqi中的self._pqi_original_run会指向pydevd中的self.run,
+                # 而此时self.run已经被pqi中的self._pqi_new_run(in pqi!!! pqi层的QThreadWrapper同名方法覆盖了pydevd层的方法)替换
+                # 因此会无限递归pqi层面的QThreadWrapper的self._pqi_new_run方法
+                self._pqi_original_run = self.run
+                self.run = self._pqi_new_run
             self._original_started = self.started
             self.started = StartedSignalWrapper(self, self.started)
 
-        def _exec_run(self):
+        # MUST ADD PREFIX '_pqi_' to the method name, otherwise it will cause infinite recursion
+        def _pqi_exec_run(self):
             set_trace_in_qt()
             self.exec_()
             return None
 
-        def _new_run(self):
+        def _pqi_new_run(self):
             set_trace_in_qt()
-            return self._original_run()
+            return self._pqi_original_run()
 
     class RunnableWrapper(QtCore.QRunnable):  # Wrapper for QRunnable
 
         def __init__(self, *args):
             _original_runnable_init(self, *args)
 
-            self._original_run = self.run
-            self.run = self._new_run
+            self._pqi_original_run = self.run
+            self.run = self._pqi_new_run
 
-        def _new_run(self):
+        def _pqi_new_run(self):
             set_trace_in_qt()
-            return self._original_run()
+            return self._pqi_original_run()
 
     QtCore.QThread = ThreadWrapper
     QtCore.QRunnable = RunnableWrapper
