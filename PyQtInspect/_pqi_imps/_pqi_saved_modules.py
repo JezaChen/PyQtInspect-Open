@@ -25,6 +25,9 @@ if IS_PY2:
 else:
     import _thread as thread
     import queue as _queue
-    import xmlrpc.client as xmlrpclib
-    import xmlrpc.server as _pydev_SimpleXMLRPCServer
+    try:
+        import xmlrpc.client as xmlrpclib
+        import xmlrpc.server as _pydev_SimpleXMLRPCServer
+    except ImportError:  # cc_sub
+        pass
     import http.server as BaseHTTPServer

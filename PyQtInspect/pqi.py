@@ -491,7 +491,8 @@ def settrace(
         host=None,
         port=5678,
         patch_multiprocessing=False,
-        qt_support="pyqt5",
+        qt_support='pyqt5',
+        is_attach=False,
 ):
     '''Sets the tracing function with the pydev debug function and initializes needed facilities.
 
@@ -512,7 +513,8 @@ def settrace(
             host,
             port,
             patch_multiprocessing,
-            qt_support
+            qt_support,
+            is_attach
         )
     finally:
         _set_trace_lock.release()
@@ -526,6 +528,7 @@ def _locked_settrace(
         port,
         patch_multiprocessing,
         qt_support,
+        is_attach
 ):
     if SetupHolder.setup is None:
         setup = {
@@ -534,6 +537,7 @@ def _locked_settrace(
             'port': int(port),
             'multiprocess': patch_multiprocessing,
             'qt-support': qt_support,
+            'stack-max-depth': 0,
         }
         SetupHolder.setup = setup
 
@@ -545,13 +549,6 @@ def _locked_settrace(
         else:
             PyQtInspect._pqi_bundle.pqi_monkey.patch_new_process_functions()
 
-    try:
-        import PyQtInspect._pqi_bundle.pqi_monkey_qt
-    except:
-        pass
-    else:
-        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt(qt_support)
-
     global connected
     connected = False
 
@@ -559,17 +556,6 @@ def _locked_settrace(
     PyDBDaemonThread.created_pydb_daemon_threads = {}
 
     if not connected:
-
-        if SetupHolder.setup is None:
-            setup = {
-                'client': host,  # dispatch expects client to be set to the host address when server is False
-                'server': False,
-                'port': int(port),
-                'multiprocess': patch_multiprocessing,
-                'qt-support': qt_support,
-            }
-            SetupHolder.setup = setup
-
         debugger = PyDB()
         debugger.connect(host, port)  # Note: connect can raise error.
 
@@ -581,6 +567,13 @@ def _locked_settrace(
 
         # Stop the tracing as the last thing before the actual shutdown for a clean exit.
         # atexit.register(stoptrace)  todo
+
+    try:
+        import PyQtInspect._pqi_bundle.pqi_monkey_qt
+    except:
+        pass
+    else:
+        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt(qt_support, is_attach=is_attach)
 
 
 # =======================================================================================================================

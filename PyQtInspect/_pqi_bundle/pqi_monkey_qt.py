@@ -1,6 +1,8 @@
 from __future__ import nested_scopes
 
+import collections
 import os
+import queue
 import sys
 from contextlib import redirect_stdout
 from io import StringIO
@@ -26,7 +28,7 @@ IS_PY38 = sys.version_info[0] == 3 and sys.version_info[1] == 8
 _patched_qt = False
 
 
-def patch_qt(qt_support_mode):
+def patch_qt(qt_support_mode, is_attach=False):
     '''
     This method patches qt (PySide, PyQt4, PyQt5) so that we have hooks to set the tracing for QThread.
     '''
@@ -131,7 +133,7 @@ def patch_qt(qt_support_mode):
             import PyQt5.QtWidgets  # @UnresolvedImport
 
             _internal_patch_qt(PyQt5.QtCore)
-            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, qt_support_mode)
+            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, qt_support_mode, is_attach)
         except Exception as e:
             print(e)
             return
@@ -276,7 +278,7 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
     QtCore.QRunnable = RunnableWrapper
 
 
-def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
+def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_attach=False):
     import inspect
     # _original_QWidget_init = QtWidgets.QWidget.__init__
 
@@ -312,8 +314,9 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             return
 
         obj = enteredWidgetStack[-1]
-        if not hasattr(obj, '_pqi_stacks_when_create'):
-            return
+        # todo no need for attached
+        # if not hasattr(obj, '_pqi_stacks_when_create'):
+        #     return
 
         def _mouseReleaseEvent(event):
             if event.button() != QtCore.Qt.LeftButton:
@@ -346,7 +349,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             class_name=obj.__class__.__name__,
             object_name=obj.objectName(),
             id=id(obj),
-            stacks_when_create=_filter_trace_stack(getattr(obj, '_pqi_stacks_when_create', [])),
+            stacks_when_create=[],
             size=get_widget_size(obj),
             pos=get_widget_pos(obj),
             parent_classes=parent_classes,
@@ -483,6 +486,30 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
             self._pqi_highlight_bg.hide()
             lastHighlightWidget = None
 
+    # ================================
+    # ATTACH
+    # ================================
+    def _patch_old_widgets_when_attached():
+        topLevelWidgets = QtWidgets.QApplication.topLevelWidgets()
+        widgetsToPatch = collections.deque(topLevelWidgets)
+        while widgetsToPatch:  # BFS traverse
+            widget = widgetsToPatch.popleft()
+
+            if isdeleted(widget) or not ispycreated(widget):
+                continue
+
+            event_listener = EventListener()
+            event_listener.moveToThread(widget.thread())
+            widget._pqi_event_listener = event_listener
+            widget.installEventFilter(widget._pqi_event_listener)
+
+            # === register widget === #
+            debugger = get_global_debugger()
+            if debugger is not None:
+                debugger.register_widget(widget)
+
+            widgetsToPatch.extend(widget.findChildren(QtWidgets.QWidget))
+
     # 对于PyQt, 仅需patch基类QWidget即可
     # 但对于PySide, 则需要给所有的QWidget子类都打上补丁
     classesToPatch = QtWidgetClasses if qt_support_mode.startswith('pyside') else ['QWidget']
@@ -494,4 +521,8 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto'):
         widgetCls._pqi_exec = _pqi_exec
         widgetCls._pqi_highlight_self = _pqi_highlight_self
         widgetCls._pqi_unhighlight_self = _pqi_unhighlight_self
+
+    if is_attach:
+        _patch_old_widgets_when_attached()
+
     print("<patched>")
