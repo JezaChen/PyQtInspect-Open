@@ -32,7 +32,7 @@ from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 from PyQtInspect.pqi_gui._pqi_res import resources
 
-myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha'  # arbitrary string
+myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
@@ -404,6 +404,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._moreMenu.addAction(self._settingAction)
         self._settingAction.triggered.connect(self._openSettingWindow)
 
+        self._attachAction = QtWidgets.QAction(self)
+        self._attachAction.setText("Attach To Process")
+        self._moreMenu.addAction(self._attachAction)
+        self._attachAction.triggered.connect(self._onAttachActionTriggered)
+
         self._settingWindow = None
         self._codeWindow = None
 
@@ -708,6 +713,22 @@ class PQIWindow(QtWidgets.QMainWindow):
                                                   self._curHighlightedWidgetId,
                                                   False)
             self._curHighlightedWidgetId = -1
+
+    def _onAttachActionTriggered(self):
+        # show input dialog
+        text, ok = QtWidgets.QInputDialog.getText(self, "Attach To Process", "Enter the port of the process to attach:")
+        if ok:
+            pid = int(text)
+            self._tryAttachToProcess(pid)
+
+    def _tryAttachToProcess(self, pid: int):
+        from PyQtInspect.pqi_attach.attach_pydevd import main as attach_main_func
+        attach_main_func({
+            'port': int(self._portLineEdit.text()),
+            'pid': pid,
+            'host': '127.0.0.1',
+            'protocol': '', 'debug_mode': ''
+        })
 
 
 if __name__ == '__main__':
