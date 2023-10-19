@@ -13,9 +13,6 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, IS_WINDOWS
     IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER, \
     get_current_thread_id, IS_PY311_OR_GREATER
 
-# from _pydev_bundle import pydev_log
-
-
 PYTHON_NAMES = ['python', 'jython', 'pypy']
 
 # ===============================================================================
@@ -32,16 +29,16 @@ def log_error_once(msg):
     pqi_log.logger.error(msg)
 
 
-pydev_src_dir = os.path.dirname(os.path.dirname(__file__))
+pqi_src_dir = os.path.dirname(os.path.dirname(__file__))
 
 
 def _get_python_c_args(host, port, indC, args, setup):
     host_literal = "'" + host + "'" if host is not None else 'None'
     return ("import sys; sys.path.append(r'%s'); import PyQtInspect.pqi as pqi; "
-            "pqi.settrace(host=%s, port=%s, suspend=False, trace_only_current_thread=False, patch_multiprocessing=True, qt_support='%s'); "
+            "pqi.settrace(host=%s, port=%s, patch_multiprocessing=True, qt_support='%s'); "
             "from PyQtInspect.pqi import SetupHolder; SetupHolder.setup = %s; %s"
             ) % (
-        pydev_src_dir,
+        pqi_src_dir,
         host_literal,
         port,
         setup["qt-support"],
@@ -61,7 +58,7 @@ def _is_managed_arg(arg):
 
 def _is_already_patched(args):
     for arg in args:
-        if 'pydevd' in arg:
+        if 'pqi' in arg:
             return True
     return False
 
@@ -87,13 +84,8 @@ def _is_py3_and_has_bytes_args(args):
 
 def _on_forked_process():
     import PyQtInspect.pqi as pqi
-    pqi.threadingCurrentThread().__pydevd_main_thread = True
+    pqi.threadingCurrentThread().__pqi_main_thread = True
     pqi.settrace_forked()  # todo
-
-
-def _on_set_trace_for_new_thread(global_debugger):
-    if global_debugger is not None:
-        global_debugger.enable_tracing()
 
 
 # ===============================================================================
@@ -751,162 +743,3 @@ def patch_new_process_functions():
         except ImportError:
             import _winapi as _subprocess
         monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcess)
-
-
-def patch_new_process_functions_with_warning():
-    monkey_patch_os('execl', create_warn_multiproc)
-    monkey_patch_os('execle', create_warn_multiproc)
-    monkey_patch_os('execlp', create_warn_multiproc)
-    monkey_patch_os('execlpe', create_warn_multiproc)
-    monkey_patch_os('execv', create_warn_multiproc)
-    monkey_patch_os('execve', create_warn_multiproc)
-    monkey_patch_os('execvp', create_warn_multiproc)
-    monkey_patch_os('execvpe', create_warn_multiproc)
-    monkey_patch_os('spawnl', create_warn_multiproc)
-    monkey_patch_os('spawnle', create_warn_multiproc)
-    monkey_patch_os('spawnlp', create_warn_multiproc)
-    monkey_patch_os('spawnlpe', create_warn_multiproc)
-    monkey_patch_os('spawnv', create_warn_multiproc)
-    monkey_patch_os('spawnve', create_warn_multiproc)
-    monkey_patch_os('spawnvp', create_warn_multiproc)
-    monkey_patch_os('spawnvpe', create_warn_multiproc)
-
-    if IS_PY38_OR_GREATER and not IS_WINDOWS:
-        monkey_patch_os('posix_spawn', create_warn_multiproc)
-        monkey_patch_os('posix_spawnp', create_warn_multiproc)
-
-    if not IS_WINDOWS:
-        monkey_patch_os('fork', create_warn_multiproc)
-        try:
-            import _posixsubprocess
-            monkey_patch_module(_posixsubprocess, 'fork_exec', create_warn_fork_exec)
-        except ImportError:
-            pass
-    else:
-        # Windows
-        try:
-            import _subprocess
-        except ImportError:
-            import _winapi as _subprocess
-        monkey_patch_module(_subprocess, 'CreateProcess', create_CreateProcessWarnMultiproc)
-
-
-class _NewThreadStartupWithTrace:
-
-    def __init__(self, original_func, args, kwargs):
-        self.original_func = original_func
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self):
-        # We monkey-patch the thread creation so that this function is called in the new thread. At this point
-        # we notify of its creation and start tracing it.
-        global_debugger = get_global_debugger()
-
-        thread_id = None
-        if global_debugger is not None:
-            # Note: if this is a thread from threading.py, we're too early in the boostrap process (because we mocked
-            # the start_new_thread internal machinery and thread._bootstrap has not finished), so, the code below needs
-            # to make sure that we use the current thread bound to the original function and not use
-            # threading.current_thread() unless we're sure it's a dummy thread.
-            t = getattr(self.original_func, '__self__', getattr(self.original_func, 'im_self', None))
-            if not isinstance(t, threading.Thread):
-                # This is not a threading.Thread but a Dummy thread (so, get it as a dummy thread using
-                # currentThread).
-                t = threading.current_thread()
-
-            if not getattr(t, 'is_pydev_daemon_thread', False):
-                thread_id = get_current_thread_id(t)
-                global_debugger.notify_thread_created(thread_id, t)
-                _on_set_trace_for_new_thread(global_debugger)
-
-                # if getattr(global_debugger, 'thread_analyser', None) is not None:
-                #     try:
-                #         from pydevd_concurrency_analyser.pydevd_concurrency_logger import log_new_thread
-                #         log_new_thread(global_debugger, t)
-                #     except:
-                #         sys.stderr.write("Failed to detect new thread for visualization")
-        try:
-            ret = self.original_func(*self.args, **self.kwargs)
-        finally:
-            if thread_id is not None:
-                global_debugger.notify_thread_not_alive(thread_id)
-
-        return ret
-
-
-class _NewThreadStartupWithoutTrace:
-
-    def __init__(self, original_func, args, kwargs):
-        self.original_func = original_func
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self):
-        return self.original_func(*self.args, **self.kwargs)
-
-
-_UseNewThreadStartup = _NewThreadStartupWithTrace
-
-
-def _get_threading_modules_to_patch():
-    threading_modules_to_patch = []
-
-    try:
-        import thread as _thread
-    except:
-        import _thread
-    threading_modules_to_patch.append(_thread)
-    threading_modules_to_patch.append(threading)
-
-    return threading_modules_to_patch
-
-
-threading_modules_to_patch = _get_threading_modules_to_patch()
-
-
-def patch_thread_module(thread_module):
-    if getattr(thread_module, '_original_start_new_thread', None) is None:
-        if thread_module is threading:
-            if not hasattr(thread_module, '_start_new_thread'):
-                return  # Jython doesn't have it.
-            _original_start_new_thread = thread_module._original_start_new_thread = thread_module._start_new_thread
-        else:
-            _original_start_new_thread = thread_module._original_start_new_thread = thread_module.start_new_thread
-    else:
-        _original_start_new_thread = thread_module._original_start_new_thread
-
-    class ClassWithPydevStartNewThread:
-
-        def pydev_start_new_thread(self, function, args=(), kwargs={}):
-            '''
-            We need to replace the original thread_module.start_new_thread with this function so that threads started
-            through it and not through the threading module are properly traced.
-            '''
-            return _original_start_new_thread(_UseNewThreadStartup(function, args, kwargs), ())
-
-    # This is a hack for the situation where the thread_module.start_new_thread is declared inside a class, such as the one below
-    # class F(object):
-    #    start_new_thread = thread_module.start_new_thread
-    #
-    #    def start_it(self):
-    #        self.start_new_thread(self.function, args, kwargs)
-    # So, if it's an already bound method, calling self.start_new_thread won't really receive a different 'self' -- it
-    # does work in the default case because in builtins self isn't passed either.
-    pydev_start_new_thread = ClassWithPydevStartNewThread().pydev_start_new_thread
-
-    try:
-        # We need to replace the original thread_module.start_new_thread with this function so that threads started through
-        # it and not through the threading module are properly traced.
-        if thread_module is threading:
-            thread_module._start_new_thread = pydev_start_new_thread
-        else:
-            thread_module.start_new_thread = pydev_start_new_thread
-            thread_module.start_new = pydev_start_new_thread
-    except:
-        pass
-
-
-def patch_thread_modules():
-    for t in threading_modules_to_patch:
-        patch_thread_module(t)

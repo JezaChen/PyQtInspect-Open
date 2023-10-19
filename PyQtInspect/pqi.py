@@ -161,9 +161,6 @@ class PyDB(object):
 
         self.reader = None
         self.writer = None
-        self.output_checker_thread = None
-        self.py_db_command_thread = None
-        self.quitting = None
         self.cmd_factory = NetCommandFactory()
         # self._cmd_queue = defaultdict(_queue.Queue)  # Key is thread id or '*', value is Queue
 
@@ -179,23 +176,6 @@ class PyDB(object):
         self.inspect_enabled = False
         self._selected_widget = None
         self._id_to_widget = {}
-
-    def enable_tracing(self, thread_trace_func=None, apply_to_all_threads=False):
-        '''
-        Enables tracing.
-
-        If in regular mode (tracing), will set the tracing function to the tracing
-        function for this thread -- by default it's `PyDB.trace_dispatch`, but after
-        `PyDB.enable_tracing` is called with a `thread_trace_func`, the given function will
-        be the default for the given thread.
-        '''
-        # set_fallback_excepthook()
-        pass
-
-    def set_tracing_for_untraced_contexts(self, ignore_current_thread=False):
-        # Enable the tracing for existing threads (because there may be frames being executed that
-        # are currently untraced).
-        pass
 
     def _try_reconnect(self):
         """
@@ -239,17 +219,7 @@ class PyDB(object):
         if host:
             self.send_process_created_message()
 
-    def get_internal_queue(self, thread_id):
-        """ returns internal command queue for a given thread.
-        if new queue is created, notify the RDB about it """
-        if thread_id.startswith('__frame__'):
-            thread_id = thread_id[thread_id.rfind('|') + 1:]
-        return self._cmd_queue[thread_id]
-
     def check_output_redirect(self):
-        pass
-
-    def notify_thread_created(self, thread_id, thread, use_lock=True):
         pass
 
     def send_process_created_message(self):
@@ -258,23 +228,6 @@ class PyDB(object):
         cmdText = '<process/>'
         cmd = NetCommand(CMD_PROCESS_CREATED, 0, cmdText)
         self.writer.add_command(cmd)
-
-    def start_auxiliary_daemon_threads(self):
-        pass
-
-    def prepare_to_run(self, enable_tracing_from_start=True):
-        ''' Shared code to prepare debugging by installing traces and registering threads '''
-        self.patch_threads()
-
-    def patch_threads(self):
-        try:
-            # not available in jython!
-            threading.settrace(self.trace_dispatch)  # for all future threads
-        except:
-            pass
-
-        from PyQtInspect._pqi_bundle.pqi_monkey import patch_thread_modules
-        patch_thread_modules()
 
     def run(self, file, globals=None, locals=None, is_module=False, set_trace=True):
         module_name = None
@@ -362,21 +315,12 @@ class PyDB(object):
             while not self.ready_to_run:
                 time.sleep(0.1)  # busy wait until we receive run command
 
-            # call prepare_to_run when we already have all information about breakpoints
-            self.prepare_to_run()
-
         t = threadingCurrentThread()
         thread_id = get_current_thread_id(t)
 
         if hasattr(sys, 'exc_clear'):
             # we should clean exception information in Python 2, before user's code execution
             sys.exc_clear()
-
-        # Notify that the main thread is created.
-        # self.notify_thread_created(thread_id, t)
-
-        if set_trace:
-            self.enable_tracing()
 
         return self._exec(is_module, entry_point_fn, module_name, file, globals, locals)
 
@@ -545,14 +489,8 @@ def set_debug(setup):
 # =======================================================================================================================
 def settrace(
         host=None,
-        stdoutToServer=False,
-        stderrToServer=False,
         port=5678,
-        suspend=True,
-        trace_only_current_thread=False,
-        overwrite_prev_trace=False,
         patch_multiprocessing=False,
-        stop_at_frame=None,
         qt_support="pyqt5",
 ):
     '''Sets the tracing function with the pydev debug function and initializes needed facilities.
@@ -560,38 +498,20 @@ def settrace(
     @param host: the user may specify another host, if the debug server is not in the same machine (default is the local
         host)
 
-    @param stdoutToServer: when this is true, the stdout is passed to the debug server
-
-    @param stderrToServer: when this is true, the stderr is passed to the debug server
-        so that they are printed in its console and not in this process console.
-
     @param port: specifies which port to use for communicating with the server (note that the server must be started
         in the same port). @note: currently it's hard-coded at 5678 in the client
-
-    @param suspend: whether a breakpoint should be emulated as soon as this function is called.
-
-    @param trace_only_current_thread: determines if only the current thread will be traced or all current and future
-        threads will also have the tracing enabled.
-
-    @param overwrite_prev_trace: deprecated
 
     @param patch_multiprocessing: if True we'll patch the functions which create new processes so that launched
         processes are debugged.
 
-    @param stop_at_frame: if passed it'll stop at the given frame, otherwise it'll stop in the function which
-        called this method.
+    @param qt_support: the Qt support to be used (currently 'pyqt5' is default).
     '''
     _set_trace_lock.acquire()
     try:
         _locked_settrace(
             host,
-            stdoutToServer,
-            stderrToServer,
             port,
-            suspend,
-            trace_only_current_thread,
             patch_multiprocessing,
-            stop_at_frame,
             qt_support
         )
     finally:
@@ -603,13 +523,8 @@ _set_trace_lock = thread.allocate_lock()
 
 def _locked_settrace(
         host,
-        stdoutToServer,
-        stderrToServer,
         port,
-        suspend,
-        trace_only_current_thread,
         patch_multiprocessing,
-        stop_at_frame,
         qt_support,
 ):
     if SetupHolder.setup is None:
@@ -638,8 +553,6 @@ def _locked_settrace(
         PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt(qt_support)
 
     global connected
-    # global bufferStdOutToServer
-    # global bufferStdErrToServer
     connected = False
 
     # Reset created PyDB daemon threads after fork - parent threads don't exist in a child process.
@@ -662,38 +575,12 @@ def _locked_settrace(
 
         # Mark connected only if it actually succeeded.
         connected = True
-        bufferStdOutToServer = stdoutToServer
-        bufferStdErrToServer = stderrToServer
 
         while not debugger.ready_to_run:
             time.sleep(0.1)  # busy wait until we receive run command
 
-        debugger.start_auxiliary_daemon_threads()
-
-        debugger.enable_tracing(apply_to_all_threads=True)
-
-        if not trace_only_current_thread:
-            # Trace future threads?
-            debugger.patch_threads()
-
-            # As this is the first connection, also set tracing for any untraced threads
-            debugger.set_tracing_for_untraced_contexts(ignore_current_thread=True)
-
         # Stop the tracing as the last thing before the actual shutdown for a clean exit.
         # atexit.register(stoptrace)  todo
-
-    else:
-        # ok, we're already in debug mode, with all set, so, let's just set the break
-        debugger = get_global_debugger()
-
-        t = threadingCurrentThread()
-        # additional_info = set_additional_thread_info(t)
-
-        debugger.enable_tracing()
-
-        if not trace_only_current_thread:
-            # Trace future threads?
-            debugger.patch_threads()
 
 
 # =======================================================================================================================
@@ -701,7 +588,7 @@ def _locked_settrace(
 # =======================================================================================================================
 def usage(do_exit=True, exit_code=0):
     sys.stdout.write('Usage:\n')
-    sys.stdout.write('\tpydevd.py --port N [(--client hostname) | --server] --file executable [file_options]\n')
+    sys.stdout.write('\tpqi.py --port N [(--client hostname) | --server] --file executable [file_options]\n')
     if do_exit:
         sys.exit(exit_code)
 

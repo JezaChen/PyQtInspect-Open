@@ -44,11 +44,6 @@ MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make t
 
 VERSION_STRING = "@@BUILD_NUMBER@@"
 
-from PyQtInspect._pqi_bundle._pqi_filesystem_encoding import getfilesystemencoding
-
-file_system_encoding = getfilesystemencoding()
-filesystem_encoding_is_utf8 = file_system_encoding.lower() in ('utf-8', 'utf_8', 'utf8')
-
 
 class CommunicationRole(object):
     """The class that contains the constants of roles that `PyDB` can play in
