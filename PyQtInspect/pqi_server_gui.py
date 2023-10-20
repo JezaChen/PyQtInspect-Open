@@ -20,7 +20,7 @@ from _socket import SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR, \
-    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO
+    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
@@ -28,8 +28,9 @@ import ctypes
 from PyQtInspect.pqi_gui.code_window import CodeWindow
 from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
-from PyQtInspect.pqi_gui.settings_window import SettingWindow
+from PyQtInspect.pqi_gui.settings_window import SettingWindow, AttachWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
+import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import resources
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
@@ -53,6 +54,12 @@ class Dispatcher(QtCore.QThread):
         self.reader = None
         self.writer = None
 
+        # 由于dispatcher刚创建的时候, 主界面还来不及处理立即到来的信息(PQYWorker未发出新dispatcher创建的信号)
+        # 所以需要在主界面准备好之后再处理
+        # 此前的消息都缓存起来
+        self._mainUIReady = False
+        self._msg_buffer = []
+
     def run(self):
         self.writer = WriterThread(self.sock)
         self.writer.pydev_do_not_trace = False  # We run writer in the same thread so we don't want to loose tracing.
@@ -70,7 +77,17 @@ class Dispatcher(QtCore.QThread):
         except:
             pass
 
+    def registerMainUIReady(self):
+        """ 告知dispatcher, 主界面已经准备好了, 可以处理消息了
+        """
+        self._mainUIReady = True
+        for cmd_id, seq, text in self._msg_buffer:
+            self.notify(cmd_id, seq, text)
+
     def notify(self, cmd_id, seq, text):
+        if not self._mainUIReady:
+            # 缓存起来
+            self._msg_buffer.append((cmd_id, seq, text))
         self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
 
     def sendEnableInspect(self):
@@ -399,18 +416,23 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._moreMenu.setTitle("More")
         self._menuBar.addMenu(self._moreMenu)
 
+        self._attachAction = QtWidgets.QAction(self)
+        self._attachAction.setText("Attach To Process")
+        self._moreMenu.addAction(self._attachAction)
+        self._attachAction.triggered.connect(self._onAttachActionTriggered)
+        self._attachAction.setEnabled(False)
+
+        self._moreMenu.addSeparator()
+
         self._settingAction = QtWidgets.QAction(self)
         self._settingAction.setText("Settings")
         self._moreMenu.addAction(self._settingAction)
         self._settingAction.triggered.connect(self._openSettingWindow)
 
-        self._attachAction = QtWidgets.QAction(self)
-        self._attachAction.setText("Attach To Process")
-        self._moreMenu.addAction(self._attachAction)
-        self._attachAction.triggered.connect(self._onAttachActionTriggered)
-
+        # Child Windows
         self._settingWindow = None
         self._codeWindow = None
+        self._attachWindow = None
 
         self._mainContainer = QtWidgets.QWidget(self)
         self.setCentralWidget(self._mainContainer)
@@ -512,6 +534,15 @@ class PQIWindow(QtWidgets.QMainWindow):
     # region For Serve Button
     def _onServeButtonToggled(self, checked: bool):
         if checked:
+            try:
+                port = int(self._portLineEdit.text())
+            except ValueError:
+                QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
+                self._serveButton.setChecked(False)
+                return
+
+            DataCenter.instance.setServerConfig({"port": port})
+
             self._runWorker()
         else:
             self._askStopWorkerConfirmation()
@@ -520,15 +551,12 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._worker is not None:
             return
 
-        try:
-            port = int(self._portLineEdit.text())
-        except ValueError:
-            QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
-            return
+        port = DataCenter.instance.port
 
         self._portLineEdit.setEnabled(False)
         # self._serveButton.setEnabled(False)
         self._inspectButton.setEnabled(True)
+        self._attachAction.setEnabled(True)
 
         self._worker = PQYWorker(None, port)  # The parent of worker must be None!
         self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
@@ -559,6 +587,9 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._portLineEdit.setEnabled(True)
         self._inspectButton.setEnabled(False)
 
+        # set action status to default
+        self._attachAction.setEnabled(False)
+
         # clear ui
         self._widgetBriefWidget.clearInfo()
         self._createStacksListWidget.clearStacks()
@@ -583,20 +614,24 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def on_widget_info_recv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")
-        if cmdId == CMD_WIDGET_INFO:
-            self.handleWidgetInfoMsg(json.loads(info["text"]))
+        text = info.get("text", "")
+        if cmdId == CMD_QT_PATCH_SUCCESS:
+            pid = int(text)
+            print(f"PyQtInspect: Qt patched successfully, pid: {pid}")
+        elif cmdId == CMD_WIDGET_INFO:
+            self.handleWidgetInfoMsg(json.loads(text))
         elif cmdId == CMD_INSPECT_FINISHED:
             self._currDispatcherIdForSelectedWidget = dispatcherId
             self.handle_inspect_finished_msg()
             self.windowHandle().requestActivate()
         elif cmdId == CMD_EXEC_CODE_ERROR:
-            errMsg = info.get("text", "")
+            errMsg = text
             self._notifyResultToCodeWindow(True, errMsg)
         elif cmdId == CMD_EXEC_CODE_RESULT:
-            result = info.get("text", "")
+            result = text
             self._notifyResultToCodeWindow(False, result)
         elif cmdId == CMD_CHILDREN_INFO:
-            childrenInfoDict = json.loads(info["text"])
+            childrenInfoDict = json.loads(text)
             widgetId = childrenInfoDict["widget_id"]
             self._hierarchyBar.setMenuData(widgetId, childrenInfoDict["child_classes"],
                                            childrenInfoDict["child_object_names"],
@@ -622,6 +657,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
+        dispatcher.registerMainUIReady()
 
     def _onInspectButtonClicked(self, checked: bool):
         if self._worker is None:
@@ -715,20 +751,9 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._curHighlightedWidgetId = -1
 
     def _onAttachActionTriggered(self):
-        # show input dialog
-        text, ok = QtWidgets.QInputDialog.getText(self, "Attach To Process", "Enter the port of the process to attach:")
-        if ok:
-            pid = int(text)
-            self._tryAttachToProcess(pid)
-
-    def _tryAttachToProcess(self, pid: int):
-        from PyQtInspect.pqi_attach.attach_pydevd import main as attach_main_func
-        attach_main_func({
-            'port': int(self._portLineEdit.text()),
-            'pid': pid,
-            'host': '127.0.0.1',
-            'protocol': '', 'debug_mode': ''
-        })
+        if self._attachWindow is None:
+            self._attachWindow = AttachWindow(self)
+        self._attachWindow.show()
 
 
 if __name__ == '__main__':

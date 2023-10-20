@@ -6,4 +6,7 @@
         <file>go_left.png</file>
         <file>go_right.png</file>
     </qresource>
+    <qresource prefix="cursors">
+        <file>cursor.png</file>
+    </qresource>
 </RCC>

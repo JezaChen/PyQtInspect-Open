@@ -1,7 +1,5 @@
 from setuptools import find_packages, setup
 
-
-
 setup(
     name="PyQtInspect",
     version="0.01_alpha",

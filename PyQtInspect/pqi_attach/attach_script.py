@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 def get_main_thread_instance(threading):
@@ -31,11 +32,11 @@ def get_main_thread_id(unlikely_thread_id=None):
             basename = basename[:-1]
 
         if (frame.f_code.co_name, basename) in [
-                ('_run_module_as_main', 'runpy.py'),
-                ('run_module_as_main', 'runpy.py'),
-                ('run_module', 'runpy.py'),
-                ('run_path', 'runpy.py'),
-            ]:
+            ('_run_module_as_main', 'runpy.py'),
+            ('run_module_as_main', 'runpy.py'),
+            ('run_module', 'runpy.py'),
+            ('run_path', 'runpy.py'),
+        ]:
             # This is the case for python -m <module name> (this is an ideal match, so,
             # let's return it).
             return thread_ident, ''
@@ -71,7 +72,7 @@ def get_main_thread_id(unlikely_thread_id=None):
     return None, 'Unable to discover main thread id.'
 
 
-def fix_main_thread_id(on_warn=lambda msg:None, on_exception=lambda msg:None, on_critical=lambda msg:None):
+def fix_main_thread_id(on_warn=lambda msg: None, on_exception=lambda msg: None, on_critical=lambda msg: None):
     # This means that we weren't able to import threading in the main thread (which most
     # likely means that the main thread is paused or in some very long operation).
     # In this case we'll import threading here and hotfix what may be wrong in the threading
@@ -121,12 +122,38 @@ def fix_main_thread_id(on_warn=lambda msg:None, on_exception=lambda msg:None, on
 
         # Note: only import from pydevd after the patching is done (we want to do the minimum
         # possible when doing that patching).
-        on_warn('The threading module was not imported by user code in the main thread. The debugger will attempt to work around https://bugs.python.org/issue37416.')
+        on_warn(
+            'The threading module was not imported by user code in the main thread. The debugger will attempt to work around https://bugs.python.org/issue37416.')
 
         if critical_warning:
-            on_critical('Issue found when debugger was trying to work around https://bugs.python.org/issue37416:\n%s' % (critical_warning,))
+            on_critical(
+                'Issue found when debugger was trying to work around https://bugs.python.org/issue37416:\n%s' % (
+                critical_warning,))
     except:
         on_exception('Error patching main thread id.')
+
+
+def _try_get_qtlib_type():
+    for module_name in sys.modules:
+        if module_name.startswith('PyQt5'):
+            return 'pyqt5'
+        elif module_name.startswith('PySide2'):
+            return 'pyside2'
+
+    # No Qt libraries are imported
+    # Try to import
+    try:
+        import PyQt5
+        return 'pyqt5'
+    except ImportError:
+        try:
+            import PySide2
+            return 'pyside2'
+        except ImportError:
+            pass
+
+    # No Qt libraries are supported
+    return ''
 
 
 def attach(port, host, protocol=''):
@@ -166,16 +193,18 @@ def attach(port, host, protocol=''):
 
         py_db = PyQtInspect.pqi.get_global_debugger()
         if py_db is not None:
-            py_db.dispose_and_kill_all_pydevd_threads(wait=False)
+            py_db.dispose_and_kill_all_pydevd_threads(wait=False)  # todo
 
         # pydevd.DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = True
         # pydevd.DebugInfoHolder.DEBUG_TRACE_BREAKPOINTS = 3
         # pydevd.DebugInfoHolder.DEBUG_TRACE_LEVEL = 3
+        qtlib_type = _try_get_qtlib_type()
         PyQtInspect.pqi.settrace(
             port=port,
             host=host,
             patch_multiprocessing=False,
-            is_attach=True
+            is_attach=True,
+            qt_support=qtlib_type,
         )
     except:
         import traceback

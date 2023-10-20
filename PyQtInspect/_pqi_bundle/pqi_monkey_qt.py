@@ -109,7 +109,7 @@ def patch_qt(qt_support_mode, is_attach=False):
             import PySide2.QtCore  # @UnresolvedImport
             import PySide2.QtWidgets
             _internal_patch_qt(PySide2.QtCore, qt_support_mode)
-            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, qt_support_mode)
+            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, qt_support_mode, is_attach)
         except:
             return
 
@@ -349,7 +349,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
             class_name=obj.__class__.__name__,
             object_name=obj.objectName(),
             id=id(obj),
-            stacks_when_create=[],
+            stacks_when_create=_filter_trace_stack(getattr(obj, '_pqi_stacks_when_create', [])),
             size=get_widget_size(obj),
             pos=get_widget_pos(obj),
             parent_classes=parent_classes,
@@ -499,6 +499,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
                 continue
 
             event_listener = EventListener()
+            # We must move the event listener to the thread of the widget during attach
             event_listener.moveToThread(widget.thread())
             widget._pqi_event_listener = event_listener
             widget.installEventFilter(widget._pqi_event_listener)
@@ -526,3 +527,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
         _patch_old_widgets_when_attached()
 
     print("<patched>")
+
+    debugger = get_global_debugger()
+    if debugger is not None:
+        debugger.send_qt_patch_success_message()

@@ -9,7 +9,7 @@ import os
 import time
 
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
-from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED
+from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, import_Qt
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
@@ -227,6 +227,11 @@ class PyDB(object):
         """
         cmdText = '<process/>'
         cmd = NetCommand(CMD_PROCESS_CREATED, 0, cmdText)
+        self.writer.add_command(cmd)
+
+    def send_qt_patch_success_message(self):
+        cmdText = str(os.getpid())
+        cmd = NetCommand(CMD_QT_PATCH_SUCCESS, 0, cmdText)
         self.writer.add_command(cmd)
 
     def run(self, file, globals=None, locals=None, is_module=False, set_trace=True):
