@@ -202,7 +202,7 @@ def attach(port, host, protocol=''):
         PyQtInspect.pqi.settrace(
             port=port,
             host=host,
-            patch_multiprocessing=False,
+            patch_multiprocessing=True,
             is_attach=True,
             qt_support=qtlib_type,
         )
