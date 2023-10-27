@@ -1,11 +1,3 @@
-# -*- encoding:utf-8 -*-
-# ==============================================
-# Author: 陈建彰
-# Time: 2023/8/1 10:59
-# Description:
-# ==============================================
-
-# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -114,7 +106,11 @@ class Window(QWidget):
         layout.addWidget(QPushButton("orange button", self,
                                      objectName="OrangeButton", minimumHeight=48))
         layout.addWidget(QPushButton("purple button", self,
-                                     objectName="PurpleButton", minimumHeight=48))
+                                     objectName="PurpleButton", minimumHeight=48,
+                                     clicked=self._onPurpleButtonClicked))
+
+    def _onPurpleButtonClicked(self):
+        multiprocessing.Process(target=main).start()
 
 
 def main():
@@ -127,10 +123,10 @@ def main():
 
 if __name__ == '__main__':
     import os
+
     print(f"pid: {os.getpid()}")
     app = QApplication(sys.argv)
-    multiprocessing.Process(target=main).start()
+
     # main()
     main()
     sys.exit(app.exec_())
-
