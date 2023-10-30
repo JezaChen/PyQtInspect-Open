@@ -209,6 +209,11 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendEnableInspect(extra)
 
+    def sendEnableInspectToDispatcher(self, dispatcherId: int, extra: dict):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendEnableInspect(extra)
+
     def sendDisableInspect(self):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
@@ -626,6 +631,13 @@ class PQIWindow(QtWidgets.QMainWindow):
         if cmdId == CMD_QT_PATCH_SUCCESS:
             pid = int(text)
             print(f"PyQtInspect: Qt patched successfully, pid: {pid}")
+
+            # If inspection is enabled, enable it for the new process.
+            if self._inspectButton.isChecked():
+                self._worker.sendEnableInspectToDispatcher(
+                    dispatcherId,
+                    {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
+                )
         elif cmdId == CMD_WIDGET_INFO:
             self.handleWidgetInfoMsg(json.loads(text))
         elif cmdId == CMD_INSPECT_FINISHED:
