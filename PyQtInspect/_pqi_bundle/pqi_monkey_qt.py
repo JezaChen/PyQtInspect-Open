@@ -7,11 +7,9 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 
-from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size, get_widget_pos, get_parent_info, get_stylesheet, \
-    get_children_info
+
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
-from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo
 
 
 def set_trace_in_qt():
@@ -279,9 +277,6 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
 
 
 def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_attach=False):
-    import inspect
-    # _original_QWidget_init = QtWidgets.QWidget.__init__
-
     lastHighlightWidget = None
     enteredWidgetStack = []
 
@@ -304,10 +299,9 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
                 break
 
     def _clearEnteredWidgetStack():
-        nonlocal enteredWidgetStack
         enteredWidgetStack.clear()
 
-    def _showLastHighlightWidget():
+    def _highlightStackTopWidget():
         nonlocal lastHighlightWidget
         _filterEnteredWidgetStack()
         if not enteredWidgetStack:
@@ -319,42 +313,11 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
 
         obj = enteredWidgetStack[-1]
 
-        def _mouseReleaseEvent(event):
-            if event.button() != QtCore.Qt.LeftButton:
-                return obj._oldMouseReleaseEvent(event)
-            debugger = get_global_debugger()
-            if debugger is None or not debugger.inspect_enabled:
-                return obj._oldMouseReleaseEvent(event)
-            debugger.notify_inspect_finished(obj)
-            if hasattr(obj, '_pqi_highlight_bg'):
-                obj._pqi_highlight_bg.hide()
-                _clearEnteredWidgetStack()
-            obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-
-        setattr(_mouseReleaseEvent, '_pqi_hooked', True)
-
         if obj.objectName() == "_pqi_highlight_bg":
             return
 
         # === send widget info === #
-        # todo parent信息貌似可以缓存? changeParent可能会导致parent信息变化
-        parent_info = list(get_parent_info(obj))
-        parent_classes, parent_ids, parent_obj_names = [], [], []
-        if parent_info:
-            parent_classes, parent_ids, parent_obj_names = zip(*parent_info)
-        widget_info = QWidgetInfo(
-            class_name=obj.__class__.__name__,
-            object_name=obj.objectName(),
-            id=id(obj),
-            stacks_when_create=_filter_trace_stack(getattr(obj, '_pqi_stacks_when_create', [])),
-            size=get_widget_size(obj),
-            pos=get_widget_pos(obj),
-            parent_classes=parent_classes,
-            parent_ids=parent_ids,
-            parent_object_names=parent_obj_names,
-            stylesheet=get_stylesheet(obj),
-        )
-        debugger.send_widget_message(widget_info)
+        debugger.send_widget_info_to_server(obj)
 
         # === highlight widget === #
         if not hasattr(obj, '_pqi_highlight_bg'):
@@ -367,13 +330,28 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
 
         if not hasattr(obj.mouseReleaseEvent, '_pqi_hooked'):
             obj._oldMouseReleaseEvent = obj.mouseReleaseEvent
+
+        def _mouseReleaseEvent(event):
+            if event.button() != QtCore.Qt.LeftButton:
+                return obj._oldMouseReleaseEvent(event)
+            debugger = get_global_debugger()
+            if debugger is None or not debugger.inspect_enabled:
+                return obj._oldMouseReleaseEvent(event)
+            debugger.notify_inspect_finished(obj)
+            # if hasattr(obj, '_pqi_highlight_bg'):
+            obj._pqi_highlight_bg.hide()
+            _clearEnteredWidgetStack()
+            obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
+
+        setattr(_mouseReleaseEvent, '_pqi_hooked', True)
+
         obj.mouseReleaseEvent = _mouseReleaseEvent
 
     class EventListener(QtCore.QObject):
         def _handleEnterEvent(self, obj, event):
             nonlocal lastHighlightWidget
             enteredWidgetStack.append(obj)
-            _showLastHighlightWidget()
+            _highlightStackTopWidget()
 
         def _handleLeaveEvent(self, obj, event):
             if enteredWidgetStack and enteredWidgetStack[-1] == obj:
@@ -390,7 +368,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
             if hasattr(obj, '_oldMouseReleaseEvent'):
                 obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
 
-            _showLastHighlightWidget()
+            _highlightStackTopWidget()
 
         def eventFilter(self, obj, event):
             if event.type() == QtCore.QEvent.Enter:
@@ -413,7 +391,7 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
 
     def _hideLastHighlightWidget():
         nonlocal lastHighlightWidget
-        if isinstance(lastHighlightWidget, QtWidgets.QWidget) and not isdeleted(lastHighlightWidget):
+        if lastHighlightWidget is not None and not isdeleted(lastHighlightWidget):
             lastHighlightWidget.hide()
         lastHighlightWidget = None
 
@@ -426,21 +404,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
         widget.setObjectName("_pqi_highlight_bg")
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
         return widget
-
-    def _filter_trace_stack(traceStacks):
-        filteredStacks = []
-        from PyQtInspect.pqi import SetupHolder
-        stackMaxDepth = SetupHolder.setup["stack-max-depth"]
-        stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
-        for frame, lineno in stacks:
-            filteredStacks.append(
-                {
-                    'filename': inspect.getsourcefile(frame),
-                    'lineno': lineno,
-                    'function': frame.f_code.co_name,
-                }
-            )
-        return filteredStacks
 
     def _new_QWidget_init(self, *args, **kwargs):
         self._original_QWidget_init(*args, **kwargs)

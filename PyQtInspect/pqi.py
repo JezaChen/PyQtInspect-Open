@@ -14,10 +14,10 @@ pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
-from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
+from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
-    get_stylesheet, get_children_info, import_Qt
+    get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -408,11 +408,7 @@ class PyDB(object):
         self._selected_widget = widget
 
     def exec_code_in_selected_widget(self, code):
-        QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
-        if hasattr(self._selected_widget, '_pqi_exec'):
-            event = QtCore.QEvent(QtCore.QEvent.User)
-            event._pqi_exec_code = code
-            QtCore.QCoreApplication.postEvent(self._selected_widget, event)
+        exec_code_in_widget(self._selected_widget, code)
 
     def notify_exec_code_result(self, result):
         cmd = self.cmd_factory.make_exec_code_result_message(result)
@@ -431,22 +427,16 @@ class PyDB(object):
     def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
         widget = self._id_to_widget.get(widget_id, None)
         if widget is not None:
-            QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
-            attribute = '_pqi_highlight_self' if is_highlight else '_pqi_unhighlight_self'
-            if hasattr(widget, attribute):
-                event = QtCore.QEvent(QtCore.QEvent.User)
-                event._pqi_is_highlight = is_highlight
-                QtCore.QCoreApplication.postEvent(widget, event)
+            set_widget_highlight(widget, is_highlight)
 
     def select_widget_by_id(self, widget_id):
         widget = self._id_to_widget.get(widget_id, None)
         if widget is not None:
             self.select_widget(widget)
 
-    def notify_widget_info(self, widget_id, extra):
-        widget = self._id_to_widget.get(widget_id, None)
-        if widget is None:
-            return
+    def send_widget_info_to_server(self, widget, extra=None):
+        if extra is None:
+            extra = {}
 
         parent_info = list(get_parent_info(widget))
         parent_classes, parent_ids, parent_obj_names = [], [], []
@@ -455,9 +445,9 @@ class PyDB(object):
 
         widget_info = QWidgetInfo(
             class_name=widget.__class__.__name__,
-            object_name=widget.objectName(),
+            object_name=get_widget_object_name(widget),
             id=id(widget),
-            stacks_when_create=_filter_trace_stack(getattr(widget, '_pqi_stacks_when_create', [])),
+            stacks_when_create=filter_trace_stack(getattr(widget, '_pqi_stacks_when_create', [])),
             size=get_widget_size(widget),
             pos=get_widget_pos(widget),
             parent_classes=parent_classes,
@@ -468,7 +458,21 @@ class PyDB(object):
         )
         self.send_widget_message(widget_info)
 
+    def notify_widget_info(self, widget_id, extra):
+        widget = self._id_to_widget.get(widget_id, None)
+        if widget is None:
+            return
+
+        self.send_widget_info_to_server(widget, extra)
+
     def notify_children_info(self, widget_id):
+        """
+        Notify the children information of the given widget to the PyDB debugger.
+
+        @param widget_id: The ID of the widget.
+
+        @note: used for the bottom hierarchy view of the server GUI program.
+        """
         widget = self._id_to_widget.get(widget_id, None)
         if widget is None:
             return
@@ -517,6 +521,8 @@ def settrace(
         processes are debugged.
 
     @param qt_support: the Qt support to be used (currently 'pyqt5' is default).
+
+    @param is_attach: if True, we're attaching to an existing process (and not launching a new one) now.
     '''
     _set_trace_lock.acquire()
     try:

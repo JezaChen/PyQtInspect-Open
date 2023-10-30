@@ -1,13 +1,5 @@
 # PQI Tools for Qt
 
-# # todo Only Supports PyQt5
-# from PyQt5 import QtWidgets, QtCore, QtGui
-# import inspect
-#
-#
-# def get_qt_version():
-#     return QtCore.PYQT_VERSION_STR
-
 
 def get_widget_class_name(widget):
     return widget.__class__.__name__
@@ -47,20 +39,43 @@ def get_children_info(widget):
         yield get_widget_class_name(child), id(child), get_widget_object_name(child)
 
 
-def exec_code_in_widget(widget, code: str):
-    # if not isinstance(widget, QtWidgets.QWidget):
-    #     return
+def import_Qt(qt_type: str):
+    """
+    Import Qt libraries by type.
 
-    if hasattr(widget, '_pqi_exec'):
-        widget._pqi_exec(code)
-
-
-def import_Qt(qt_version: str):
-    if qt_version == 'pyqt5':
+    :param qt_type: The Qt type to import, either 'pyqt5' or 'pyside2'.
+    """
+    if qt_type == 'pyqt5':
         import PyQt5 as QtLib
-    elif qt_version == 'pyside2':
+    elif qt_type == 'pyside2':
         import PySide2 as QtLib
     else:
-        raise ValueError(f'Unsupported Qt version: {qt_version}')
+        raise ValueError(f'Unsupported Qt type: {qt_type}')
 
     return QtLib
+
+
+def _send_custom_event(target_widget, key: str, val):
+    from PyQtInspect.pqi import SetupHolder
+
+    QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
+    event = QtCore.QEvent(QtCore.QEvent.User)
+    setattr(event, key, val)
+    QtCore.QCoreApplication.postEvent(target_widget, event)
+
+
+def set_widget_highlight(widget, highlight: bool):
+    """
+    Set the highlight on a widget.
+
+    :note: Use custom events to avoid program crashes due to cross-threaded calls
+
+    :param widget: The widget to set the highlight on.
+
+    :param highlight: A boolean indicating whether to highlight the widget or not.
+    """
+    _send_custom_event(widget, '_pqi_is_highlight', highlight)
+
+
+def exec_code_in_widget(widget, code: str):
+    _send_custom_event(widget, '_pqi_exec_code', code)

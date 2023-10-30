@@ -2,7 +2,7 @@
 import inspect
 
 
-def _filter_trace_stack(traceStacks):
+def filter_trace_stack(traceStacks):
     filteredStacks = []
     from PyQtInspect.pqi import SetupHolder
     stackMaxDepth = SetupHolder.setup["stack-max-depth"]
