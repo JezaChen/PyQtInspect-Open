@@ -7,7 +7,7 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 
-
+from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import patch_QtWidgets
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
@@ -107,7 +107,8 @@ def patch_qt(qt_support_mode, is_attach=False):
             import PySide2.QtCore  # @UnresolvedImport
             import PySide2.QtWidgets
             _internal_patch_qt(PySide2.QtCore, qt_support_mode)
-            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, qt_support_mode, is_attach)
+            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, PySide2.QtGui,
+                                       qt_support_mode, is_attach)
         except:
             return
 
@@ -131,7 +132,8 @@ def patch_qt(qt_support_mode, is_attach=False):
             import PyQt5.QtWidgets  # @UnresolvedImport
 
             _internal_patch_qt(PyQt5.QtCore)
-            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, qt_support_mode, is_attach)
+            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, PyQt5.QtGui,
+                                       qt_support_mode, is_attach)
         except Exception as e:
             print(e)
             return
@@ -276,222 +278,5 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
     QtCore.QRunnable = RunnableWrapper
 
 
-def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_attach=False):
-    lastHighlightWidget = None
-    enteredWidgetStack = []
-
-    if qt_support_mode.startswith("pyqt"):
-        import sip
-        isdeleted = sip.isdeleted
-        ispycreated = sip.ispycreated
-    elif qt_support_mode.startswith("pyside"):  # todo pyside6 also use this?
-        import shiboken2  # todo: or shiboken?
-        isdeleted = lambda obj: not shiboken2.isValid(obj)
-        ispycreated = shiboken2.createdByPython
-
-    def _filterEnteredWidgetStack():
-        nonlocal enteredWidgetStack
-        while enteredWidgetStack:
-            wgt = enteredWidgetStack[-1]
-            if isdeleted(wgt):
-                enteredWidgetStack.pop()
-            else:
-                break
-
-    def _clearEnteredWidgetStack():
-        enteredWidgetStack.clear()
-
-    def _highlightStackTopWidget():
-        nonlocal lastHighlightWidget
-        _filterEnteredWidgetStack()
-        if not enteredWidgetStack:
-            return
-
-        debugger = get_global_debugger()
-        if debugger is None or not debugger.inspect_enabled:
-            return
-
-        obj = enteredWidgetStack[-1]
-
-        if obj.objectName() == "_pqi_highlight_bg":
-            return
-
-        # === send widget info === #
-        debugger.send_widget_info_to_server(obj)
-
-        # === highlight widget === #
-        if not hasattr(obj, '_pqi_highlight_bg'):
-            obj._pqi_highlight_bg = _createHighlightWidget(obj)
-
-        obj._pqi_highlight_bg.setFixedSize(obj.size())
-        _hideLastHighlightWidget()
-        obj._pqi_highlight_bg.show()
-        lastHighlightWidget = obj._pqi_highlight_bg
-
-        if not hasattr(obj.mouseReleaseEvent, '_pqi_hooked'):
-            obj._oldMouseReleaseEvent = obj.mouseReleaseEvent
-
-        def _mouseReleaseEvent(event):
-            if event.button() != QtCore.Qt.LeftButton:
-                return obj._oldMouseReleaseEvent(event)
-            debugger = get_global_debugger()
-            if debugger is None or not debugger.inspect_enabled:
-                return obj._oldMouseReleaseEvent(event)
-            debugger.notify_inspect_finished(obj)
-            # if hasattr(obj, '_pqi_highlight_bg'):
-            obj._pqi_highlight_bg.hide()
-            _clearEnteredWidgetStack()
-            obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-
-        setattr(_mouseReleaseEvent, '_pqi_hooked', True)
-
-        obj.mouseReleaseEvent = _mouseReleaseEvent
-
-    class EventListener(QtCore.QObject):
-        def _handleEnterEvent(self, obj, event):
-            nonlocal lastHighlightWidget
-            enteredWidgetStack.append(obj)
-            _highlightStackTopWidget()
-
-        def _handleLeaveEvent(self, obj, event):
-            if enteredWidgetStack and enteredWidgetStack[-1] == obj:
-                enteredWidgetStack.pop()
-            else:
-                enteredWidgetStack.clear()
-
-            if obj.objectName() == "_pqi_highlight_bg":
-                return
-
-            if hasattr(obj, '_pqi_highlight_bg'):
-                obj._pqi_highlight_bg.hide()
-
-            if hasattr(obj, '_oldMouseReleaseEvent'):
-                obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-
-            _highlightStackTopWidget()
-
-        def eventFilter(self, obj, event):
-            if event.type() == QtCore.QEvent.Enter:
-                self._handleEnterEvent(obj, event)
-            elif event.type() == QtCore.QEvent.Leave:
-                self._handleLeaveEvent(obj, event)
-            elif event.type() == QtCore.QEvent.User:
-                # handle highlight
-                if hasattr(event, '_pqi_is_highlight'):
-                    is_highlight = event._pqi_is_highlight
-                    if is_highlight:
-                        obj._pqi_highlight_self()
-                    else:
-                        obj._pqi_unhighlight_self()
-                # handle code exec
-                if hasattr(event, '_pqi_exec_code'):
-                    code = event._pqi_exec_code
-                    obj._pqi_exec(code)
-            return False
-
-    def _hideLastHighlightWidget():
-        nonlocal lastHighlightWidget
-        if lastHighlightWidget is not None and not isdeleted(lastHighlightWidget):
-            lastHighlightWidget.hide()
-        lastHighlightWidget = None
-
-    def _createHighlightWidget(parent: QtWidgets.QWidget):
-        # 先new再调用之前的__init__
-        widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
-        QtWidgets.QWidget._original_QWidget_init(widget, parent)
-        widget.setFixedSize(parent.size())
-        widget.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
-        widget.setObjectName("_pqi_highlight_bg")
-        widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
-        return widget
-
-    def _new_QWidget_init(self, *args, **kwargs):
-        self._original_QWidget_init(*args, **kwargs)
-        if not ispycreated(self):
-            # DO NOT install event listener for non-pycreated widget
-            # because it may cause crash when exit
-            return
-
-        frames = getStackFrame()
-        setattr(self, '_pqi_stacks_when_create', frames)
-        self._pqi_event_listener = EventListener()
-        self.installEventFilter(self._pqi_event_listener)
-
-        # === register widget === #
-        debugger = get_global_debugger()
-        if debugger is not None:
-            debugger.register_widget(self)
-
-    def _pqi_exec(self: QtWidgets.QWidget, code):
-        debugger = get_global_debugger()
-        try:
-            f = StringIO()
-            with redirect_stdout(f):
-                exec(code, globals(), locals())
-            if debugger is not None:
-                debugger.notify_exec_code_result(f.getvalue())
-        except Exception as e:
-            if debugger is not None:
-                debugger.notify_exec_code_error_message(str(e))
-
-    def _pqi_highlight_self(self: QtWidgets.QWidget):
-        nonlocal lastHighlightWidget
-        if not hasattr(self, '_pqi_highlight_bg'):
-            self._pqi_highlight_bg = _createHighlightWidget(self)
-
-        self._pqi_highlight_bg.setFixedSize(self.size())
-        _hideLastHighlightWidget()
-        self._pqi_highlight_bg.show()
-        lastHighlightWidget = self._pqi_highlight_bg
-
-    def _pqi_unhighlight_self(self: QtWidgets.QWidget):
-        nonlocal lastHighlightWidget
-        if hasattr(self, '_pqi_highlight_bg'):
-            self._pqi_highlight_bg.hide()
-            lastHighlightWidget = None
-
-    # ================================
-    # ATTACH
-    # ================================
-    def _patch_old_widgets_when_attached():
-        topLevelWidgets = QtWidgets.QApplication.topLevelWidgets()
-        widgetsToPatch = collections.deque(topLevelWidgets)
-        while widgetsToPatch:  # BFS traverse
-            widget = widgetsToPatch.popleft()
-
-            if isdeleted(widget) or not ispycreated(widget):
-                continue
-
-            event_listener = EventListener()
-            # We must move the event listener to the thread of the widget during attach
-            event_listener.moveToThread(widget.thread())
-            widget._pqi_event_listener = event_listener
-            widget.installEventFilter(widget._pqi_event_listener)
-
-            # === register widget === #
-            debugger = get_global_debugger()
-            if debugger is not None:
-                debugger.register_widget(widget)
-
-            widgetsToPatch.extend(widget.findChildren(QtWidgets.QWidget))
-
-    # 对于PyQt, 仅需patch基类QWidget即可
-    # 但对于PySide, 则需要给所有的QWidget子类都打上补丁
-    classesToPatch = QtWidgetClasses if qt_support_mode.startswith('pyside') else ['QWidget']
-
-    for widgetClsName in classesToPatch:
-        widgetCls = getattr(QtWidgets, widgetClsName)
-        widgetCls._original_QWidget_init = widgetCls.__init__
-        widgetCls.__init__ = _new_QWidget_init
-        widgetCls._pqi_exec = _pqi_exec
-        widgetCls._pqi_highlight_self = _pqi_highlight_self
-        widgetCls._pqi_unhighlight_self = _pqi_unhighlight_self
-
-    if is_attach:
-        _patch_old_widgets_when_attached()
-
-    print("<patched>")
-
-    debugger = get_global_debugger()
-    if debugger is not None:
-        debugger.send_qt_patch_success_message()
+def _internal_patch_qt_widgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=False):
+    patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode, is_attach)
