@@ -313,10 +313,11 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
         if not enteredWidgetStack:
             return
 
+        debugger = get_global_debugger()
+        if debugger is None or not debugger.inspect_enabled:
+            return
+
         obj = enteredWidgetStack[-1]
-        # todo no need for attached
-        # if not hasattr(obj, '_pqi_stacks_when_create'):
-        #     return
 
         def _mouseReleaseEvent(event):
             if event.button() != QtCore.Qt.LeftButton:
@@ -333,10 +334,6 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
         setattr(_mouseReleaseEvent, '_pqi_hooked', True)
 
         if obj.objectName() == "_pqi_highlight_bg":
-            return
-
-        debugger = get_global_debugger()
-        if debugger is None or not debugger.inspect_enabled:
             return
 
         # === send widget info === #
@@ -447,9 +444,13 @@ def _internal_patch_qt_widgets(QtWidgets, QtCore, qt_support_mode='auto', is_att
 
     def _new_QWidget_init(self, *args, **kwargs):
         self._original_QWidget_init(*args, **kwargs)
-        if ispycreated(self):
-            frames = getStackFrame()
-            setattr(self, '_pqi_stacks_when_create', frames)
+        if not ispycreated(self):
+            # DO NOT install event listener for non-pycreated widget
+            # because it may cause crash when exit
+            return
+
+        frames = getStackFrame()
+        setattr(self, '_pqi_stacks_when_create', frames)
         self._pqi_event_listener = EventListener()
         self.installEventFilter(self._pqi_event_listener)
 

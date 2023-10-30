@@ -7,6 +7,12 @@
 import sys
 import os
 import time
+import pathlib
+import weakref
+
+pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
+if pyqt_inspect_module_dir not in sys.path:
+    sys.path.insert(0, pyqt_inspect_module_dir)
 
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import _filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
@@ -175,7 +181,7 @@ class PyDB(object):
 
         self.inspect_enabled = False
         self._selected_widget = None
-        self._id_to_widget = {}
+        self._id_to_widget = weakref.WeakValueDictionary()
 
     def _try_reconnect(self):
         """

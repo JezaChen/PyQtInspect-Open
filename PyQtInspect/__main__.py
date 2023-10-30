@@ -7,7 +7,8 @@
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(__file__))
+module_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.dirname(module_path))
 
 if __name__ == '__main__':
     import PyQtInspect.pqi
