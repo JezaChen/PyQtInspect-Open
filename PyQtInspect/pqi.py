@@ -22,9 +22,10 @@ from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
-import traceback
-
+from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
+
+import traceback
 
 threadingCurrentThread = threading.current_thread
 
@@ -180,6 +181,7 @@ class PyDB(object):
         self.communication_role = None
 
         self.inspect_enabled = False
+        self._inspect_extra_data = {}
         self._selected_widget = None
         self._id_to_widget = weakref.WeakValueDictionary()
 
@@ -392,11 +394,25 @@ class PyDB(object):
         is impossible because, for example, a circular dependency."""
         pass
 
-    def enable_inspect(self):
+    def dispose_and_kill_all_pqi_threads(self):
+        # TODO
+        py_db = get_global_debugger()
+        if py_db is self:
+            set_global_debugger(None)
+
+    def enable_inspect(self, extra_data: OptionalDict = None):
+        if extra_data is None:
+            extra_data = {}
+
         self.inspect_enabled = True
+        self._inspect_extra_data = extra_data
 
     def disable_inspect(self):
         self.inspect_enabled = False
+
+    @property
+    def mock_left_button_down(self) -> bool:
+        return self._inspect_extra_data.get('mock_left_button_down', False)
 
     def notify_inspect_finished(self, widget):
         self.select_widget(widget)

@@ -59,15 +59,6 @@ class ChildrenMenuWidget(QWidget):
         self.listView.clicked.connect(self.onListViewClicked)
         self.listView.entered.connect(self.onListViewEntered)
 
-    def updateDirModel(self, path):
-        info = QFileInfo(path)
-        if info.isDir():
-            self.m_pDirModel.refresh(self.m_pDirModel.index(path))
-            self.listView.setRootIndex(self.m_pDirModel.index(path))
-
-    def adjustMenuSize(self):
-        pass
-
     def setLoading(self):
         self._model.clear()
         item = QStandardItem("Loading...")

@@ -90,8 +90,8 @@ class Dispatcher(QtCore.QThread):
             self._msg_buffer.append((cmd_id, seq, text))
         self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
 
-    def sendEnableInspect(self):
-        self.writer.add_command(self.net_command_factory.make_enable_inspect_message())
+    def sendEnableInspect(self, extra: dict):
+        self.writer.add_command(self.net_command_factory.make_enable_inspect_message(extra))
 
     def sendDisableInspect(self):
         self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
@@ -205,9 +205,9 @@ class PQYWorker(QtCore.QObject):
     def onMsg(self, info: dict):
         self.widgetInfoRecv.emit(info)
 
-    def sendEnableInspect(self):
+    def sendEnableInspect(self, extra: dict):
         for dispatcher in self.dispatchers:
-            dispatcher.sendEnableInspect()
+            dispatcher.sendEnableInspect(extra)
 
     def sendDisableInspect(self):
         for dispatcher in self.dispatchers:
@@ -416,6 +416,13 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._moreMenu.setTitle("More")
         self._menuBar.addMenu(self._moreMenu)
 
+        self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
+        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
+        self._isMockLeftButtonDownAction.setCheckable(True)
+        self._isMockLeftButtonDownAction.setChecked(True)  # default
+        self._moreMenu.addAction(self._isMockLeftButtonDownAction)
+
+        # Attach Action
         self._attachAction = QtWidgets.QAction(self)
         self._attachAction.setText("Attach To Process")
         self._moreMenu.addAction(self._attachAction)
@@ -424,6 +431,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._moreMenu.addSeparator()
 
+        # Setting Action
         self._settingAction = QtWidgets.QAction(self)
         self._settingAction.setText("Settings")
         self._moreMenu.addAction(self._settingAction)
@@ -663,7 +671,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._worker is None:
             return
         if checked:
-            self._worker.sendEnableInspect()
+            self._worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
         else:
             self._worker.sendDisableInspect()
             self._currDispatcherIdForSelectedWidget = None

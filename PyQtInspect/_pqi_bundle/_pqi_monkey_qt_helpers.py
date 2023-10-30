@@ -34,6 +34,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         isdeleted = lambda obj: not shiboken2.isValid(obj)
         ispycreated = shiboken2.createdByPython
 
+    def _create_mouse_event(event_type, pos, button):
+        return QtGui.QMouseEvent(event_type, pos, button, button, QtCore.Qt.NoModifier)
+
     def _register_widget(widget):
         debugger = get_global_debugger()
         if debugger is not None:
@@ -55,11 +58,19 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             obj._oldMouseReleaseEvent = obj.mouseReleaseEvent
 
         def _newMouseReleaseEvent(event):
-            if event.button() != QtCore.Qt.LeftButton:
-                return obj._oldMouseReleaseEvent(event)
             debugger = get_global_debugger()
             if debugger is None or not debugger.inspect_enabled:
                 return obj._oldMouseReleaseEvent(event)
+
+            if event.button() != QtCore.Qt.LeftButton:
+                if debugger is not None and debugger.mock_left_button_down and event.button() == QtCore.Qt.RightButton:
+                    # mock left button press and release event
+                    obj.mousePressEvent(
+                        _create_mouse_event(QtCore.QEvent.MouseButtonPress, event.pos(), QtCore.Qt.LeftButton)
+                    )
+                    event = _create_mouse_event(QtCore.QEvent.MouseButtonRelease, event.pos(), QtCore.Qt.LeftButton)
+                return obj._oldMouseReleaseEvent(event)
+
             debugger.notify_inspect_finished(obj)
             HighlightController.unhighlight(obj)
             _entered_widget_stack.clear()

@@ -14,6 +14,7 @@ from PyQtInspect._pqi_bundle.pqi_override import overrides
 import json
 
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
+from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 
 try:
     from urllib import quote_plus, unquote, unquote_plus
@@ -218,7 +219,8 @@ class ReaderThread(PyDBDaemonThread):
         if global_dbg is None:
             return
         if cmd_id == CMD_ENABLE_INSPECT:
-            global_dbg.enable_inspect()
+            extra = json.loads(unquote(text))
+            global_dbg.enable_inspect(extra)
         elif cmd_id == CMD_DISABLE_INSPECT:
             global_dbg.disable_inspect()
         elif cmd_id == CMD_EXEC_CODE:
@@ -491,8 +493,10 @@ class NetCommandFactory:
         cmd = NetCommand(CMD_EXEC_CODE_ERROR, 0, err_msg)
         return cmd
 
-    def make_enable_inspect_message(self):
-        return NetCommand(CMD_ENABLE_INSPECT, 0, '')
+    def make_enable_inspect_message(self, extra: OptionalDict = None):
+        if extra is None:
+            extra = {}
+        return NetCommand(CMD_ENABLE_INSPECT, 0, json.dumps(extra))
 
     def make_disable_inspect_message(self):
         return NetCommand(CMD_DISABLE_INSPECT, 0, '')
