@@ -37,11 +37,6 @@ myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
-class DispatcherThread(QtCore.QThread):
-    def run(self) -> None:
-        super().run()
-
-
 class Dispatcher(QtCore.QThread):
     sigMsg = QtCore.pyqtSignal(int, dict)  # dispatcher_id, info
     sigDelete = QtCore.pyqtSignal(int)
