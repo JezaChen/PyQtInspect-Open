@@ -8,6 +8,13 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetCl
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
+def _try_get_file_name(frame):
+    try:
+        return inspect.getsourcefile(frame) or inspect.getfile(frame)
+    except TypeError:
+        return ''
+
+
 def filter_trace_stack(traceStacks):
     filteredStacks = []
     from PyQtInspect.pqi import SetupHolder
@@ -16,7 +23,7 @@ def filter_trace_stack(traceStacks):
     for frame, lineno in stacks:
         filteredStacks.append(
             {
-                'filename': inspect.getsourcefile(frame),
+                'filename': _try_get_file_name(frame),
                 'lineno': lineno,
                 'function': frame.f_code.co_name,
             }
@@ -140,7 +147,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
     _entered_widget_stack = EnteredWidgetStack()
 
-    def _inspect_widget(widget: QtWidgets.QWidget):
+    def _inspect_widget(debugger, widget: QtWidgets.QWidget):
         # === send widget info === #
         debugger.send_widget_info_to_server(widget)
 
@@ -161,7 +168,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         obj = stack[-1]
 
-        _inspect_widget(obj)
+        _inspect_widget(debugger, obj)
 
     class EventListener(QtCore.QObject):
         def _handleEnterEvent(self, obj, event):
@@ -229,6 +236,11 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             if debugger is not None:
                 debugger.notify_exec_code_error_message(str(e))
 
+    def _notify_patch_success():
+        _debugger = get_global_debugger()
+        if _debugger is not None:
+            _debugger.send_qt_patch_success_message()
+
     # ================================#
     #            ATTACH               #
     # ================================#
@@ -266,7 +278,5 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         _patch_old_widgets_when_attached()
 
     print("<patched>...")
+    _notify_patch_success()
 
-    debugger = get_global_debugger()
-    if debugger is not None:
-        debugger.send_qt_patch_success_message()
