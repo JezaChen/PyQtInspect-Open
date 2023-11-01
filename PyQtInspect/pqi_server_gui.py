@@ -403,6 +403,8 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
 
 
 class PQIWindow(QtWidgets.QMainWindow):
+    sigDisableInspectKeyPressed = QtCore.pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("PyQtInspect")
@@ -501,9 +503,9 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._widgetInfoGroupBox)
 
-        # ====================
-        # Create Stack
-        # ====================
+        # ==================== #
+        #     Create Stack     #
+        # ==================== #
         self._createStackGroupBox = QtWidgets.QGroupBox(self)
         self._createStackGroupBox.setTitle("Create Stacks")
 
@@ -519,6 +521,9 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._createStackGroupBox)
 
+        # ==================== #
+        #     Hierarchy Bar    #
+        # ==================== #
         self._hierarchyBar = HierarchyBar(self)
         self._hierarchyBar.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._hierarchyBar.sigAncestorItemHovered.connect(self._onAncestorWidgetItemHighlight)
@@ -533,11 +538,16 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
+        self._keyboardHookThread = self._generateKeyboardHookThread()
 
         self._curWidgetId = -1
         self._curHighlightedWidgetId = -1
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
+        self._initConnections()
+
+    def _initConnections(self):
+        self.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
 
     # region For Serve Button
     def _onServeButtonToggled(self, checked: bool):
@@ -674,14 +684,22 @@ class PQIWindow(QtWidgets.QMainWindow):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
         dispatcher.registerMainUIReady()
 
+    def _enableInspect(self):
+        self._worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
+        self._keyboardHookThread.start()
+
+    def _disableInspect(self):
+        self._worker.sendDisableInspect()
+        self._currDispatcherIdForSelectedWidget = None
+        self._keyboardHookThread.quit()
+
     def _onInspectButtonClicked(self, checked: bool):
         if self._worker is None:
             return
         if checked:
-            self._worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
+            self._enableInspect()
         else:
-            self._worker.sendDisableInspect()
-            self._currDispatcherIdForSelectedWidget = None
+            self._disableInspect()
 
     def _notifyExecCodeInSelectedWidget(self, code: str):
         if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
@@ -769,6 +787,22 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._attachWindow is None:
             self._attachWindow = AttachWindow(self)
         self._attachWindow.show()
+
+    # region For Keyboard Hook to disable inspect
+    def _generateKeyboardHookThread(self):
+        def _inSubThread():
+            import PyQtInspect._pqi_bundle.pqi_keyboard_hook_win as kb_hook
+            kb_hook.grab(0x77, lambda: self.sigDisableInspectKeyPressed.emit())
+
+        thread = QtCore.QThread(self)
+        thread.started.connect(_inSubThread)
+        return thread
+
+    def _onInspectKeyPressed(self):
+        """ 当停止inspect热键按下后, 停止inspect """
+        self._inspectButton.setChecked(False)
+        self._disableInspect()
+    # endregion
 
 
 if __name__ == '__main__':
