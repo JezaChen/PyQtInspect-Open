@@ -9,10 +9,14 @@ from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
 def _try_get_file_name(frame):
+    """
+    :return: filename, is source code
+    """
     try:
-        return inspect.getsourcefile(frame) or inspect.getfile(frame)
+        src_filename = inspect.getsourcefile(frame)
+        return src_filename or inspect.getfile(frame), bool(src_filename)
     except TypeError:
-        return ''
+        return '', False
 
 
 def filter_trace_stack(traceStacks):
@@ -21,9 +25,11 @@ def filter_trace_stack(traceStacks):
     stackMaxDepth = SetupHolder.setup["stack-max-depth"]
     stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
     for frame, lineno in stacks:
+        filename, is_src = _try_get_file_name(frame)
         filteredStacks.append(
             {
-                'filename': _try_get_file_name(frame),
+                'is_src': is_src,
+                'filename': filename,
                 'lineno': lineno,
                 'function': frame.f_code.co_name,
             }
