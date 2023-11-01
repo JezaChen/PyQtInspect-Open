@@ -9,11 +9,12 @@ import os
 import sys
 import traceback
 import threading
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, IS_WINDOWS, IS_MACOS, \
-    IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER, \
-    get_current_thread_id, IS_PY311_OR_GREATER
+from PyQtInspect._pqi_bundle.pqi_contants import (
+    get_global_debugger, IS_WINDOWS, IS_MACOS, IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER,
+    get_current_thread_id, IS_PY311_OR_GREATER, SUPPORT_CC
+)
 
-PYTHON_NAMES = ['python', 'jython', 'pypy']
+PYTHON_NAMES = ['python', 'jython', 'pypy', 'cc_sub']
 
 # ===============================================================================
 # Things that are dependent on having the pydevd debugger
@@ -29,7 +30,8 @@ def log_error_once(msg):
     pqi_log.logger.error(msg)
 
 
-pqi_src_dir = os.path.dirname(os.path.dirname(__file__))
+current_dir = os.path.dirname(__file__)
+pqi_src_dir = os.path.dirname(os.path.dirname(current_dir))
 
 
 def _get_python_c_args(host, port, indC, args, setup):
@@ -116,16 +118,27 @@ def starts_with_python_shebang(path):
         return False
 
 
-def is_python(path):
+def _format_executable_path(path):
     if IS_PY36_OR_GREATER and isinstance(path, os.PathLike):
         path = path.__fspath__()
     if path.endswith("'") or path.endswith('"'):
         path = path[1:len(path) - 1]
-    filename = os.path.basename(path).lower()
+    return path
+
+
+def is_python(path):
+    path = _format_executable_path(path)
+    filename = _format_executable_path(path)
     for name in PYTHON_NAMES:
         if filename.find(name) != -1:
             return True
     return not IS_WINDOWS and is_executable(path) and starts_with_python_shebang(path)
+
+
+def is_cc_sub(path):
+    path = _format_executable_path(path)
+    filename = os.path.basename(path).lower()
+    return filename.find('cc_sub') != -1
 
 
 def remove_quotes_from_args(args):
@@ -245,7 +258,7 @@ def patch_args(args):
         #  '--vm_type', 'python', '--client', '127.0.0.1', '--port', '56352', '--file', 'x:\\snippet1.py']
         from PyQtInspect._pqi_bundle.pqi_command_line_handling import setup_to_argv
         SetupHolder.setup['module'] = False  # clean module param from parent process
-        original = setup_to_argv(SetupHolder.setup) + ['--file']
+        original = setup_to_argv(args[0], SetupHolder.setup) + ['--file']
         while i < len(args):
             if args[i] == '-m':
                 # Always insert at pos == 1 (i.e.: pydevd "--module" --multiprocess ...)

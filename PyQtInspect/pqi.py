@@ -99,6 +99,12 @@ def execfile(file, glob=None, loc=None):
     stream = tokenize.open(file)  # @UndefinedVariable
     try:
         contents = stream.read()
+    except:
+        from PyQtInspect._pqi_imps._pqi_execfile import exec_pyc
+        import sys
+        print(sys.argv)
+        exec_pyc(file, glob, loc)
+        return
     finally:
         stream.close()
 

@@ -556,6 +556,8 @@ QtWidgetClasses = [
     'QFontComboBox',
 ]
 
+SUPPORT_CC = True
+
 if __name__ == '__main__':
     if Null():
         sys.stdout.write('here\n')

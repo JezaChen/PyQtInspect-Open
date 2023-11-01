@@ -33,6 +33,14 @@ class ArgHandlerWithParam:
         del argv[i]
 
 
+# to_argv输出带等号的,"--arg_name=arg_value"
+class ArgHandlerWithParamAndEqualSign(ArgHandlerWithParam):
+    def to_argv(self, lst, setup):
+        v = setup.get(self.arg_name)
+        if v is not None and v != self.default_val:
+            lst.append('%s=%s' % (self.arg_v_rep, v))
+
+
 class ArgHandlerBool:
     '''
     If a given flag is received, mark it as 'True' in setup.
@@ -66,7 +74,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
 
-    ArgHandlerWithParam('qt-support'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
+    ArgHandlerWithParamAndEqualSign('qt-support'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
 ]
 
 ARGV_REP_TO_HANDLER = {}
@@ -74,24 +82,54 @@ for handler in ACCEPTED_ARG_HANDLERS:
     ARGV_REP_TO_HANDLER[handler.arg_v_rep] = handler
 
 
-def get_pydevd_file():
+def _compile_pqi_files(python_path: str):
+    """ cc_sub import第三方库的时候会因为op混淆导致执行异常,
+    因此需要使用cc_sub对pqi编译一次, 再执行编译后的pyc
+    """
+    import os
+    import pathlib
+
+    pqi_root_dirname = str(pathlib.Path(__file__).parent.parent.parent)
+    compile_tool_path = os.path.join(pqi_root_dirname, 'compile_pqi.py')
+
+    import subprocess
+    cc_sub_compiled_pqi_path = os.path.join(pqi_root_dirname, 'cc_sub_compiled_pqi').replace('\\', '/')
+    # 当程序运行在Pycharm时, 会因为site钩子导入了`pycharm_matplotlib_backend`引发异常(cc_sub混淆了op, 导致import第三方库机制异常)
+    # 因此使用`-S`参数, 屏蔽掉site模块的导入
+    subprocess.Popen([python_path, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
+                     shell=True).wait()
+    return f'{cc_sub_compiled_pqi_path}/PyQtInspect/pqi.pyc'
+
+
+def get_pydevd_file(executable_path):
     import PyQtInspect.pqi
+    from PyQtInspect._pqi_bundle.pqi_monkey import is_cc_sub
+
     f = PyQtInspect.pqi.__file__
-    if f.endswith('.pyc'):
-        f = f[:-1]
-    elif f.endswith('$py.class'):
-        f = f[:-len('$py.class')] + '.py'
+
+    if is_cc_sub(executable_path):
+        if f.endswith('.pyc'):
+            return f
+        compiled_pqi_file = _compile_pqi_files(executable_path)
+        return compiled_pqi_file
+
+    else:
+        if f.endswith('.pyc'):
+            f = f[:-1]
+        elif f.endswith('$py.class'):
+            f = f[:-len('$py.class')] + '.py'
+
     return f
 
 
-def setup_to_argv(setup):
+def setup_to_argv(executable_path, setup):
     '''
     :param dict setup:
         A dict previously gotten from process_command_line.
 
     :note: does not handle --file nor --DEBUG.
     '''
-    ret = [get_pydevd_file()]
+    ret = [get_pydevd_file(executable_path)]
 
     for handler in ACCEPTED_ARG_HANDLERS:
         if handler.arg_name in setup:

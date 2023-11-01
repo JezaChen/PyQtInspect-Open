@@ -60,7 +60,7 @@ def main(setup):
 
             import subprocess
             cc_sub_compiled_pqi_path = os.path.join(pydevd_dirname, 'cc_sub_compiled_pqi').replace('\\', '/')
-            subprocess.Popen(f"{cc_sub_exe} {compile_tool_path} {cc_sub_compiled_pqi_path}/PyQtInspect",
+            subprocess.Popen([cc_sub_exe, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
                              shell=True).wait()
 
             setup['pythonpath'] = cc_sub_compiled_pqi_path
@@ -86,6 +86,7 @@ attach_script.attach(port=%(port)s, host=\\\"%(host)s\\\", protocol=\\\"%(protoc
     python_code = python_code % setup
     add_code_to_python_process.run_python_code(
         setup['pid'], python_code, connect_debugger_tracing=True, show_debug_info=show_debug_info_on_target_process)
+
 
 if __name__ == '__main__':
     main(process_command_line(sys.argv[1:]))
