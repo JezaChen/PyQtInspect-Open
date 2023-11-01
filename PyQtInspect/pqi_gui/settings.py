@@ -19,7 +19,15 @@ def getPyCharmPath():
 def setPyCharmPath(path: str):
     setting.setValue("PyCharmPath", path)
     setting.sync()
-    return
+
+
+def getCCTemplateSrcPath():
+    return setting.value("CCTemplatePathSrc", "")
+
+
+def setCCTemplateSrcPath(path: str):
+    setting.setValue("CCTemplatePathSrc", path)
+    setting.sync()
 
 
 def findDefaultPycharmPath():

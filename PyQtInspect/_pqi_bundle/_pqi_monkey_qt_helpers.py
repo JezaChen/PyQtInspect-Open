@@ -3,6 +3,7 @@ import collections
 import inspect
 from contextlib import redirect_stdout
 from io import StringIO
+import os
 
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
@@ -14,7 +15,7 @@ def _try_get_file_name(frame):
     """
     try:
         src_filename = inspect.getsourcefile(frame)
-        return src_filename or inspect.getfile(frame), bool(src_filename)
+        return src_filename or os.path.abspath(inspect.getfile(frame)), bool(src_filename)
     except TypeError:
         return '', False
 

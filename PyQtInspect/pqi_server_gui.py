@@ -5,17 +5,15 @@
 # Description: 
 # ==============================================
 import json
-import time
-import queue
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-import sys
 import threading
 import traceback
 from socket import socket, AF_INET, SOCK_STREAM
 from ssl import SOL_SOCKET
 
-from PyQt5.QtGui import QColor
+from PyQtInspect.pqi_gui.attach_window import AttachWindow
+from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
 from _socket import SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
@@ -28,7 +26,7 @@ import ctypes
 from PyQtInspect.pqi_gui.code_window import CodeWindow
 from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
-from PyQtInspect.pqi_gui.settings_window import SettingWindow, AttachWindow
+from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import resources
@@ -347,59 +345,6 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._sizeLine.setValue("")
         self._posLine.setValue("")
         self._styleSheetLine.setValue("")
-
-
-class CreateStacksListWidget(QtWidgets.QListWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setObjectName("stacksListWidget")
-        self.setMinimumHeight(200)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-    def setStacks(self, stacks: list):
-        self.clear()
-        for index, stack in enumerate(stacks):
-            fileName = stack.get("filename", "")
-            lineNo = stack.get("lineno", "")
-            funcName = stack.get("function", "")
-            item = QtWidgets.QListWidgetItem()
-            item.setText(f"{index + 1}. File {fileName}, line {lineNo}: {funcName}")
-            # set property
-            item.setData(QtCore.Qt.UserRole, (fileName, lineNo))
-            self.addItem(item)
-
-    def clearStacks(self):
-        self.clear()
-
-    # double click to open file
-    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
-        super().mousePressEvent(event)
-        if event.button() == QtCore.Qt.LeftButton:
-            item = self.itemAt(event.pos())
-            if item is not None:
-                fileName, lineNo = item.data(QtCore.Qt.UserRole)
-                if fileName:
-                    self.openFile(fileName, lineNo)
-
-    def findPycharm(self):
-        pycharmPath = getPyCharmPath()
-        if not pycharmPath:
-            pycharmPath = findDefaultPycharmPath()
-        return pycharmPath
-
-    def openFile(self, fileName: str, lineNo: int):
-        # open in Pycharm
-        import subprocess
-        pycharm = self.findPycharm()
-        if pycharm:
-            try:
-                subprocess.Popen(f"{pycharm} --line {lineNo} {fileName}")
-            except Exception as e:
-                # message box
-                QtWidgets.QMessageBox.critical(self, "Error", f"Error occurred when opening file: {e}")
-        else:
-            QtWidgets.QMessageBox.critical(self, "Error", "Pycharm not found")
-        # subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
 
 
 class PQIWindow(QtWidgets.QMainWindow):

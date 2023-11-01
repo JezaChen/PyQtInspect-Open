@@ -5,47 +5,13 @@
 # Description: 
 # ==============================================
 import os
-import contextlib
-import io
-import threading
 
 from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
+from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath, getCCTemplateSrcPath, \
+    setCCTemplateSrcPath
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
-import PyQtInspect.pqi_gui.data_center as DataCenter
-
-import wingrab
-
-
-class SimpleSettingLineEdit(QtWidgets.QWidget):
-    def __init__(self, parent, key: str, defaultValue: str = ""):
-        super().__init__(parent)
-        self.setFixedHeight(32)
-
-        self._layout = QtWidgets.QHBoxLayout(self)
-        self._layout.setContentsMargins(5, 0, 5, 0)
-        self._layout.setSpacing(10)
-
-        self._keyLabel = QtWidgets.QLabel(self)
-        self._keyLabel.setText(key)
-        self._keyLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self._keyLabel.setWordWrap(True)
-        self._keyLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-
-        self._layout.addWidget(self._keyLabel)
-
-        self._valueLineEdit = QtWidgets.QLineEdit(self)
-        self._valueLineEdit.setText(defaultValue)
-        self._valueLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-        self._layout.addWidget(self._valueLineEdit)
-
-    def setValue(self, value: str):
-        self._valueLineEdit.setText(value)
-
-    def getValue(self) -> str:
-        return self._valueLineEdit.text()
 
 
 class SimpleComboBox(QtWidgets.QWidget):
@@ -89,24 +55,43 @@ class PycharmPathSettingLineEdit(SimpleSettingLineEdit):
 
         self._layout.addWidget(self._openButton)
 
-        pycharmPathInSettings = getPyCharmPath()
-        if not pycharmPathInSettings:
-            pycharmPathInSettings = findDefaultPycharmPath()
-
-        self._valueLineEdit.setText(pycharmPathInSettings)
-
     def _openPycharmPath(self):
         pycharmPath = QtWidgets.QFileDialog.getOpenFileName(self, "Select PyCharm Path",
                                                             self._valueLineEdit.text(),
                                                             "PyCharm Executable Program (*.exe)")
         if pycharmPath:
-            self._valueLineEdit.setText(pycharmPath[0])
+            self._valueLineEdit.setText(os.path.normpath(pycharmPath[0]))
 
     def isValueValid(self) -> bool:
         path = self._valueLineEdit.text()
         if not path:
             return False
         return os.path.exists(path) and os.path.isfile(path)
+
+
+class CCTemplateSrcPathSettingLineEdit(SimpleSettingLineEdit):
+    def __init__(self, parent):
+        super().__init__(parent, "CCTemplate Source Path: ")
+
+        self._openButton = QtWidgets.QPushButton(self)
+        self._openButton.setText("...")
+        self._openButton.setFixedSize(40, 30)
+        self._openButton.clicked.connect(self._openFileDialog)
+
+        self._layout.addWidget(self._openButton)
+
+    def _openFileDialog(self):
+        srcPath = QtWidgets.QFileDialog.getExistingDirectory(self, "Select CCTemplate Source code directory",
+                                                             self._valueLineEdit.text())
+        normalPath = os.path.normpath(srcPath)
+        if srcPath:
+            self._valueLineEdit.setText(normalPath)
+
+    def isValueValid(self) -> bool:
+        path = self._valueLineEdit.text()
+        if not path:
+            return False
+        return os.path.exists(path) and os.path.isdir(path)
 
 
 class SettingWindow(QtWidgets.QDialog):
@@ -127,6 +112,11 @@ class SettingWindow(QtWidgets.QDialog):
             pycharmPathInSettings = findDefaultPycharmPath()
         self._pycharmPathLine.setValue(pycharmPathInSettings)
         self._mainLayout.addWidget(self._pycharmPathLine)
+
+        self._ccTemplateSrcPathLine = CCTemplateSrcPathSettingLineEdit(self)
+        ccTemplateSrcPathInSettings = getCCTemplateSrcPath()
+        self._ccTemplateSrcPathLine.setValue(ccTemplateSrcPathInSettings)
+        self._mainLayout.addWidget(self._ccTemplateSrcPathLine)
 
         self._mainLayout.addStretch()
 
@@ -154,140 +144,19 @@ class SettingWindow(QtWidgets.QDialog):
         else:
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid PyCharm Path")
             return
-        self.close()
 
-
-class PidLineEdit(SimpleSettingLineEdit):
-    sigAttachButtonClicked = QtCore.pyqtSignal()
-
-    def __init__(self, parent):
-        super().__init__(parent, "Pid: ")
-
-        self._attachButton = QtWidgets.QPushButton(self)
-        self._attachButton.setText("Attach")
-        self._attachButton.setFixedHeight(30)
-        self._attachButton.clicked.connect(self.sigAttachButtonClicked)
-
-        self._layout.addWidget(self._attachButton)
-
-        self._grabAction = self._valueLineEdit.addAction(QtGui.QIcon(":/cursors/cursor.png"),
-                                                         QtWidgets.QLineEdit.TrailingPosition)
-        self._grabAction.triggered.connect(self._tryGrab)
-        self._grabAction.setToolTip("Get pid from cursor")
-
-    def _tryGrab(self):
-        pid = wingrab.grab()
-        self._valueLineEdit.setText(str(pid))
-
-
-class AttachInfoTextBrowser(QtWidgets.QTextBrowser):
-    def write(self, text):
-        self.append(text)
-
-
-class AttachWorker(QtCore.QObject):
-    sigStdOut = QtCore.pyqtSignal(str)
-    sigAttachFinished = QtCore.pyqtSignal()
-    sigAttachError = QtCore.pyqtSignal(str)
-
-    class _StdOutGetter(io.StringIO):
-        def __init__(self, worker):
-            super().__init__()
-            self._worker = worker
-
-        def write(self, text):
-            super().write(text)
-            self._worker.sigStdOut.emit(text)
-
-    def __init__(self, parent, pidToAttach: int):
-        super().__init__(parent)
-        self._pidToAttach = pidToAttach
-
-    def doWork(self):
-        from PyQtInspect.pqi_attach.attach_pydevd import main as attach_main_func
-
-        with contextlib.redirect_stdout(AttachWorker._StdOutGetter(self)):
-            try:
-                print('Attaching...')
-                attach_main_func(
-                    {
-                        'port': DataCenter.instance.port,
-                        'pid': self._pidToAttach,
-                        'host': '127.0.0.1',
-                        'protocol': '', 'debug_mode': ''
-                    }
-                )
-                print('==================')
-
-                self.sigAttachFinished.emit()
-            except Exception as e:
-                print(f'Attach Error: {e}\n==================')
-                self.sigAttachError.emit(str(e))
-
-
-class AttachWindow(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowCloseButtonHint)
-        self.setWindowTitle("Attach to Process")
-        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
-        self.resize(500, 300)
-
-        self._mainLayout = QtWidgets.QVBoxLayout(self)
-        self._mainLayout.setContentsMargins(10, 10, 10, 10)
-        self._mainLayout.setSpacing(5)
-        self._mainLayout.addSpacing(4)
-
-        self._pidLine = PidLineEdit(self)
-        self._pidLine.sigAttachButtonClicked.connect(self._onAttachButtonClicked)
-        self._mainLayout.addWidget(self._pidLine)
-
-        self._mainLayout.addSpacing(4)
-
-        self._consoleOutputTextBrowser = AttachInfoTextBrowser(self)
-        self._consoleOutputTextBrowser.setReadOnly(True)
-        self._mainLayout.addWidget(self._consoleOutputTextBrowser)
-
-        self._thread = None
-        self._worker = None
-
-    def _onAttachButtonClicked(self):
-        try:
-            self._tryAttachToProcess(int(self._pidLine.getValue()))
-        except ValueError:
-            # todo 如果pid不存在呢??
-            QtWidgets.QMessageBox.critical(self, "Error", "Invalid Pid!")
+        if self._ccTemplateSrcPathLine.isValueValid():
+            setCCTemplateSrcPath(self._ccTemplateSrcPathLine.getValue())
+        else:
+            QtWidgets.QMessageBox.critical(self, "Error", "Invalid CCTemplate Source Path")
             return
-
-    def _tryAttachToProcess(self, pid: int):
-        """ Attach放在这个控件实现吧 """
-        from PyQtInspect.pqi_attach.attach_pydevd import main as attach_main_func
-
-        self._pidLine.setEnabled(False)
-
-        self._worker = AttachWorker(None, pid)
-
-        self._thread = QtCore.QThread(None)
-        # must move to thread before connect
-        self._worker.moveToThread(self._thread)
-
-        self._worker.sigStdOut.connect(self._consoleOutputTextBrowser.write)
-        self._worker.sigAttachError.connect(self._onAttachError)
-        self._thread.started.connect(self._worker.doWork)
-        self._thread.finished.connect(lambda: self._pidLine.setEnabled(True))
-
-        self._worker.sigAttachFinished.connect(self._thread.quit)
-        self._thread.start()
-
-    def _onAttachError(self, errMsg):
-        QtWidgets.QMessageBox.critical(self, "Error", errMsg)
-        self._pidLine.setEnabled(True)
+        self.close()
 
 
 if __name__ == '__main__':
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    window = AttachWindow()
+    window = SettingWindow()
     window.show()
     sys.exit(app.exec())
