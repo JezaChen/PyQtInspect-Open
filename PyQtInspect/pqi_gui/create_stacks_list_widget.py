@@ -16,9 +16,10 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
     def setStacks(self, stacks: list):
         self.clear()
         for index, stack in enumerate(stacks):
-            isSrc = stack.get("is_src", False)
             fileName = stack.get("filename", "")
             normalizedFileName = os.path.normpath(fileName)
+            isSrc = os.path.exists(normalizedFileName)
+
             lineNo = stack.get("lineno", "")
             funcName = stack.get("function", "")
             item = QtWidgets.QListWidgetItem()

@@ -5,7 +5,7 @@ import re
 
 _CC_TEMPLATE_ANCHORLIVE_PATTERN = re.compile(r'(?s:.*)\\anchorlive_r\d+\\anchorlive\\(?P<src>.*)')
 _CC_TEMPLATE_GAMELIVE_PATTERN = re.compile(r'(?s:.*)\\gamelive_r\d+\\gamelive\\(?P<src>.*)')
-_CC_TEMPLATE_OTHERS_PATTERN = re.compile(r'(?s:.*)\\gamelive_r\d+\\(?P<src>.*)')
+_CC_TEMPLATE_OTHERS_PATTERN = re.compile(r'(?s:.*)\\pack_temp\\(?P<src>.*)')
 
 # 从前到后匹配，匹配成功则返回
 _PATTERNS = [

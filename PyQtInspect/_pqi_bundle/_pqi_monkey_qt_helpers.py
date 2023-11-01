@@ -9,13 +9,17 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetCl
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
+def _get_filename_from_frame(frame):
+    return frame.f_code.co_filename
+
+
 def _try_get_file_name(frame):
     """
     :return: filename, is source code
     """
     try:
-        src_filename = inspect.getsourcefile(frame)
-        return src_filename or os.path.abspath(inspect.getfile(frame)), bool(src_filename)
+        # src_filename = inspect.getsourcefile(frame)
+        return _get_filename_from_frame(frame)
     except TypeError:
         return '', False
 
@@ -26,11 +30,9 @@ def filter_trace_stack(traceStacks):
     stackMaxDepth = SetupHolder.setup["stack-max-depth"]
     stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
     for frame, lineno in stacks:
-        filename, is_src = _try_get_file_name(frame)
         filteredStacks.append(
             {
-                'is_src': is_src,
-                'filename': filename,
+                'filename': _try_get_file_name(frame),
                 'lineno': lineno,
                 'function': frame.f_code.co_name,
             }
@@ -189,6 +191,8 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
             if _entered_widget_stack and _entered_widget_stack[-1] == obj:
                 _entered_widget_stack.pop()
+            else:
+                _entered_widget_stack.clear()
 
             HighlightController.unhighlight(obj)
             _unhook_mouseReleaseEvent(obj)
@@ -286,4 +290,3 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
     print("<patched>...")
     _notify_patch_success()
-
