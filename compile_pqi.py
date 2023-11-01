@@ -1,11 +1,9 @@
 # -*- encoding:utf-8 -*-
-# ==============================================
-# Author: 陈建彰
-# Time: 2023/10/11 18:39
-# Description: 
-# ==============================================
+
 import compileall
 import sys
+import os
+import hashlib
 
 
 def compile_pqi_module():
@@ -31,10 +29,24 @@ def copy_pyc_files_to(dest_dir: str):
                 shutil.copy(src_file, dest_file)
 
 
-def compile_pqi_module_new(output_dir):
-    import os
-    import py_compile
+def need_compile(output_dir):
+    metadata_path = output_dir + "/_PQI_COMPILE_METADATA"
+    if not os.path.exists(metadata_path):
+        return True
+    with open(metadata_path, "r") as f:
+        md5 = f.readline().strip()
+        if md5 != hashlib.md5(open(sys.executable, 'rb').read()).hexdigest():
+            return True
+    return False
 
+
+def write_metadata(output_dir):
+    with open(output_dir + "/_PQI_COMPILE_METADATA", "w") as f:
+        f.write(hashlib.md5(open(sys.executable, 'rb').read()).hexdigest())
+
+
+def compile_pqi_module_new(output_dir):
+    import py_compile
     module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PyQtInspect")
 
     for root, dirs, files in os.walk(module_path):
@@ -54,4 +66,9 @@ def compile_pqi_module_new(output_dir):
 
 if __name__ == '__main__':
     dstPath = sys.argv[1]
-    compile_pqi_module_new(dstPath)
+    if need_compile(dstPath):
+        print(f'[PyQtInspect] Compile pqi module by {sys.executable}...')
+        compile_pqi_module_new(dstPath)
+        write_metadata(dstPath)
+    else:
+        print(f'[PyQtInspect] Not need compile pqi module')

@@ -85,6 +85,8 @@ for handler in ACCEPTED_ARG_HANDLERS:
 def _compile_pqi_files(python_path: str):
     """ cc_sub import第三方库的时候会因为op混淆导致执行异常,
     因此需要使用cc_sub对pqi编译一次, 再执行编译后的pyc
+
+    @todo 每次都会编译一次, 可以考虑缓存编译结果
     """
     import os
     import pathlib
