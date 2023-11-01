@@ -418,6 +418,17 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._moreMenu.setTitle("More")
         self._menuBar.addMenu(self._moreMenu)
 
+        # ==================== #
+        #     Menu Actions     #
+        # ==================== #
+        # Press F8 to Disable Inspect Action
+        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
+        self._pressF8ToDisableInspectAction.setText("Press F8 to Disable Inspect")
+        self._pressF8ToDisableInspectAction.setCheckable(True)
+        self._pressF8ToDisableInspectAction.setChecked(True)  # default
+        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+
+        # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
         self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
         self._isMockLeftButtonDownAction.setCheckable(True)
@@ -686,12 +697,18 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _enableInspect(self):
         self._worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
-        self._keyboardHookThread.start()
+
+        if self._pressF8ToDisableInspectAction.isChecked():
+            # start keyboard hook thread if user wants to disable inspect by pressing F8
+            # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
+            self._keyboardHookThread.start()
 
     def _disableInspect(self):
         self._worker.sendDisableInspect()
         self._currDispatcherIdForSelectedWidget = None
-        self._keyboardHookThread.quit()
+
+        if self._keyboardHookThread.isRunning():
+            self._keyboardHookThread.quit()
 
     def _onInspectButtonClicked(self, checked: bool):
         if self._worker is None:
