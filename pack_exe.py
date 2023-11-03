@@ -1,9 +1,8 @@
 # -*- encoding:utf-8 -*-
-# ==============================================
-# Author: 陈建彰
-# Time: 2023/9/18 15:15
-# Description: 
-# ==============================================
+"""
+python pack_exe.py py2exe
+"""
+
 import os
 from pathlib import Path
 from distutils.sysconfig import get_python_lib
@@ -38,7 +37,7 @@ INCLUDES = ["PyQt5.sip"]
 options = {
     "py2exe":
         {
-            "compressed": 1,  # compress
+            # "compressed": 1,  # compress
             "optimize": 2,
             # "bundle_files": 1,  # all in one file
             "includes": INCLUDES,
@@ -62,4 +61,5 @@ setup(
             f'{Qt_path}\\Qt5Widgets.dll',
         ])
     ],
+    packages=['PyQtInspect']
 )

@@ -548,6 +548,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
 
         # clear worker and its thread
+
         if self._worker is not None:
             self._worker.stop()
             self._worker.deleteLater()
@@ -555,6 +556,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         if self._workerThread is not None:
             self._workerThread.quit()
+            self._workerThread.wait()
             self._workerThread = None
 
         # set buttons status to default
@@ -583,6 +585,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _onWorkerSocketError(self, msg):
         QtWidgets.QMessageBox.critical(self, "Error", msg)
         self._cleanUpWhenWorkerStopped()
+        self._serveButton.setChecked(False)
 
     # endregion
 
