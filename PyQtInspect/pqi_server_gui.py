@@ -4,6 +4,13 @@
 # Time: 2023/8/24 17:36
 # Description: 
 # ==============================================
+import pathlib
+import sys
+
+pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
+if pyqt_inspect_module_dir not in sys.path:
+    sys.path.insert(0, pyqt_inspect_module_dir)
+
 import json
 
 from PyQt5 import QtWidgets, QtCore, QtGui
