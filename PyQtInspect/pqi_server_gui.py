@@ -770,10 +770,14 @@ class PQIWindow(QtWidgets.QMainWindow):
     # endregion
 
 
-if __name__ == '__main__':
+def main():
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
     window = PQIWindow()
     window.show()
     sys.exit(app.exec())
+
+
+if __name__ == '__main__':
+    main()

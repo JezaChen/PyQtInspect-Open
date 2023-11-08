@@ -10,7 +10,7 @@ setup(
     packages=find_packages(exclude=("*examples", "*examples.*")),
     python_requires=">=3.7, <4",
     install_requires=[
-        "httpx >= 0.23.0",
+        "psutil",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
@@ -20,5 +20,10 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: GPLv3 License",
-    ]
+    ],
+    entry_points={
+        "gui_scripts": [
+            "pqi-server = PyQtInspect.pqi_server_gui:main",
+        ],
+    }
 )
