@@ -11,6 +11,8 @@ setup(
     python_requires=">=3.7, <4",
     install_requires=[
         "psutil",
+        "PyQt5",
+        "wingrab",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
@@ -22,7 +24,7 @@ setup(
         "License :: OSI Approved :: GPLv3 License",
     ],
     entry_points={
-        "gui_scripts": [
+        "console_scripts": [
             "pqi-server = PyQtInspect.pqi_server_gui:main",
         ],
     }
