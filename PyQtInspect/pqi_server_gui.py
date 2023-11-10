@@ -501,6 +501,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
+        self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多选情况
         self._keyboardHookThread = self._generateKeyboardHookThread()
 
         self._curWidgetId = -1
@@ -610,6 +611,7 @@ class PQIWindow(QtWidgets.QMainWindow):
                     {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
                 )
         elif cmdId == CMD_WIDGET_INFO:
+            self._currDispatcherIdForHoveredWidget = dispatcherId
             self.handleWidgetInfoMsg(json.loads(text))
         elif cmdId == CMD_INSPECT_FINISHED:
             self._currDispatcherIdForSelectedWidget = dispatcherId
@@ -773,7 +775,12 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _onInspectKeyPressed(self):
         """ 当停止inspect热键按下后, 停止inspect """
         self._inspectButton.setChecked(False)
+        self._finishInspectWhenKeyPress()
+
+    def _finishInspectWhenKeyPress(self):
+        """ todo """
         self._disableInspect()
+        self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
     # endregion
 
 

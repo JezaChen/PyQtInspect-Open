@@ -2,11 +2,16 @@ import sys
 import subprocess
 
 try:
-    subprocess.run(f"pqi-server", check=True)
-except subprocess.CalledProcessError:
-    subprocess.run(f"pip install git+https://git-cc.nie.netease.com/pc/pyqtinspect.git@dev_alpha", check=True)
+    p = subprocess.Popen("pqi-server")
+    p.wait()
+except Exception:
     try:
-        subprocess.run(f"pqi-server", check=True)
-    except subprocess.CalledProcessError:
-        print("Failed to run pqi-server", file=sys.stderr)
+        subprocess.Popen("python --version").wait()
+        p = subprocess.Popen("python -m pip install git+https://git-cc.nie.netease.com/pc/pyqtinspect.git@dev_alpha".split())
+        status = p.wait()
+        print(status)
+        p = subprocess.Popen("pqi-server")
+        p.wait()
+    except Exception as e:
+        print(f"Failed to run pqi-server: {e}", file=sys.stderr)
         exit(1)
