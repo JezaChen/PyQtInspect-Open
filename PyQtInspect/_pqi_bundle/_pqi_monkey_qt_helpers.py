@@ -69,37 +69,15 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
         return widget
 
-    def _hook_mouseReleaseEvent(obj):
-        if not hasattr(obj.mouseReleaseEvent, '_pqi_hooked'):
-            obj._oldMouseReleaseEvent = obj.mouseReleaseEvent
+    def _mark_obj_inspected(obj):
+        setattr(obj, '_pqi_inspected_mark', True)
 
-        def _newMouseReleaseEvent(event):
-            debugger = get_global_debugger()
-            if debugger is None or not debugger.inspect_enabled:
-                return obj._oldMouseReleaseEvent(event)
+    def _clear_obj_inspected_mark(obj):
+        if hasattr(obj, '_pqi_inspected_mark'):
+            del obj._pqi_inspected_mark
 
-            if event.button() != QtCore.Qt.LeftButton:
-                if debugger is not None and debugger.mock_left_button_down and event.button() == QtCore.Qt.RightButton:
-                    # mock left button press and release event
-                    obj.mousePressEvent(
-                        _create_mouse_event(QtCore.QEvent.MouseButtonPress, event.pos(), QtCore.Qt.LeftButton)
-                    )
-                    event = _create_mouse_event(QtCore.QEvent.MouseButtonRelease, event.pos(), QtCore.Qt.LeftButton)
-                return obj._oldMouseReleaseEvent(event)
-
-            debugger.notify_inspect_finished(obj)
-            HighlightController.unhighlight(obj)
-            _entered_widget_stack.clear()
-            obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-
-        setattr(_newMouseReleaseEvent, '_pqi_hooked', True)
-
-        obj.mouseReleaseEvent = _newMouseReleaseEvent
-
-    def _unhook_mouseReleaseEvent(obj):
-        if hasattr(obj, '_oldMouseReleaseEvent'):
-            obj.mouseReleaseEvent = obj._oldMouseReleaseEvent
-            del obj._oldMouseReleaseEvent
+    def _is_obj_inspected(obj):
+        return hasattr(obj, '_pqi_inspected_mark')
 
     class HighlightController:
         last_highlighted_widget = None
@@ -157,6 +135,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     _entered_widget_stack = EnteredWidgetStack()
 
     def _inspect_widget(debugger, widget: QtWidgets.QWidget):
+        print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
         # === send widget info === #
         debugger.send_widget_info_to_server(widget)
 
@@ -164,7 +143,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         HighlightController.highlight(widget)
 
         # === hook mouseReleaseEvent === #
-        _hook_mouseReleaseEvent(widget)
+        _mark_obj_inspected(widget)
 
     def _inspect_top(stack: EnteredWidgetStack):
         stack.filter()
@@ -195,15 +174,67 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                 _entered_widget_stack.clear()
 
             HighlightController.unhighlight(obj)
-            _unhook_mouseReleaseEvent(obj)
+            _clear_obj_inspected_mark(obj)
 
             _inspect_top(_entered_widget_stack)
+
+        def _handleMouseReleaseEvent(self, obj, event) -> bool:
+            """ 处理鼠标点击事件, 这里需要返回一个bool值, 表示是否拦截事件 """
+            print(f'click: {obj}')
+            if not _is_obj_inspected(obj):
+                return False
+
+            if not event.spontaneous():  # 自己通过postEvent发出的事件, 不处理
+                return False
+
+            debugger = get_global_debugger()
+            if debugger is None or not debugger.inspect_enabled:
+                return False
+
+            if event.button() != QtCore.Qt.LeftButton:
+                if debugger is not None and debugger.mock_left_button_down and event.button() == QtCore.Qt.RightButton:
+                    # mock left button press and release event
+                    # First, send a mouse press event
+                    pressEvent = _create_mouse_event(QtCore.QEvent.MouseButtonPress, event.pos(), QtCore.Qt.LeftButton)
+                    # 使用postEvent传播事件, 而不是直接调用obj.mousePressEvent, 以便其他的eventFilter能够接收到这个事件
+                    QtCore.QCoreApplication.postEvent(obj, pressEvent)
+
+                    # Then, change the original event and send it again
+                    event = _create_mouse_event(QtCore.QEvent.MouseButtonRelease, event.pos(), QtCore.Qt.LeftButton)
+                # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
+                QtCore.QCoreApplication.postEvent(obj, event)
+                # stop event propagation
+                return True
+
+            # inspect finished
+            debugger.notify_inspect_finished(obj)
+            HighlightController.unhighlight(obj)
+            _entered_widget_stack.clear()
+            _clear_obj_inspected_mark(obj)
+
+            # stop event propagation
+            return True
+
+        def _handleMousePressEvent(self, obj, event):
+            print(f'press: {obj}')
+            if not event.spontaneous():
+                return False
+            if not _is_obj_inspected(obj):
+                return False
+            # obj.mousePressEvent(event)
+            # 对于当前被检查的控件, 阻止MousePress事件传播
+            # 防止点击后某些eventFilter在处理MousePress事件时使得inspect的控件改变, 导致后续的MouseRelease事件处理不正常
+            return True
 
         def eventFilter(self, obj, event):
             if event.type() == QtCore.QEvent.Enter:
                 self._handleEnterEvent(obj, event)
             elif event.type() == QtCore.QEvent.Leave:
                 self._handleLeaveEvent(obj, event)
+            elif event.type() == QtCore.QEvent.MouseButtonPress:
+                return self._handleMousePressEvent(obj, event)
+            elif event.type() == QtCore.QEvent.MouseButtonRelease:
+                return self._handleMouseReleaseEvent(obj, event)
             elif event.type() == QtCore.QEvent.User:
                 # handle highlight
                 if hasattr(event, '_pqi_is_highlight'):

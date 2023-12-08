@@ -375,7 +375,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         # ==================== #
         # Press F8 to Disable Inspect Action
         self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-        self._pressF8ToDisableInspectAction.setText("Press F8 to Disable Inspect")
+        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
         self._pressF8ToDisableInspectAction.setCheckable(True)
         self._pressF8ToDisableInspectAction.setChecked(True)  # default
         self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
