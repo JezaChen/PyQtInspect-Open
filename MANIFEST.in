@@ -1,1 +1,1 @@
-recursive-include PyQtInspect/pqi_attach/*
+recursive-include PyQtInspect/pqi_attach *
