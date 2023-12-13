@@ -35,7 +35,6 @@ setup(
             "pqi-server = PyQtInspect.pqi_server_gui:main",
         ],
     },
-    data_files=[
-        *pack_pqi_attach_module(),
-    ]
+    # 使用MANIFEST.in将pqi_attach目录里面的所有文件加进去
+    include_package_data=True,
 )
