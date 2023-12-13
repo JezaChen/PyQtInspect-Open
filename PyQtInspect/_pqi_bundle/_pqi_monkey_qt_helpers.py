@@ -135,7 +135,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     _entered_widget_stack = EnteredWidgetStack()
 
     def _inspect_widget(debugger, widget: QtWidgets.QWidget):
-        print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
+        # print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
         # === send widget info === #
         debugger.send_widget_info_to_server(widget)
 
@@ -180,7 +180,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         def _handleMouseReleaseEvent(self, obj, event) -> bool:
             """ 处理鼠标点击事件, 这里需要返回一个bool值, 表示是否拦截事件 """
-            print(f'click: {obj}')
+            # print(f'click: {obj}')
             if not _is_obj_inspected(obj):
                 return False
 
@@ -216,7 +216,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             return True
 
         def _handleMousePressEvent(self, obj, event):
-            print(f'press: {obj}')
+            # print(f'press: {obj}')
             if not event.spontaneous():
                 return False
             if not _is_obj_inspected(obj):
