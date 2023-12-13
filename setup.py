@@ -1,8 +1,9 @@
 from setuptools import find_packages, setup
+from glob import glob
 
 setup(
     name="PyQtInspect",
-    version="0.01_alpha",
+    version="0.01_beta",
     url="https://git-cc.nie.netease.com/pc/pyqtinspect",
     author="Chen Jianzhang",
     author_email="jezachen@163.com",
@@ -27,5 +28,8 @@ setup(
         "console_scripts": [
             "pqi-server = PyQtInspect.pqi_server_gui:main",
         ],
-    }
+    },
+    data_files=[
+        ("PyQtInspect/pqi_attach", glob('PyQtInspect/pqi_attach/**/*', recursive=True)),
+    ]
 )
