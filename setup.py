@@ -1,5 +1,11 @@
 from setuptools import find_packages, setup
-from glob import glob
+
+
+def pack_pqi_attach_module():
+    import os
+    for root, dirs, files in os.walk('PyQtInspect/pqi_attach'):
+        for file in files:
+            yield root, os.path.join(root, file)
 
 setup(
     name="PyQtInspect",
@@ -30,6 +36,6 @@ setup(
         ],
     },
     data_files=[
-        ("PyQtInspect/pqi_attach", glob('PyQtInspect/pqi_attach/**/*', recursive=True)),
+        *pack_pqi_attach_module(),
     ]
 )
