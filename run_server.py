@@ -14,4 +14,6 @@ except Exception:
         p.wait()
     except Exception as e:
         print(f"Failed to run pqi-server: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         exit(1)

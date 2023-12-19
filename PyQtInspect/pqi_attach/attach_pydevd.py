@@ -1,6 +1,8 @@
 import sys
 import os
 
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_compile_pqi_tool, get_cc_sub_compiled_pqi_path
+
 
 def process_command_line(argv):
     setup = {}
@@ -56,10 +58,10 @@ def main(setup):
         if "cc_sub" in psutil.Process(setup['pid']).name():
             print("cc_sub process, compile pqi module")
             cc_sub_exe = psutil.Process(setup['pid']).exe()
-            compile_tool_path = os.path.join(pydevd_dirname, "compile_pqi.py")
+            compile_tool_path = find_compile_pqi_tool()
 
             import subprocess
-            cc_sub_compiled_pqi_path = os.path.join(pydevd_dirname, 'cc_sub_compiled_pqi').replace('\\', '/')
+            cc_sub_compiled_pqi_path = get_cc_sub_compiled_pqi_path()
             subprocess.Popen([cc_sub_exe, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
                              shell=True).wait()
 

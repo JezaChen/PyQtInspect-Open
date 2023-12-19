@@ -5,15 +5,17 @@ import sys
 import os
 import hashlib
 
+dirname = os.path.dirname
+
 
 def compile_pqi_module():
-    compileall.compile_dir("PyQtInspect", force=True)
+    compileall.compile_dir("..", force=True)
 
 
 def copy_pyc_files_to(dest_dir: str):
     import os
     import shutil
-    for root, dirs, files in os.walk("PyQtInspect"):
+    for root, dirs, files in os.walk(".."):
         for file in files:
             if file.endswith(".pyc"):
                 src_file = os.path.join(root, file)
@@ -47,9 +49,12 @@ def write_metadata(output_dir):
 
 def compile_pqi_module_new(output_dir):
     import py_compile
-    module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "PyQtInspect")
+    module_path = dirname(dirname(os.path.abspath(__file__)))
 
     for root, dirs, files in os.walk(module_path):
+        if '_pqi_compile' in root:  # skip _pqi_compile folder
+            continue
+
         for file in files:
             if file.endswith(".py"):
                 src_file = os.path.join(root, file)
@@ -58,7 +63,7 @@ def compile_pqi_module_new(output_dir):
                 src_relative_path = os.path.relpath(src_file, module_path)
 
                 dest_file = os.path.join(output_dir, src_relative_path + "c")  # xxx/xxx.py -> xxx/xxx.pyc
-                sub_dir = os.path.dirname(dest_file)
+                sub_dir = dirname(dest_file)
                 if not os.path.exists(sub_dir):
                     os.makedirs(sub_dir)
                 py_compile.compile(src_file, dest_file)

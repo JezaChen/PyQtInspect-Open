@@ -4,6 +4,9 @@
 # Time: 2023/8/18 15:00
 # Description: 
 # ==============================================
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_compile_pqi_tool, get_cc_sub_compiled_pqi_path
+
+
 class ArgHandlerWithParam:
     '''
     Handler for some arguments which needs a value
@@ -88,14 +91,10 @@ def _compile_pqi_files(python_path: str):
 
     @todo 每次都会编译一次, 可以考虑缓存编译结果
     """
-    import os
-    import pathlib
-
-    pqi_root_dirname = str(pathlib.Path(__file__).parent.parent.parent)
-    compile_tool_path = os.path.join(pqi_root_dirname, 'compile_pqi.py')
+    compile_tool_path = find_compile_pqi_tool()
+    cc_sub_compiled_pqi_path = get_cc_sub_compiled_pqi_path()
 
     import subprocess
-    cc_sub_compiled_pqi_path = os.path.join(pqi_root_dirname, 'cc_sub_compiled_pqi').replace('\\', '/')
     # 当程序运行在Pycharm时, 会因为site钩子导入了`pycharm_matplotlib_backend`引发异常(cc_sub混淆了op, 导致import第三方库机制异常)
     # 因此使用`-S`参数, 屏蔽掉site模块的导入
     subprocess.Popen([python_path, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
