@@ -5,12 +5,14 @@ import re
 
 _CC_TEMPLATE_ANCHORLIVE_PATTERN = re.compile(r'(?s:.*)\\anchorlive_r\d+\\anchorlive\\(?P<src>.*)')
 _CC_TEMPLATE_GAMELIVE_PATTERN = re.compile(r'(?s:.*)\\gamelive_r\d+\\gamelive\\(?P<src>.*)')
-_CC_TEMPLATE_OTHERS_PATTERN = re.compile(r'(?s:.*)\\pack_temp\\(?P<src>.*)')
+_CC_TEMPLATE_COMMON_MODULE_PATTERN = re.compile(r'(?s:.*)\\common_module\\(?P<src>.*)')
+_CC_TEMPLATE_OTHERS_PATTERN = re.compile(r'(?s:.*)\\pack_temp\\(?P<src>.*)')  # apps, appsmall
 
 # 从前到后匹配，匹配成功则返回
 _PATTERNS = [
     (_CC_TEMPLATE_ANCHORLIVE_PATTERN, r'\\transformer\\anchorlive\\\g<src>'),
     (_CC_TEMPLATE_GAMELIVE_PATTERN, r'\\transformer\\gamelive\\\g<src>'),
+    (_CC_TEMPLATE_COMMON_MODULE_PATTERN, r'\\common_module\\\g<src>'),
     (_CC_TEMPLATE_OTHERS_PATTERN, r'\\\g<src>'),
 ]
 
