@@ -9,6 +9,9 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetCl
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
+_PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
+
+
 def _get_filename_from_frame(frame):
     return frame.f_code.co_filename
 
@@ -184,7 +187,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             if not _is_obj_inspected(obj):
                 return False
 
-            if not event.spontaneous():  # 自己通过postEvent发出的事件, 不处理
+            # 自己通过postEvent发出的事件, 不处理
+            # 不使用event.spontaneous()判断, 因为对于QTextBrowser的点击事件, spontaneous()返回False
+            if getattr(event, _PQI_MOCKED_EVENT_ATTR, False):
                 return False
 
             debugger = get_global_debugger()
@@ -201,6 +206,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
                     # Then, change the original event and send it again
                     event = _create_mouse_event(QtCore.QEvent.MouseButtonRelease, event.pos(), QtCore.Qt.LeftButton)
+                    setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
                 # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
                 QtCore.QCoreApplication.postEvent(obj, event)
                 # stop event propagation
