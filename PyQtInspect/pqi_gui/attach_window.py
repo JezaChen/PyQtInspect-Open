@@ -135,7 +135,7 @@ class AttachMultipleWorker(QtCore.QObject):
 
     def doWork(self):
         for pid in self._pidsToAttach:
-            worker = AttachWorker(self, pid)
+            worker = AttachWorker(None, pid)
             self._subWorkers.append(worker)
             thread = QtCore.QThread(None)
             worker.moveToThread(thread)
