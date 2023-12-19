@@ -74,11 +74,15 @@ class AttachWorker(QtCore.QObject):
 
         def write(self, text):
             super().write(text)
-            self._worker.sigStdOut.emit(text)
+            self._worker.sigStdOut.emit(f"({self._worker.pidToAttach}) {text}")
 
     def __init__(self, parent, pidToAttach: int):
         super().__init__(parent)
         self._pidToAttach = pidToAttach
+
+    @property
+    def pidToAttach(self):
+        return self._pidToAttach
 
     def doWork(self):
         from PyQtInspect.pqi_attach.attach_pydevd import main as attach_main_func
@@ -94,11 +98,11 @@ class AttachWorker(QtCore.QObject):
                         'protocol': '', 'debug_mode': ''
                     }
                 )
-                print('==================')
+                # print('==================')
 
                 self.sigAttachFinished.emit()
             except Exception as e:
-                print(f'Attach Error: {e}\n==================')
+                print(f'Attach Error: {e}\n')
                 self.sigAttachError.emit(str(e))
 
 
@@ -131,7 +135,7 @@ class AttachMultipleWorker(QtCore.QObject):
 
     def _onSubWorkerAttachError(self, pid, errMsg):
         with contextlib.redirect_stdout(AttachMultipleWorker._StdOutGetter(self)):
-            print(f'Attach {pid} Error: {errMsg}\n==================')
+            print(f'Attach {pid} Error: {errMsg}\n')
             self._errCount += 1
 
     def doWork(self):
