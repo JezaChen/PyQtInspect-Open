@@ -36,7 +36,7 @@ from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
-from PyQtInspect.pqi_gui._pqi_res import resources
+from PyQtInspect.pqi_gui._pqi_res import resources, get_icon
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -360,7 +360,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("PyQtInspect")
-        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
+        self.setWindowIcon(get_icon())
         self.resize(700, 1000)
 
         self._menuBar = QtWidgets.QMenuBar(self)

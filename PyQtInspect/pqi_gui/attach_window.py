@@ -6,6 +6,7 @@ import typing
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 import PyQtInspect.pqi_gui.data_center as DataCenter
 
@@ -156,7 +157,7 @@ class AttachWindow(QtWidgets.QWidget):
         super().__init__(parent)
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowCloseButtonHint)
         self.setWindowTitle("Attach to Process")
-        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
+        self.setWindowIcon(get_icon())
         self.resize(500, 300)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)

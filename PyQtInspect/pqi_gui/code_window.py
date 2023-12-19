@@ -8,6 +8,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from io import StringIO
 from contextlib import redirect_stdout
 
+from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.syntax import PythonHighlighter
 
 CODE_TEXT_EDIT_STYLESHEET = """
@@ -51,7 +52,7 @@ class CodeWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Exec Code For Selected Widget")
-        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
+        self.setWindowIcon(get_icon())
         self.resize(800, 500)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)

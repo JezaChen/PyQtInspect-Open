@@ -7,6 +7,8 @@
 import os
 
 from PyQt5 import QtWidgets, QtGui, QtCore
+
+from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 
 from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath, getCCTemplateSrcPath, \
@@ -98,7 +100,7 @@ class SettingWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
-        self.setWindowIcon(QtGui.QIcon("..\\icon.png"))
+        self.setWindowIcon(get_icon())
         self.resize(500, 300)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)
