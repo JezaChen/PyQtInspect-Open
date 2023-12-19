@@ -7,6 +7,8 @@
 import pathlib
 import sys
 
+from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
+
 pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
@@ -501,7 +503,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
-        self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多选情况
+        self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多个进程都有选中的情况?
         self._keyboardHookThread = self._generateKeyboardHookThread()
 
         self._curWidgetId = -1
@@ -647,6 +649,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def handle_inspect_finished_msg(self):
         self._inspectButton.setChecked(False)
         self._worker.sendDisableInspect()  # disable inspect for all dispatchers
+        self._stopKeyboardHookThread()
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
@@ -658,14 +661,13 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._pressF8ToDisableInspectAction.isChecked():
             # start keyboard hook thread if user wants to disable inspect by pressing F8
             # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
+            self._keyboardHookThread.stop_flag.clear_flag()
             self._keyboardHookThread.start()
 
     def _disableInspect(self):
         self._worker.sendDisableInspect()
         self._currDispatcherIdForSelectedWidget = None
-
-        if self._keyboardHookThread.isRunning():
-            self._keyboardHookThread.quit()
+        self._stopKeyboardHookThread()
 
     def _onInspectButtonClicked(self, checked: bool):
         if self._worker is None:
@@ -766,11 +768,18 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _generateKeyboardHookThread(self):
         def _inSubThread():
             import PyQtInspect._pqi_bundle.pqi_keyboard_hook_win as kb_hook
-            kb_hook.grab(0x77, lambda: self.sigDisableInspectKeyPressed.emit())
+            kb_hook.grab(0x77, flag, lambda: self.sigDisableInspectKeyPressed.emit())
 
         thread = QtCore.QThread(self)
+        flag = GrabFlag()  # 可指示内部grab线程停止的标志, 用于解决GUI程序退出后grab线程仍无法退出的问题
         thread.started.connect(_inSubThread)
+        thread.stop_flag = flag
         return thread
+
+    def _stopKeyboardHookThread(self):
+        if self._keyboardHookThread.isRunning():
+            self._keyboardHookThread.stop_flag.mark_stop()
+            self._keyboardHookThread.quit()
 
     def _onInspectKeyPressed(self):
         """ 当停止inspect热键按下后, 停止inspect """
@@ -778,10 +787,18 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._finishInspectWhenKeyPress()
 
     def _finishInspectWhenKeyPress(self):
-        """ todo """
         self._disableInspect()
+        # 覆写self._currDispatcherIdForSelectedWidget
+        # todo 看看有没有更好的办法
         self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
     # endregion
+
+    def closeEvent(self, a0):
+        self.cleanUp()
+
+    def cleanUp(self):
+        self._disableInspect()
+        self._stopKeyboardHookThread()
 
 
 def main():

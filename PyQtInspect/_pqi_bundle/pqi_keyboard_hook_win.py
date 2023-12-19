@@ -173,6 +173,8 @@ _result = 0
 # The target virtual key
 _target_vk = 0
 
+SUCCESS_RESULT = 1
+
 
 def _print_keyboard_msg(wParam, msg):
     msg_id = WM_TO_TEXT.get(wParam, str(wParam))
@@ -193,18 +195,33 @@ def _LLKeyboardProc(nCode, wParam, lParam):
 
         if wParam == WM_KEYUP and msg.vkCode == _target_vk:
             # Post a WM_NULL message to the current thread to exit the message loop when the grab is finished.
-            _result = 1
+            _result = SUCCESS_RESULT
             user32.PostThreadMessageW(threading.current_thread().ident, WM_NULL, 0, 0)
             return 1
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
 
 
-def _msg_loop():
+class GrabFlag:
+    def __init__(self):
+        self._stop = False
+
+    def mark_stop(self):
+        # may be called by another thread
+        self._stop = True
+
+    def is_stop(self):
+        return self._stop
+
+    def clear_flag(self):
+        self._stop = False
+
+
+def _msg_loop(flag):
     """ Start a message loop to grab the PID of the window under the cursor. """
     hook = user32.SetWindowsHookExW(WH_KEYBOARD_LL, _LLKeyboardProc, None, 0)
     msg = MSG()
 
-    while _result == 0:  # Wait until the grab is finished (when _result is not zero).
+    while _result == 0 and not flag.is_stop():  # Wait until the grab is finished (when _result is not zero).
         bRet = user32.GetMessageW(byref(msg), None, 0, 0)
         if not bRet:
             break
@@ -213,19 +230,24 @@ def _msg_loop():
         user32.TranslateMessage(byref(msg))
         user32.DispatchMessageW(byref(msg))
 
+    flag.mark_stop()
     user32.UnhookWindowsHookEx(hook)
     return _result
 
 
 # region The public API
-def grab(virtual_key, callback, _debug=False):
+def grab(virtual_key, flag, callback, _debug=False):
+    if not isinstance(flag, GrabFlag):
+        raise TypeError('flag must be an instance of GrabFlag')
+
     global _is_debug, _result, _target_vk
     _is_debug = _debug
     _target_vk = virtual_key
 
     _result = 0
-    _msg_loop()
-    callback()
+    _msg_loop(flag)
+    if _result == SUCCESS_RESULT:
+        callback()
     return
 
 
@@ -233,4 +255,5 @@ def grab(virtual_key, callback, _debug=False):
 
 
 if __name__ == '__main__':
-    grab(VK_F8, callback=lambda: print('<!UP!>'), _debug=False)
+    _flag = GrabFlag()
+    grab(VK_F8, _flag, callback=lambda: print('<!UP!>'), _debug=False)
