@@ -6,8 +6,10 @@
 # ==============================================
 import pathlib
 import sys
+import typing
 
 from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
+from PyQtInspect.pqi_gui.workers.pqy_worker import PQYWorker, DUMMY_WORKER, DummyWorker
 
 pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
@@ -15,26 +17,16 @@ if pyqt_inspect_module_dir not in sys.path:
 
 import json
 
-from PyQt5 import QtWidgets, QtCore, QtGui
-import threading
-import traceback
-from socket import socket, AF_INET, SOCK_STREAM
-from ssl import SOL_SOCKET
-
+from PyQt5 import QtWidgets, QtCore
 from PyQtInspect.pqi_gui.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
-from _socket import SO_REUSEADDR
-
-from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR, \
     CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS
-from PyQtInspect._pqi_bundle.pqi_override import overrides
 
 import ctypes
 
 from PyQtInspect.pqi_gui.code_window import CodeWindow
 from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
@@ -42,214 +34,6 @@ from PyQtInspect.pqi_gui._pqi_res import resources, get_icon
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-
-class Dispatcher(QtCore.QThread):
-    sigMsg = QtCore.pyqtSignal(int, dict)  # dispatcher_id, info
-    sigDelete = QtCore.pyqtSignal(int)
-
-    def __init__(self, parent, sock, id):
-        super().__init__(parent)
-        self.sock = sock
-        self.id = id
-        self.net_command_factory = NetCommandFactory()
-        self.reader = None
-        self.writer = None
-
-        # 由于dispatcher刚创建的时候, 主界面还来不及处理立即到来的信息(PQYWorker未发出新dispatcher创建的信号)
-        # 所以需要在主界面准备好之后再处理
-        # 此前的消息都缓存起来
-        self._mainUIReady = False
-        self._msg_buffer = []
-
-    def run(self):
-        self.writer = WriterThread(self.sock)
-        self.writer.pydev_do_not_trace = False  # We run writer in the same thread so we don't want to loose tracing.
-        self.writer.start()
-
-        self.reader = DispatchReader(self)
-        self.reader.pydev_do_not_trace = False  # We run reader in the same thread so we don't want to loose tracing.
-        self.reader.run()
-
-    def close(self):
-        try:
-            self.writer.do_kill_pydev_thread()
-            self.reader.do_kill_pydev_thread()
-            self.sock.close()
-        except:
-            pass
-
-    def registerMainUIReady(self):
-        """ 告知dispatcher, 主界面已经准备好了, 可以处理消息了
-        """
-        self._mainUIReady = True
-        for cmd_id, seq, text in self._msg_buffer:
-            self.notify(cmd_id, seq, text)
-
-    def notify(self, cmd_id, seq, text):
-        if not self._mainUIReady:
-            # 缓存起来
-            self._msg_buffer.append((cmd_id, seq, text))
-        self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
-
-    def sendEnableInspect(self, extra: dict):
-        self.writer.add_command(self.net_command_factory.make_enable_inspect_message(extra))
-
-    def sendDisableInspect(self):
-        self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
-
-    def sendExecCodeEvent(self, code: str):
-        self.writer.add_command(self.net_command_factory.make_exec_code_message(code))
-
-    def sendHighlightWidgetEvent(self, widgetId: int, isHighlight: bool):
-        self.writer.add_command(self.net_command_factory.make_set_widget_highlight_message(widgetId, isHighlight))
-
-    def sendSelectWidgetEvent(self, widgetId: int):
-        self.writer.add_command(self.net_command_factory.make_select_widget_message(widgetId))
-
-    def sendRequestWidgetInfoEvent(self, widgetId: int, extra: dict = None):
-        self.writer.add_command(self.net_command_factory.make_req_widget_info_message(widgetId, extra))
-
-    def sendRequestChildrenInfoEvent(self, widgetId: int):
-        self.writer.add_command(self.net_command_factory.make_req_children_info_message(widgetId))
-
-    def notifyDelete(self):
-        self.reader.do_kill_pydev_thread()
-        self.writer.do_kill_pydev_thread()
-
-        self.sigDelete.emit(self.id)
-
-
-class DispatchReader(ReaderThread):
-    def __init__(self, dispatcher):
-        ReaderThread.__init__(self, dispatcher.sock)
-        self.dispatcher = dispatcher
-
-    @overrides(ReaderThread._on_run)
-    def _on_run(self):
-        dummy_thread = threading.current_thread()
-        dummy_thread.is_pydev_daemon_thread = False
-        return ReaderThread._on_run(self)
-
-    def handle_except(self):
-        self.dispatcher.notifyDelete()
-
-    def process_command(self, cmd_id, seq, text):
-        # unquote text
-        from urllib.parse import unquote
-        text = unquote(text)
-        self.dispatcher.notify(cmd_id, seq, text)
-
-
-class PQYWorker(QtCore.QObject):
-    start = QtCore.pyqtSignal()
-    widgetInfoRecv = QtCore.pyqtSignal(dict)
-    sigNewDispatcher = QtCore.pyqtSignal(Dispatcher)
-    socketError = QtCore.pyqtSignal(str)
-
-    def __init__(self, parent, port):
-        super().__init__(parent)
-        self.port = port
-
-        self.dispatchers = []
-        self.idToDispatcher = {}
-
-        self.start.connect(self.run)
-
-        self._isServing = False
-        self._socket = None
-
-    def run(self):
-        self._isServing = True
-        self._socket = socket(AF_INET, SOCK_STREAM)
-        self._socket.settimeout(None)
-
-        # try:
-        #     from socket import SO_REUSEPORT
-        #     s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
-        # except ImportError:
-        #     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        try:
-            self._socket.bind(('', self.port))
-            self._socket.listen(1)
-
-            dispatcherId = 0
-
-            while self._isServing:
-                newSock, _addr = self._socket.accept()
-                # 新建个线程来处理
-                dispatcher = Dispatcher(None, newSock, dispatcherId)
-                dispatcher.sigDelete.connect(self._onDispatcherDelete)
-                self.dispatchers.append(dispatcher)
-                self.idToDispatcher[dispatcherId] = dispatcher
-
-                self.sigNewDispatcher.emit(dispatcher)
-                dispatcher.start()
-                dispatcherId += 1
-
-        except Exception as e:
-            if getattr(e, 'errno') == 10038:
-                return  # Socket closed.
-
-            sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
-            sys.stderr.flush()
-            traceback.print_exc()
-            self.socketError.emit(str(e))
-
-    def stop(self):
-        self._isServing = False
-        for dispatcher in self.dispatchers:
-            dispatcher.close()
-
-        if self._socket:
-            self._socket.close()
-
-    def onMsg(self, info: dict):
-        self.widgetInfoRecv.emit(info)
-
-    def sendEnableInspect(self, extra: dict):
-        for dispatcher in self.dispatchers:
-            dispatcher.sendEnableInspect(extra)
-
-    def sendEnableInspectToDispatcher(self, dispatcherId: int, extra: dict):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendEnableInspect(extra)
-
-    def sendDisableInspect(self):
-        for dispatcher in self.dispatchers:
-            dispatcher.sendDisableInspect()
-
-    def sendExecCodeEvent(self, dispatcherId: int, code: str):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendExecCodeEvent(code)
-
-    def sendHighlightWidgetEvent(self, dispatcherId: int, widgetId: int, isHighlight: bool):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendHighlightWidgetEvent(widgetId, isHighlight)
-
-    def sendSelectWidgetEvent(self, dispatcherId: int, widgetId: int):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendSelectWidgetEvent(widgetId)
-
-    def sendRequestWidgetInfoEvent(self, dispatcherId: int, widgetId: int, extra: dict = None):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendRequestWidgetInfoEvent(widgetId, extra)
-
-    def sendRequestChildrenInfoEvent(self, dispatcherId: int, widgetId: int):
-        dispatcher = self.idToDispatcher.get(dispatcherId)
-        if dispatcher:
-            dispatcher.sendRequestChildrenInfoEvent(widgetId)
-
-    def _onDispatcherDelete(self, id: int):
-        dispatcher = self.idToDispatcher.pop(id)
-        self.dispatchers.remove(dispatcher)
-        dispatcher.close()
-        dispatcher.deleteLater()
 
 
 class BriefLine(QtWidgets.QWidget):
@@ -581,6 +365,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._createStacksListWidget.clearStacks()
         self._hierarchyBar.clearData()
 
+    def _getWorker(self) -> typing.Union[PQYWorker, DummyWorker]:
+        if self._worker is None:
+            return DUMMY_WORKER
+        return self._worker
+
     def _askStopWorkerConfirmation(self):
         """ Ask the user for confirmation to stop the server. """
         self._serveButton.setChecked(True)  # hold the button checked before user's choice
@@ -589,6 +378,7 @@ class PQIWindow(QtWidgets.QMainWindow):
                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                                                QtWidgets.QMessageBox.No)
         if reply == QtWidgets.QMessageBox.Yes:
+            self._disableInspect()  # disable inspect for all dispatchers before stopping the server
             self._cleanUpWhenWorkerStopped()
             self._serveButton.setChecked(False)
 
@@ -608,7 +398,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
             # If inspection is enabled, enable it for the new process.
             if self._inspectButton.isChecked():
-                self._worker.sendEnableInspectToDispatcher(
+                self._getWorker().sendEnableInspectToDispatcher(
                     dispatcherId,
                     {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
                 )
@@ -648,7 +438,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def handle_inspect_finished_msg(self):
         self._inspectButton.setChecked(False)
-        self._worker.sendDisableInspect()  # disable inspect for all dispatchers
+        self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
         self._stopKeyboardHookThread()
 
     def onNewDispatcher(self, dispatcher):
@@ -656,7 +446,10 @@ class PQIWindow(QtWidgets.QMainWindow):
         dispatcher.registerMainUIReady()
 
     def _enableInspect(self):
-        self._worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
+        worker = self._getWorker()
+        if not worker:
+            return
+        worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
 
         if self._pressF8ToDisableInspectAction.isChecked():
             # start keyboard hook thread if user wants to disable inspect by pressing F8
@@ -665,12 +458,12 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._keyboardHookThread.start()
 
     def _disableInspect(self):
-        self._worker.sendDisableInspect()
+        self._getWorker().sendDisableInspect()
         self._currDispatcherIdForSelectedWidget = None
         self._stopKeyboardHookThread()
 
     def _onInspectButtonClicked(self, checked: bool):
-        if self._worker is None:
+        if not self._getWorker():
             return
         if checked:
             self._enableInspect()
@@ -678,25 +471,29 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._disableInspect()
 
     def _notifyExecCodeInSelectedWidget(self, code: str):
-        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+        worker = self._getWorker()
+        if not worker or self._currDispatcherIdForSelectedWidget is None:
             return
 
-        self._worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
+        worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
 
     def _onAncestorWidgetItemHighlight(self, widgetId: str):
-        widgetId = int(widgetId)
-        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+        worker = self._getWorker()
+        if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
+        widgetId = int(widgetId)
         # unhighlight prev widget, and highlight current widget
         self._unhighlightPrevWidget()
-        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+        worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
     def _onAncestorWidgetItemClicked(self, widgetId: str):
-        widgetId = int(widgetId)
-        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+        worker = self._getWorker()
+        if not worker or self._currDispatcherIdForSelectedWidget is None:
             return
+
+        widgetId = int(widgetId)
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._unhighlightPrevWidget()
@@ -706,24 +503,26 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo 会不会有时序问题
 
     def _onChildWidgetItemHighlight(self, widgetId: str):
-        widgetId = int(widgetId)
-        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+        worker = self._getWorker()
+        if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
+        widgetId = int(widgetId)
         # unhighlight prev widget, and highlight current widget
         self._unhighlightPrevWidget()
-        self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
+        worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
     def _onChildWidgetItemClicked(self, widgetId: str):
-        widgetId = int(widgetId)
-        if self._worker is None or self._currDispatcherIdForSelectedWidget is None:
+        worker = self._getWorker()
+        if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
-        self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        widgetId = int(widgetId)
+        worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._unhighlightPrevWidget()
-        self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
-        self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+        worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _openSettingWindow(self):
         if self._settingWindow is None:
@@ -742,19 +541,21 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._codeWindow.notifyResult(isErr, result)
 
     def _reqChildWidgetsInfo(self, widgetIdStr: str):
-        if self._worker is not None and self._currDispatcherIdForSelectedWidget is not None:
+        worker = self._getWorker()
+        if worker is not None and self._currDispatcherIdForSelectedWidget is not None:
             widgetId = int(widgetIdStr)
-            self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+            worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _unhighlightPrevWidget(self):
+        worker = self._getWorker()
         conditions_met = (
-            self._worker is not None,
+            bool(worker),
             self._currDispatcherIdForSelectedWidget is not None,
             self._curHighlightedWidgetId != -1
         )
 
         if all(conditions_met):
-            self._worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget,
+            worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget,
                                                   self._curHighlightedWidgetId,
                                                   False)
             self._curHighlightedWidgetId = -1
@@ -791,6 +592,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         # 覆写self._currDispatcherIdForSelectedWidget
         # todo 看看有没有更好的办法
         self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
+
     # endregion
 
     def closeEvent(self, a0):
@@ -798,7 +600,6 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def cleanUp(self):
         self._disableInspect()
-        self._stopKeyboardHookThread()
 
 
 def main():

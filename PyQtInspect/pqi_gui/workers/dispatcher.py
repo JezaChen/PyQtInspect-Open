@@ -1,0 +1,105 @@
+# -*- encoding:utf-8 -*-
+# A dispatcher is a class that can be used to send and receive messages between pqi-server and single pqi-client.
+
+from PyQt5 import QtCore
+import threading
+
+from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
+from PyQtInspect._pqi_bundle.pqi_override import overrides
+
+
+class DispatchReader(ReaderThread):
+    def __init__(self, dispatcher):
+        ReaderThread.__init__(self, dispatcher.sock)
+        self.dispatcher = dispatcher
+
+    @overrides(ReaderThread._on_run)
+    def _on_run(self):
+        dummy_thread = threading.current_thread()
+        dummy_thread.is_pydev_daemon_thread = False
+        return ReaderThread._on_run(self)
+
+    def handle_except(self):
+        self.dispatcher.notifyDelete()
+
+    def process_command(self, cmd_id, seq, text):
+        # unquote text
+        from urllib.parse import unquote
+        text = unquote(text)
+        self.dispatcher.notify(cmd_id, seq, text)
+
+
+class Dispatcher(QtCore.QThread):
+    sigMsg = QtCore.pyqtSignal(int, dict)  # dispatcher_id, info
+    sigDelete = QtCore.pyqtSignal(int)
+
+    def __init__(self, parent, sock, id):
+        super().__init__(parent)
+        self.sock = sock
+        self.id = id
+        self.net_command_factory = NetCommandFactory()
+        self.reader = None
+        self.writer = None
+
+        # 由于dispatcher刚创建的时候, 主界面还来不及处理立即到来的信息(PQYWorker未发出新dispatcher创建的信号)
+        # 所以需要在主界面准备好之后再处理
+        # 此前的消息都缓存起来
+        self._mainUIReady = False
+        self._msg_buffer = []
+
+    def run(self):
+        self.writer = WriterThread(self.sock)
+        self.writer.pydev_do_not_trace = False  # We run writer in the same thread so we don't want to loose tracing.
+        self.writer.start()
+
+        self.reader = DispatchReader(self)
+        self.reader.pydev_do_not_trace = False  # We run reader in the same thread so we don't want to loose tracing.
+        self.reader.run()
+
+    def close(self):
+        try:
+            self.writer.do_kill_pydev_thread()
+            self.reader.do_kill_pydev_thread()
+            self.sock.close()
+        except:
+            pass
+
+    def registerMainUIReady(self):
+        """ 告知dispatcher, 主界面已经准备好了, 可以处理消息了
+        """
+        self._mainUIReady = True
+        for cmd_id, seq, text in self._msg_buffer:
+            self.notify(cmd_id, seq, text)
+
+    def notify(self, cmd_id, seq, text):
+        if not self._mainUIReady:
+            # 缓存起来
+            self._msg_buffer.append((cmd_id, seq, text))
+        self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
+
+    def sendEnableInspect(self, extra: dict):
+        self.writer.add_command(self.net_command_factory.make_enable_inspect_message(extra))
+
+    def sendDisableInspect(self):
+        self.writer.add_command(self.net_command_factory.make_disable_inspect_message())
+
+    def sendExecCodeEvent(self, code: str):
+        self.writer.add_command(self.net_command_factory.make_exec_code_message(code))
+
+    def sendHighlightWidgetEvent(self, widgetId: int, isHighlight: bool):
+        self.writer.add_command(self.net_command_factory.make_set_widget_highlight_message(widgetId, isHighlight))
+
+    def sendSelectWidgetEvent(self, widgetId: int):
+        self.writer.add_command(self.net_command_factory.make_select_widget_message(widgetId))
+
+    def sendRequestWidgetInfoEvent(self, widgetId: int, extra: dict = None):
+        self.writer.add_command(self.net_command_factory.make_req_widget_info_message(widgetId, extra))
+
+    def sendRequestChildrenInfoEvent(self, widgetId: int):
+        self.writer.add_command(self.net_command_factory.make_req_children_info_message(widgetId))
+
+    def notifyDelete(self):
+        self.reader.do_kill_pydev_thread()
+        self.writer.do_kill_pydev_thread()
+
+        self.sigDelete.emit(self.id)

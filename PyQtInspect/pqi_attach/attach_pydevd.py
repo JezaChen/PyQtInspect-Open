@@ -67,6 +67,7 @@ def main(setup):
 
             setup['pythonpath'] = cc_sub_compiled_pqi_path
             setup['pythonpath2'] = os.path.join(cc_sub_compiled_pqi_path, path2_rel_path).replace('\\', '/')
+            print(setup)
 
         python_code = '''import sys;
 sys.path.append("%(pythonpath)s");
