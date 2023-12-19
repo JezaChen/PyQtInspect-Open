@@ -42,6 +42,7 @@ class ChildrenMenuWidget(QWidget):
             color: #000000;
             border: none;
             font-size: 12px;
+        }
         """)
         self.listView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.listView.setObjectName("listView")
