@@ -267,10 +267,18 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         # === install event listener === #
         self._pqi_event_listener = EventListener()
-        self.installEventFilter(self._pqi_event_listener)
+        type(self)._original_installEventFilter(self, self._pqi_event_listener)
+        if hasattr(self, 'viewport'):
+            self.viewport().installEventFilter(self._pqi_event_listener)
 
         # === register widget === #
         _register_widget(self)
+
+    def _new_installEventFilter(self, eventFilter):
+        type(self)._original_installEventFilter(self, eventFilter)
+        if hasattr(self, '_pqi_event_listener'):  # todo PyQt5: Scrollbar貌似没有event_listener
+            self.removeEventFilter(self._pqi_event_listener)
+            type(self)._original_installEventFilter(self, self._pqi_event_listener)
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
@@ -319,7 +327,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     for widgetClsName in classesToPatch:
         widgetCls = getattr(QtWidgets, widgetClsName)
         widgetCls._original_QWidget_init = widgetCls.__init__
+        widgetCls._original_installEventFilter = widgetCls.installEventFilter
         widgetCls.__init__ = _new_QWidget_init
+        widgetCls.installEventFilter = _new_installEventFilter
         widgetCls._pqi_exec = _pqi_exec
 
     if is_attach:
