@@ -72,7 +72,6 @@ ACCEPTED_ARG_HANDLERS = [
 
     ArgHandlerBool('server'),
     ArgHandlerBool('DEBUG_RECORD_SOCKET_READS'),
-    ArgHandlerBool('multiproc'),  # Used by PyCharm (reuses connection: ssh tunneling)
     ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
