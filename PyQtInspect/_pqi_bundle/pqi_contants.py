@@ -8,6 +8,8 @@
 This module holds the constants used for specifying the states of the debugger.
 '''
 from __future__ import nested_scopes
+
+import logging
 import platform
 import sys  # Note: the sys import must be here anyways (others depend on it)
 
@@ -28,8 +30,8 @@ class DebugInfoHolder:
     # we have to put it here because it can be set through the command line (so, the
     # already imported references would not have it).
     DEBUG_RECORD_SOCKET_READS = False
-    DEBUG_TRACE_LEVEL = -1
-    DEBUG_TRACE_BREAKPOINTS = -1
+    LOG_TO_FILE_LEVEL = logging.INFO
+    LOG_TO_CONSOLE_LEVEL = logging.WARNING
 
 
 IS_CPYTHON = platform.python_implementation() == 'CPython'
@@ -158,7 +160,7 @@ IS_PYCHARM = True
 ASYNC_EVAL_TIMEOUT_SEC = 60
 NEXT_VALUE_SEPARATOR = "__pydev_val__"
 BUILTINS_MODULE_NAME = '__builtin__' if IS_PY2 else 'builtins'
-SHOW_DEBUG_INFO_ENV = os.getenv('PYCHARM_DEBUG') == 'True' or os.getenv('PYDEV_DEBUG') == 'True'
+SHOW_DEBUG_INFO_ENV = os.getenv('PYCHARM_DEBUG') == 'True' or os.getenv('PQI_DEBUG') == 'True'
 IS_ASYNCIO_REPL = os.getenv('ASYNCIO_REPL') == 'True' and IS_PY38_OR_GREATER
 IS_ASYNCIO_DEBUGGER_ENV = os.getenv('ASYNCIO_DEBUGGER_ENV') == 'True' and IS_PY38_OR_GREATER
 
@@ -168,8 +170,8 @@ GOTO_HAS_RESPONSE = IS_PYCHARM
 if SHOW_DEBUG_INFO_ENV:
     # show debug info before the debugger start
     DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = True
-    DebugInfoHolder.DEBUG_TRACE_LEVEL = 3
-    DebugInfoHolder.DEBUG_TRACE_BREAKPOINTS = 1
+    DebugInfoHolder.LOG_TO_FILE_LEVEL = logging.DEBUG
+    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = logging.DEBUG
 
 
 def protect_libraries_from_patching():

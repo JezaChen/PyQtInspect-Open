@@ -8,6 +8,8 @@ import time
 import socket
 import typing
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR
+
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, IS_PY2, GlobalDebuggerHolder, get_global_debugger, \
     set_global_debugger
 from PyQtInspect._pqi_bundle.pqi_override import overrides
@@ -24,7 +26,6 @@ except:
 import sys
 import traceback
 from urllib.parse import quote
-from PyQtInspect._pqi_bundle.pqi_log import logger
 
 try:
     import cStringIO as StringIO  # may not always be available @UnusedImport
@@ -52,25 +53,6 @@ class CommunicationRole(object):
     """
     CLIENT = 0
     SERVER = 1
-
-
-# --------------------------------------------------------------------------------------------------- UTILITIES
-
-# =======================================================================================================================
-# pydevd_log
-# =======================================================================================================================
-def pydevd_log(level, *args):
-    """ levels are:
-        0 most serious warnings/errors
-        1 warnings/significant events
-        2 informational trace
-    """
-    if level <= DebugInfoHolder.DEBUG_TRACE_LEVEL:
-        # yes, we can have errors printing if the console of the program has been finished (and we're still trying to print something)
-        try:
-            sys.stderr.write('%s\n' % (args,))
-        except:
-            pass
 
 
 # ------------------------------------------------------------------- ACTUAL COMM
@@ -123,8 +105,7 @@ class PyDBDaemonThread(threading.Thread):
 
     def _warn_pydevd_thread_is_traced(self):
         if self.pydev_do_not_trace and sys.gettrace():
-            pydevd_log(1,
-                       "The debugger thread '%s' is traced which may lead to debugging performance issues." % self.__class__.__name__)
+            pqi_log.info("The debugger thread '%s' is traced which may lead to debugging performance issues." % self.__class__.__name__)
 
 
 def mark_as_pydevd_daemon_thread(thread):
@@ -198,7 +179,7 @@ class ReaderThread(PyDBDaemonThread):
                     args = command.split(u'\t', 2)
                     try:
                         cmd_id = int(args[0])
-                        logger.debug('Received command: %s %s\n' % (ID_TO_MEANING.get(str(cmd_id), '???'), command,))
+                        pqi_log.debug('Received command: %s %s\n' % (ID_TO_MEANING.get(str(cmd_id), '???'), command,))
                         self.process_command(cmd_id, int(args[1]), args[2])
                     except:
                         traceback.print_exc()
@@ -283,7 +264,7 @@ class WriterThread(PyDBDaemonThread):
                         else:
                             continue
                 except:
-                    # pydevd_log(0, 'Finishing debug communication...(1)')
+                    # pqi_log.info('Finishing debug communication...(1)')
                     # when liberating the thread here, we could have errors because we were shutting down
                     # but the thread was still not liberated
                     return
@@ -296,8 +277,7 @@ class WriterThread(PyDBDaemonThread):
                 time.sleep(self.timeout)
         except Exception:
             GlobalDebuggerHolder.global_dbg.finish_debugging_session()
-            if DebugInfoHolder.DEBUG_TRACE_LEVEL >= 0:
-                traceback.print_exc()
+            pqi_log.error('Error in writer thread', exc_info=True)
 
     def empty(self):
         return self.cmdQueue.empty()
@@ -320,12 +300,12 @@ def start_server(port):
         s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
     s.bind(('', port))
-    pydevd_log(1, "Bound to port ", str(port))
+    pqi_log.info("Bound to port " + str(port))
 
     try:
         s.listen(1)
         newSock, _addr = s.accept()
-        pydevd_log(1, "Connection accepted")
+        pqi_log.info(1, "Connection accepted")
         # closing server socket is not necessary but we don't need it
         # s.shutdown(SHUT_RDWR)  # todo?
         s.close()
@@ -342,7 +322,7 @@ def start_server(port):
 # =======================================================================================================================
 def start_client(host, port):
     """ connects to a host/port """
-    pydevd_log(1, "Connecting to ", host, ":", str(port))
+    pqi_log.info(f"Connecting to {host}:{port}")
 
     s = socket(AF_INET, SOCK_STREAM)
     # Set inheritable for Python >= 3.4. See https://docs.python.org/3/library/os.html#fd-inheritance.
@@ -367,7 +347,7 @@ def start_client(host, port):
         s.settimeout(10)  # 10 seconds timeout
         s.connect((host, port))
         s.settimeout(None)  # no timeout after connected
-        pydevd_log(1, "Connected.")
+        pqi_log.info("Connected.")
         return s
     except:
         sys.stderr.write("Could not connect to %s: %s\n" % (host, port))
@@ -414,8 +394,7 @@ class NetCommand:
 
         assert isinstance(text, str)
 
-        if DebugInfoHolder.DEBUG_TRACE_LEVEL >= 1:
-            self._show_debug_info(cmd_id, seq, text)
+        self._show_debug_info(cmd_id, seq, text)
 
         if self.protocol == self.HTTP_PROTOCOL:
             msg = '%s\t%s\t%s\n' % (cmd_id, seq, text)
@@ -443,25 +422,28 @@ class NetCommand:
 
     @classmethod
     def _show_debug_info(cls, cmd_id, seq, text):
-        with cls._show_debug_info_lock:
-            # Only one thread each time (rlock).
-            if cls._showing_debug_info:
-                # avoid recursing in the same thread (just printing could create
-                # a new command when redirecting output).
-                return
-
-            cls._showing_debug_info += 1
-            try:
-                out_message = 'sending cmd --> '
-                out_message += "%20s" % ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN')
-                out_message += ' '
-                out_message += text.replace('\n', ' ')
-                try:
-                    sys.stderr.write('%s\n' % (out_message,))
-                except:
-                    pass
-            finally:
-                cls._showing_debug_info -= 1
+        pqi_log.debug(
+            'sending cmd --> %20s %s' % (ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN'), text.replace('\n', ' '))
+        )
+        # with cls._show_debug_info_lock:
+        #     # Only one thread each time (rlock).
+        #     if cls._showing_debug_info:
+        #         # avoid recursing in the same thread (just printing could create
+        #         # a new command when redirecting output).
+        #         return
+        #
+        #     cls._showing_debug_info += 1
+        #     try:
+        #         out_message = 'sending cmd --> '
+        #         out_message += "%20s" % ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN')
+        #         out_message += ' '
+        #         out_message += text.replace('\n', ' ')
+        #         try:
+        #             sys.stderr.write('%s\n' % (out_message,))
+        #         except:
+        #             pass
+        #     finally:
+        #         cls._showing_debug_info -= 1
 
 
 # # =======================================================================================================================

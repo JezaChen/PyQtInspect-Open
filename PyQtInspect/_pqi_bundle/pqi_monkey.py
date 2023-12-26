@@ -8,10 +8,10 @@
 import os
 import sys
 import traceback
-import threading
+
 from PyQtInspect._pqi_bundle.pqi_contants import (
     get_global_debugger, IS_WINDOWS, IS_MACOS, IS_PY36_OR_LESSER, IS_PY36_OR_GREATER, IS_PY38_OR_GREATER,
-    get_current_thread_id, IS_PY311_OR_GREATER, SUPPORT_CC
+    IS_PY311_OR_GREATER
 )
 
 PYTHON_NAMES = ['python', 'jython', 'pypy', 'cc_sub']
@@ -19,15 +19,15 @@ PYTHON_NAMES = ['python', 'jython', 'pypy', 'cc_sub']
 # ===============================================================================
 # Things that are dependent on having the pydevd debugger
 # ===============================================================================
-import PyQtInspect._pqi_bundle.pqi_log as pqi_log
+from PyQtInspect._pqi_bundle import pqi_log
 
 
 def log_debug(msg):
-    pqi_log.logger.debug(msg)
+    pqi_log.debug(msg)
 
 
-def log_error_once(msg):
-    pqi_log.logger.error(msg)
+def log_error(msg):
+    pqi_log.error(msg)
 
 
 current_dir = os.path.dirname(__file__)
@@ -427,13 +427,12 @@ def monkey_patch_os(funcname, create_func):
 
 
 def warn_multiproc():
-    log_error_once(
-        "pydev debugger: New process is launching (breakpoints won't work in the new process).\n"
-        "pydev debugger: To debug that process please enable 'Attach to subprocess automatically while debugging?' option in the debugger settings.\n")
+    log_error("pydev debugger: New process is launching (breakpoints won't work in the new process).\n"
+              "pydev debugger: To debug that process please enable 'Attach to subprocess automatically while debugging?' option in the debugger settings.\n")
 
 
 def warn_bytes_args():
-    log_error_once(
+    log_error(
         "pydev debugger: bytes arguments were passed to a new process creation function. Breakpoints may not work correctly.\n")
 
 
@@ -636,7 +635,7 @@ def apply_foundation_framework_hack():
     try:
         ctypes.cdll.LoadLibrary('/System/Library/Frameworks/Foundation.framework/Foundation')
     except OSError:
-        log_error_once(
+        log_error(
             'Failed to load the Foundation framework shared library. Debugging of code that uses `os.fork()` may not work.\n'
             'Consider setting the `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` environment variable.')
     else:

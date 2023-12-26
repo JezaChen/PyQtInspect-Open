@@ -196,8 +196,7 @@ def attach(port, host, protocol=''):
             py_db.dispose_and_kill_all_pqi_threads()
 
         # pydevd.DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = True
-        # pydevd.DebugInfoHolder.DEBUG_TRACE_BREAKPOINTS = 3
-        # pydevd.DebugInfoHolder.DEBUG_TRACE_LEVEL = 3
+        # pydevd.DebugInfoHolder.LOG_TO_FILE_LEVEL = 3
         qtlib_type = _try_get_qtlib_type()
         PyQtInspect.pqi.settrace(
             port=port,

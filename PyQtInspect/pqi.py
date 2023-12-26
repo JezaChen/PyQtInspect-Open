@@ -19,7 +19,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id
+from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
@@ -115,8 +115,7 @@ def execfile(file, glob=None, loc=None):
 # =======================================================================================================================
 # SetupHolder
 # =======================================================================================================================
-class SetupHolder:
-    setup = None
+from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
 
 class TrackedLock(object):
@@ -516,9 +515,11 @@ class PyDB(object):
 
 
 def set_debug(setup):
+    import logging
+
     setup['DEBUG_RECORD_SOCKET_READS'] = True
-    setup['DEBUG_TRACE_BREAKPOINTS'] = 1
-    setup['DEBUG_TRACE_LEVEL'] = 3
+    setup['LOG_TO_FILE_LEVEL'] = logging.DEBUG
+    setup['LOG_TO_CONSOLE_LEVEL'] = logging.DEBUG
 
 
 # =======================================================================================================================
@@ -620,7 +621,10 @@ def _locked_settrace(
 # =======================================================================================================================
 def usage(do_exit=True, exit_code=0):
     sys.stdout.write('Usage:\n')
-    sys.stdout.write('\tpqi.py --port N [(--client hostname) | --server] --file executable [file_options]\n')
+    sys.stdout.write(
+        '\tpqi.py --port N --client hostname [--multiprocess] --qt-support=[pyqt5 | pyside2] '
+        '--file executable [file_options]\n'
+    )
     if do_exit:
         sys.exit(exit_code)
 
@@ -633,8 +637,18 @@ def main():
         SetupHolder.setup = setup
     except ValueError:
         traceback.print_exc()
-        usage(exit_code=1)
+        return usage(exit_code=1)
 
+    # for debug
+    if SHOW_DEBUG_INFO_ENV:
+        set_debug(setup)
+
+    DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = setup.get('DEBUG_RECORD_SOCKET_READS',
+                                                          DebugInfoHolder.DEBUG_RECORD_SOCKET_READS)
+    DebugInfoHolder.LOG_TO_FILE_LEVEL = setup.get('LOG_TO_FILE_LEVEL', DebugInfoHolder.LOG_TO_FILE_LEVEL)
+    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = setup.get('LOG_TO_CONSOLE_LEVEL', DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
+
+    # connect
     port = setup['port']
     host = setup['client']
 

@@ -8,6 +8,7 @@ import pathlib
 import sys
 import typing
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
 from PyQtInspect.pqi_gui.workers.pqy_worker import PQYWorker, DUMMY_WORKER, DummyWorker
 
@@ -30,7 +31,14 @@ from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
-from PyQtInspect.pqi_gui._pqi_res import resources, get_icon
+from PyQtInspect.pqi_gui._pqi_res import get_icon
+
+# ==== SetupHolder ====
+from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
+
+SetupHolder.setup = {
+    'server': True
+}
 
 myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -394,7 +402,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         text = info.get("text", "")
         if cmdId == CMD_QT_PATCH_SUCCESS:
             pid = int(text)
-            print(f"PyQtInspect: Qt patched successfully, pid: {pid}")
+            pqi_log.info(f"PyQtInspect: Qt patched successfully, pid: {pid}")
 
             # If inspection is enabled, enable it for the new process.
             if self._inspectButton.isChecked():
@@ -556,8 +564,8 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         if all(conditions_met):
             worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget,
-                                                  self._curHighlightedWidgetId,
-                                                  False)
+                                            self._curHighlightedWidgetId,
+                                            False)
             self._curHighlightedWidgetId = -1
 
     def _onAttachActionTriggered(self):
