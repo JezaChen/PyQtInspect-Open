@@ -24,6 +24,7 @@ from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
+from PyQtInspect._pqi_bundle import pqi_log
 
 import traceback
 
@@ -102,7 +103,7 @@ def execfile(file, glob=None, loc=None):
     except:
         from PyQtInspect._pqi_imps._pqi_execfile import exec_pyc
         import sys
-        print(sys.argv)
+        pqi_log.debug(f'exec_pyc: {file}, sys.argv: {sys.argv}')
         exec_pyc(file, glob, loc)
         return
     finally:
@@ -201,7 +202,7 @@ class PyDB(object):
         while retry_count <= 10:
             try:
                 self.connect(self._last_host, self._last_port)
-                print("Reconnected to %s:%s" % (self._last_host, self._last_port))
+                pqi_log.info("Reconnected to %s:%s" % (self._last_host, self._last_port))
                 return True  # success
             except:
                 retry_count += 1

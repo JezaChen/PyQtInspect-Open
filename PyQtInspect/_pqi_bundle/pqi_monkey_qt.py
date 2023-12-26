@@ -1,15 +1,10 @@
 from __future__ import nested_scopes
 
-import collections
 import os
-import queue
 import sys
-from contextlib import redirect_stdout
-from io import StringIO
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import patch_QtWidgets
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
-from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
 def set_trace_in_qt():
@@ -134,8 +129,8 @@ def patch_qt(qt_support_mode, is_attach=False):
             _internal_patch_qt(PyQt5.QtCore)
             _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, PyQt5.QtGui,
                                        qt_support_mode, is_attach)
-        except Exception as e:
-            print(e)
+        except Exception:
+            pqi_log.error('Error patching PyQt5', exc_info=True)
             return
 
     # todo PyQt4

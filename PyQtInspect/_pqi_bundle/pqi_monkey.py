@@ -606,7 +606,7 @@ def create_CreateProcess(original_name):
         except ImportError:
             import _winapi as _subprocess
         send_process_created_message()
-        print(f"new_CreateProcess: {app_name, patch_arg_str_win(cmd_line), *args}")
+        pqi_log.debug(f"new_CreateProcess: {app_name, patch_arg_str_win(cmd_line), *args}")
         return getattr(_subprocess, original_name)(app_name, patch_arg_str_win(cmd_line), *args)
 
     return new_CreateProcess

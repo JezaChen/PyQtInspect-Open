@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 import os
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
@@ -335,5 +336,5 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     if is_attach:
         _patch_old_widgets_when_attached()
 
-    print("<patched>...")
+    pqi_log.info(f"pid {os.getpid()} patched.")
     _notify_patch_success()
