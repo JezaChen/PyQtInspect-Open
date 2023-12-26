@@ -136,6 +136,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         def __getitem__(self, item):
             return self._stack[item]
 
+        def __len__(self):
+            return len(self._stack)
+
     _entered_widget_stack = EnteredWidgetStack()
 
     def _inspect_widget(debugger, widget: QtWidgets.QWidget):
@@ -164,6 +167,11 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
     class EventListener(QtCore.QObject):
         def _handleEnterEvent(self, obj, event):
+            if _entered_widget_stack:
+                # 如果栈顶有元素, 则取消掉栈顶元素的选择状态
+                # 否则QTabWidget会表现异常
+                # todo 看看能不能集成在栈上, 毕竟两者强关联
+                _clear_obj_inspected_mark(_entered_widget_stack[-1])
             _entered_widget_stack.push(obj)
             _inspect_top(_entered_widget_stack)
 
