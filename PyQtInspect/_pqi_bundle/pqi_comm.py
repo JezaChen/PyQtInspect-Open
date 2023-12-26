@@ -167,7 +167,7 @@ class ReaderThread(PyDBDaemonThread):
 
                 read_buffer += r
                 if DebugInfoHolder.DEBUG_RECORD_SOCKET_READS:
-                    sys.stderr.write(u'debugger: received >>%s<<\n' % (read_buffer,))
+                    sys.stderr.write(u'PyQtInspect: received >>%s<<\n' % (read_buffer,))
                     sys.stderr.flush()
 
                 if len(read_buffer) == 0:

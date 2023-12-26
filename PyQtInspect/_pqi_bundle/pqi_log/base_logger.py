@@ -30,9 +30,13 @@ def getLogger(logger_name='PyQtInspect', console_log_level=logging.INFO, file_lo
     fh.setLevel(file_log_level)
 
     # Format
-    formatter = logging.Formatter('[%(asctime)s][%(filename)s: line %(lineno)d][%(levelname)s] %(message)s')
-    sh.setFormatter(formatter)
-    fh.setFormatter(formatter)
+    shFormatter = logging.Formatter(
+        '[PyQtInspect][%(asctime)s][%(filename)s: line %(lineno)d][%(levelname)s] %(message)s'
+    )
+    sh.setFormatter(shFormatter)
+
+    fhFormatter = logging.Formatter('[%(asctime)s][%(filename)s: line %(lineno)d][%(levelname)s] %(message)s')
+    fh.setFormatter(fhFormatter)
 
     # Add handlers
     logger.addHandler(fh)
