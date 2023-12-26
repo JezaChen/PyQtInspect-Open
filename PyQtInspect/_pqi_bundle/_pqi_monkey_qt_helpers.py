@@ -192,7 +192,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         def _handleMouseReleaseEvent(self, obj, event) -> bool:
             """ 处理鼠标点击事件, 这里需要返回一个bool值, 表示是否拦截事件 """
-            # print(f'click: {obj}')
+            print(f'click: {obj}, button: {event.button()}')
             if not _is_obj_inspected(obj):
                 return False
 
@@ -277,9 +277,12 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         # === install event listener === #
         self._pqi_event_listener = EventListener()
         type(self)._original_installEventFilter(self, self._pqi_event_listener)
-        if hasattr(self, 'viewport'):
+        # For some widgets which have viewport, we should install event listener on viewport
+        if hasattr(self, 'viewport')and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
             self.viewport().installEventFilter(self._pqi_event_listener)
-
+        # For QTabWidget we should install event listener on tab bar
+        if hasattr(self, 'tabBar') and callable(self.tabBar) and hasattr(self.tabBar(), 'installEventFilter'):
+            self.tabBar().installEventFilter(self._pqi_event_listener)
         # === register widget === #
         _register_widget(self)
 
