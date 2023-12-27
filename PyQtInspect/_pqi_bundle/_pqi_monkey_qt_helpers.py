@@ -277,6 +277,14 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                     obj._pqi_exec(code)
             return False
 
+    def _installEventFilterAndRegister(obj):
+        """ Install event listener and register widget to debugger """
+        # === install event listener === #
+        obj._pqi_event_listener = EventListener()
+        type(obj)._original_installEventFilter(obj, obj._pqi_event_listener)
+        # === register widget === #
+        _register_widget(obj)
+
     def _new_QWidget_init(self, *args, **kwargs):
         self._original_QWidget_init(*args, **kwargs)
         if not ispycreated(self):
@@ -287,21 +295,19 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         frames = getStackFrame()
         setattr(self, '_pqi_stacks_when_create', frames)
 
-        # === install event listener === #
-        self._pqi_event_listener = EventListener()
-        type(self)._original_installEventFilter(self, self._pqi_event_listener)
-        # For some widgets which have viewport, we should install event listener on viewport
+        _installEventFilterAndRegister(self)
+
+        # For some widgets which have viewport, we should install event listener on viewport and register it
         if hasattr(self, 'viewport') and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
-            self.viewport().installEventFilter(self._pqi_event_listener)
+            _installEventFilterAndRegister(self.viewport())
         # For QTabWidget we should install event listener on tab bar
         if hasattr(self, 'tabBar') and callable(self.tabBar) and hasattr(self.tabBar(), 'installEventFilter'):
-            self.tabBar().installEventFilter(self._pqi_event_listener)
-        # === register widget === #
-        _register_widget(self)
+            _installEventFilterAndRegister(self.tabBar())
 
     def _new_installEventFilter(self, eventFilter):
         type(self)._original_installEventFilter(self, eventFilter)
         if hasattr(self, '_pqi_event_listener'):  # todo PyQt5: Scrollbar貌似没有event_listener
+            # ensure our event listener is the first one to handle events
             self.removeEventFilter(self._pqi_event_listener)
             type(self)._original_installEventFilter(self, self._pqi_event_listener)
 
