@@ -415,6 +415,7 @@ class PyDB(object):
 
     def disable_inspect(self):
         self.inspect_enabled = False
+        self._inspect_extra_data = {}
 
     @property
     def mock_left_button_down(self) -> bool:
