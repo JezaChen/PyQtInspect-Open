@@ -44,6 +44,11 @@ def filter_trace_stack(traceStacks):
     return filteredStacks
 
 
+def _is_inspect_enabled():
+    debugger = get_global_debugger()
+    return debugger is not None and debugger.inspect_enabled
+
+
 def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=False):
     if qt_support_mode.startswith("pyqt"):
         import sip
@@ -157,9 +162,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         if not stack:
             return
 
-        debugger = get_global_debugger()
-        if debugger is None or not debugger.inspect_enabled:
+        if not _is_inspect_enabled():
             return
+        debugger = get_global_debugger()
 
         obj = stack[-1]
 
@@ -167,6 +172,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
     class EventListener(QtCore.QObject):
         def _handleEnterEvent(self, obj, event):
+            if not _is_inspect_enabled():
+                return
+
             if _entered_widget_stack:
                 # 如果栈顶有元素, 则取消掉栈顶元素的选择状态
                 # 否则QTabWidget会表现异常
@@ -179,6 +187,8 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             # 注意这个不对称
             # 因为leaveEvent是在鼠标离开时触发的, 但是鼠标离开时, 有可能鼠标已经进入了下一个widget
             # 所以不能直接pop
+            if not _is_inspect_enabled():
+                return
 
             if _entered_widget_stack and _entered_widget_stack[-1] == obj:
                 _entered_widget_stack.pop()
@@ -192,6 +202,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         def _handleMouseReleaseEvent(self, obj, event) -> bool:
             """ 处理鼠标点击事件, 这里需要返回一个bool值, 表示是否拦截事件 """
+            if not _is_inspect_enabled():
+                return False
+
             print(f'click: {obj}, button: {event.button()}')
             if not _is_obj_inspected(obj):
                 return False
@@ -202,8 +215,6 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                 return False
 
             debugger = get_global_debugger()
-            if debugger is None or not debugger.inspect_enabled:
-                return False
 
             if event.button() != QtCore.Qt.LeftButton:
                 if debugger is not None and debugger.mock_left_button_down and event.button() == QtCore.Qt.RightButton:
@@ -231,6 +242,8 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             return True
 
         def _handleMousePressEvent(self, obj, event):
+            if not _is_inspect_enabled():
+                return False
             # print(f'press: {obj}')
             if not event.spontaneous():
                 return False
@@ -278,7 +291,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         self._pqi_event_listener = EventListener()
         type(self)._original_installEventFilter(self, self._pqi_event_listener)
         # For some widgets which have viewport, we should install event listener on viewport
-        if hasattr(self, 'viewport')and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
+        if hasattr(self, 'viewport') and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
             self.viewport().installEventFilter(self._pqi_event_listener)
         # For QTabWidget we should install event listener on tab bar
         if hasattr(self, 'tabBar') and callable(self.tabBar) and hasattr(self.tabBar(), 'installEventFilter'):
