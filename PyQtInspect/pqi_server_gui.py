@@ -555,6 +555,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _unhighlightPrevWidget(self):
+        # todo 貌似不用这样了现在, pqi可以保证只有一个widget能高亮
         worker = self._getWorker()
         conditions_met = (
             bool(worker),
@@ -597,9 +598,15 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _finishInspectWhenKeyPress(self):
         self._disableInspect()
-        # 覆写self._currDispatcherIdForSelectedWidget
+        # override self._currDispatcherIdForSelectedWidget
         # todo 看看有没有更好的办法
         self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
+
+        _worker = self._getWorker()
+        # notify the client to select the widget (the widget is marked as inspected only before)
+        _worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)
+        # we must set the highlight status of this widget to false, because it is hovered before
+        _worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId, False)
 
     # endregion
 
