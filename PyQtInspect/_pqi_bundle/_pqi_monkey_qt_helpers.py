@@ -7,6 +7,7 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
+from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
@@ -71,7 +72,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         # 先new再调用之前的__init__
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
         QtWidgets.QWidget._original_QWidget_init(widget, parent)
-        widget.setFixedSize(parent.size())
+        widget.setFixedSize(*get_widget_size(parent))
         # 不要响应鼠标事件
         widget.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         widget.setObjectName("_pqi_highlight_fg")
@@ -102,7 +103,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             if not hasattr(widget, '_pqi_highlight_fg'):
                 widget._pqi_highlight_fg = _createHighlightFg(widget)
 
-            widget._pqi_highlight_fg.setFixedSize(widget.size())
+            widget._pqi_highlight_fg.setFixedSize(*get_widget_size(widget))
             cls.unhighlight_last()
             widget._pqi_highlight_fg.show()
             cls.last_highlighted_widget = widget._pqi_highlight_fg
