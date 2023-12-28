@@ -26,8 +26,8 @@ def get_logger():
         from ._client import logger
 
     file_log_level, console_log_level = _get_trace_level()
-    logger.set_console_log_level(file_log_level)
-    logger.set_file_log_level(console_log_level)
+    logger.set_console_log_level(console_log_level)
+    logger.set_file_log_level(file_log_level)
     return logger
 
 

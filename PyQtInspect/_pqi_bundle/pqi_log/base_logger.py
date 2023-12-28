@@ -17,7 +17,7 @@ def getLogger(logger_name='PyQtInspect', console_log_level=logging.INFO, file_lo
         return __logger_cache[logger_name]
 
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     # 1. Console
     sh = logging.StreamHandler()
