@@ -75,7 +75,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
-
+    ArgHandlerBool('show-pqi-stack'),
     ArgHandlerWithParamAndEqualSign('qt-support'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
 ]
 
@@ -145,6 +145,7 @@ def process_command_line(argv):
         setup[handler.arg_name] = handler.default_val
     setup['file'] = ''
     setup['qt-support'] = ''
+    setup['show-pqi-stack'] = False
 
     i = 0
     del argv[0]

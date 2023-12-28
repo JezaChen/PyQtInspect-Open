@@ -7,6 +7,7 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
@@ -33,11 +34,16 @@ def filter_trace_stack(traceStacks):
     filteredStacks = []
     from PyQtInspect.pqi import SetupHolder
     stackMaxDepth = SetupHolder.setup["stack-max-depth"]
+    showPqiStack = SetupHolder.setup["show-pqi-stack"]
+    pqi_module_path = find_pqi_module_path()
     stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
     for frame, lineno in stacks:
+        filename = _get_filename_from_frame(frame)
+        if not showPqiStack and is_relative_to(filename, pqi_module_path):
+            break
         filteredStacks.append(
             {
-                'filename': _try_get_file_name(frame),
+                'filename': filename,
                 'lineno': lineno,
                 'function': frame.f_code.co_name,
             }
