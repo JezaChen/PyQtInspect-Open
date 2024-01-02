@@ -520,7 +520,7 @@ QtWidgetClasses = [
     'QAbstractScrollArea',
     'QLCDNumber',
     'QLabel',
-    'QSplitter',
+    # 'QSplitter',  # ignored
     'QStackedWidget',
     'QToolBox',
     'QAbstractItemView',

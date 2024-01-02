@@ -97,6 +97,14 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
     class HighlightController:
         last_highlighted_widget = None
+        # for some widgets like QSplitter, we should not highlight them, or they will change their size
+        widget_class_to_ignore = (
+            QtWidgets.QSplitter,
+        )
+
+        @classmethod
+        def _is_ignored(cls, widget):
+            return any(isinstance(widget, class_) for class_ in cls.widget_class_to_ignore)
 
         @classmethod
         def unhighlight_last(cls):
@@ -106,6 +114,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         @classmethod
         def highlight(cls, widget):
+            if cls._is_ignored(widget):
+                return
+
             if not hasattr(widget, '_pqi_highlight_fg'):
                 widget._pqi_highlight_fg = _createHighlightFg(widget)
 
