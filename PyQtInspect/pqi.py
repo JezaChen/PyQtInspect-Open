@@ -580,6 +580,7 @@ def _locked_settrace(
             'multiprocess': patch_multiprocessing,
             'qt-support': qt_support,
             'stack-max-depth': 0,
+            'show-pqi-stack': False,
         }
         SetupHolder.setup = setup
 
