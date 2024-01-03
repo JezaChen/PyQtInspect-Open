@@ -295,11 +295,13 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                     obj._pqi_exec(code)
             return False
 
-    def _installEventFilterAndRegister(obj):
+    def _installEventFilterAndRegister(obj, eventFilter=None):
         """ Install event listener and register widget to debugger """
         # === install event listener === #
-        obj._pqi_event_listener = EventListener()
-        type(obj)._original_installEventFilter(obj, obj._pqi_event_listener)
+        if eventFilter is None:
+            obj._pqi_event_listener = EventListener()
+            eventFilter = obj._pqi_event_listener
+        type(obj)._original_installEventFilter(obj, eventFilter)
         # === register widget === #
         _register_widget(obj)
 
@@ -317,10 +319,13 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
         # For some widgets which have viewport, we should install event listener on viewport and register it
         if hasattr(self, 'viewport') and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
-            _installEventFilterAndRegister(self.viewport())
-        # For QTabWidget we should install event listener on tab bar
+            _installEventFilterAndRegister(self.viewport(), self._pqi_event_listener)
+        # For QTabWidget we should install  event listener on tab bar
         if hasattr(self, 'tabBar') and callable(self.tabBar) and hasattr(self.tabBar(), 'installEventFilter'):
-            _installEventFilterAndRegister(self.tabBar())
+            _installEventFilterAndRegister(self.tabBar(), self._pqi_event_listener)
+        # for QAbstractSpinBox we should install event listener on its line edit
+        if isinstance(self, QtWidgets.QAbstractSpinBox):
+            _installEventFilterAndRegister(self.lineEdit(), self._pqi_event_listener)
 
     def _new_installEventFilter(self, eventFilter):
         type(self)._original_installEventFilter(self, eventFilter)
