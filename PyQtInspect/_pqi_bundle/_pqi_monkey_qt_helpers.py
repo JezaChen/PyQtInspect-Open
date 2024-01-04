@@ -12,7 +12,8 @@ from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 
 
 _PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
-
+_PQI_INSPECTED_PROP_NAME = '_pqi_inspected'
+_PQI_INSPECTED_PROP_NAME_BYTES = b'_pqi_inspected'
 
 def _get_filename_from_frame(frame):
     return frame.f_code.co_filename
@@ -279,10 +280,11 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             # and Qt inside directly executing the `event` method.
             # At this point, some custom classes may not have fully initialized
             # hence the event method can reference an uninitialized attribute.
-            if event.type() == QtCore.QEvent.DynamicPropertyChange and bytes(event.propertyName()) == b'_pqi_inspected':
+            if (event.type() == QtCore.QEvent.DynamicPropertyChange
+                    and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
                 return True
 
-            if not obj.property('_pqi_inspected'):
+            if not obj.property(_PQI_INSPECTED_PROP_NAME):
                 return False
 
             if event.type() == QtCore.QEvent.Enter:
@@ -316,13 +318,13 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             debugger.global_event_filter = eventFilter
             QtCore.QCoreApplication.instance().installEventFilter(eventFilter)
 
-    def _installEventFilterAndRegister(obj):
+    def _registerWidget(obj):
         """ Install event listener and register widget to debugger """
         debugger = get_global_debugger()
         assert debugger is not None
         # We use the Qt property system to mark the widget inspected
         # Because Python binding instance may change and lose the mark
-        obj.setProperty('_pqi_inspected', True)
+        obj.setProperty(_PQI_INSPECTED_PROP_NAME, True)
         # === register widget === #
         _register_widget(obj)
 
@@ -337,18 +339,18 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         setattr(self, '_pqi_stacks_when_create', frames)
         # Initialize the global filter when it does not exist
         _initGlobalEventFilter()
-        _installEventFilterAndRegister(self)
+        _registerWidget(self)
         for specialMethod in ['viewport', 'tabBar', 'header']:
             if hasattr(self, specialMethod):
                 p = getattr(self, specialMethod)
                 if callable(p) and isinstance(p(), QtWidgets.QWidget):
                     for child in self.findChildren(QtWidgets.QWidget):
-                        if not child.property('_pqi_inspected'):
-                            _installEventFilterAndRegister(child)
+                        if not child.property(_PQI_INSPECTED_PROP_NAME):
+                            _registerWidget(child)
                     break
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(self, QtWidgets.QAbstractSpinBox):
-            _installEventFilterAndRegister(self.lineEdit())
+            _registerWidget(self.lineEdit())
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
