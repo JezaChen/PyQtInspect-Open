@@ -617,8 +617,33 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._disableInspect()
 
 
+def _set_debug():
+    import logging
+    from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder
+
+    # SetupHolder.setup
+    SetupHolder.setup.update({
+        'DEBUG_RECORD_SOCKET_READS': True,
+        'LOG_TO_FILE_LEVEL': logging.DEBUG,
+        'LOG_TO_CONSOLE_LEVEL': logging.DEBUG
+    })
+    # DebugInfoHolder (for logging)
+    DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = SetupHolder.setup.get(
+        'DEBUG_RECORD_SOCKET_READS',
+        DebugInfoHolder.DEBUG_RECORD_SOCKET_READS)
+    DebugInfoHolder.LOG_TO_FILE_LEVEL = SetupHolder.setup.get('LOG_TO_FILE_LEVEL', DebugInfoHolder.LOG_TO_FILE_LEVEL)
+    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = SetupHolder.setup.get('LOG_TO_CONSOLE_LEVEL',
+                                                                 DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
+
+
 def main():
     import sys
+
+    # Check if the debug option is set.
+    debug_option = '--debug'
+    if debug_option in sys.argv:
+        sys.argv.remove(debug_option)
+        _set_debug()
 
     app = QtWidgets.QApplication(sys.argv)
     window = PQIWindow()
