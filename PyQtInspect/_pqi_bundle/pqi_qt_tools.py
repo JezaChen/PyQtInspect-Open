@@ -86,6 +86,24 @@ def import_Qt(qt_type: str):
     return QtLib
 
 
+def import_wrap_module(qt_type: str):
+    """
+    Import the wrap module by Qt type.
+
+    :param qt_type: The Qt type to import, either 'pyqt5' or 'pyside2'.
+    """
+    if qt_type == 'pyqt5':
+        from PyQt5 import sip as wrap_module
+        wrap_module._pqi_is_valid = lambda x: wrap_module.isdeleted(x) == False
+    elif qt_type == 'pyside2':
+        import shiboken2 as wrap_module
+        wrap_module._pqi_is_valid = wrap_module.isValid
+    else:
+        raise ValueError(f'Unsupported Qt type: {qt_type}')
+
+    return wrap_module
+
+
 def _send_custom_event(target_widget, key: str, val):
     from PyQtInspect.pqi import SetupHolder
 
@@ -110,3 +128,14 @@ def set_widget_highlight(widget, highlight: bool):
 
 def exec_code_in_widget(widget, code: str):
     _send_custom_event(widget, '_pqi_exec_code', code)
+
+
+def is_wrapped_pointer_valid(ptr):
+    """
+    Check if a wrapped pointer is valid.
+
+    :param ptr: The pointer to check.
+    """
+    from PyQtInspect.pqi import SetupHolder
+
+    return import_wrap_module(SetupHolder.setup['qt-support'])._pqi_is_valid(ptr)

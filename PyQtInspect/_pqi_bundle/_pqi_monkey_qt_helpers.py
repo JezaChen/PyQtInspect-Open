@@ -1,6 +1,5 @@
 # -*- encoding:utf-8 -*-
 import collections
-import inspect
 from contextlib import redirect_stdout
 from io import StringIO
 import os
@@ -189,6 +188,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         _inspect_widget(debugger, obj)
 
     class EventListener(QtCore.QObject):
+
         def _handleEnterEvent(self, obj, event):
             if not _is_inspect_enabled():
                 return
@@ -273,6 +273,18 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             return True
 
         def eventFilter(self, obj, event):
+            # Intercept `QDynamicPropertyChange` events for properties dynamically
+            # added by PyQtInspect itself (like `_pqi_inspected`).
+            # Avoid the situation that attributes being dynamically added inside the `__init__` method
+            # and Qt inside directly executing the `event` method.
+            # At this point, some custom classes may not have fully initialized
+            # hence the event method can reference an uninitialized attribute.
+            if event.type() == QtCore.QEvent.DynamicPropertyChange and bytes(event.propertyName()) == b'_pqi_inspected':
+                return True
+
+            if not obj.property('_pqi_inspected'):
+                return False
+
             if event.type() == QtCore.QEvent.Enter:
                 self._handleEnterEvent(obj, event)
             elif event.type() == QtCore.QEvent.Leave:
@@ -295,13 +307,22 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                     obj._pqi_exec(code)
             return False
 
-    def _installEventFilterAndRegister(obj, eventFilter=None):
+    def _initGlobalEventFilter():
+        """ Initialize the global event filter when it does not exist """
+        debugger = get_global_debugger()
+        assert debugger is not None
+        if debugger.global_event_filter is None:
+            eventFilter = EventListener()
+            debugger.global_event_filter = eventFilter
+            QtCore.QCoreApplication.instance().installEventFilter(eventFilter)
+
+    def _installEventFilterAndRegister(obj):
         """ Install event listener and register widget to debugger """
-        # === install event listener === #
-        if eventFilter is None:
-            obj._pqi_event_listener = EventListener()
-            eventFilter = obj._pqi_event_listener
-        type(obj)._original_installEventFilter(obj, eventFilter)
+        debugger = get_global_debugger()
+        assert debugger is not None
+        # We use the Qt property system to mark the widget inspected
+        # Because Python binding instance may change and lose the mark
+        obj.setProperty('_pqi_inspected', True)
         # === register widget === #
         _register_widget(obj)
 
@@ -314,25 +335,20 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         # === save stack when create === #
         frames = getStackFrame()
         setattr(self, '_pqi_stacks_when_create', frames)
-
+        # Initialize the global filter when it does not exist
+        _initGlobalEventFilter()
         _installEventFilterAndRegister(self)
-
-        # For some widgets which have viewport, we should install event listener on viewport and register it
-        if hasattr(self, 'viewport') and callable(self.viewport) and hasattr(self.viewport(), 'installEventFilter'):
-            _installEventFilterAndRegister(self.viewport(), self._pqi_event_listener)
-        # For QTabWidget we should install  event listener on tab bar
-        if hasattr(self, 'tabBar') and callable(self.tabBar) and hasattr(self.tabBar(), 'installEventFilter'):
-            _installEventFilterAndRegister(self.tabBar(), self._pqi_event_listener)
+        for specialMethod in ['viewport', 'tabBar', 'header']:
+            if hasattr(self, specialMethod):
+                p = getattr(self, specialMethod)
+                if callable(p) and isinstance(p(), QtWidgets.QWidget):
+                    for child in self.findChildren(QtWidgets.QWidget):
+                        if not child.property('_pqi_inspected'):
+                            _installEventFilterAndRegister(child)
+                    break
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(self, QtWidgets.QAbstractSpinBox):
-            _installEventFilterAndRegister(self.lineEdit(), self._pqi_event_listener)
-
-    def _new_installEventFilter(self, eventFilter):
-        type(self)._original_installEventFilter(self, eventFilter)
-        if hasattr(self, '_pqi_event_listener'):  # todo PyQt5: Scrollbar貌似没有event_listener
-            # ensure our event listener is the first one to handle events
-            self.removeEventFilter(self._pqi_event_listener)
-            type(self)._original_installEventFilter(self, self._pqi_event_listener)
+            _installEventFilterAndRegister(self.lineEdit())
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
@@ -355,6 +371,9 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     #            ATTACH               #
     # ================================#
     def _patch_old_widgets_when_attached():
+        # Initialize the global filter when beginning attach
+        _initGlobalEventFilter()
+        # Patch the existing widgets
         topLevelWidgets = QtWidgets.QApplication.topLevelWidgets()
         widgetsToPatch = collections.deque(topLevelWidgets)
         while widgetsToPatch:  # BFS traverse
@@ -381,9 +400,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
     for widgetClsName in classesToPatch:
         widgetCls = getattr(QtWidgets, widgetClsName)
         widgetCls._original_QWidget_init = widgetCls.__init__
-        widgetCls._original_installEventFilter = widgetCls.installEventFilter
         widgetCls.__init__ = _new_QWidget_init
-        widgetCls.installEventFilter = _new_installEventFilter
         widgetCls._pqi_exec = _pqi_exec
 
     if is_attach:

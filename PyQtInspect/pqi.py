@@ -8,7 +8,6 @@ import sys
 import os
 import time
 import pathlib
-import weakref
 
 pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
@@ -17,7 +16,7 @@ if pyqt_inspect_module_dir not in sys.path:
 from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import filter_trace_stack
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
-    get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name
+    get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -189,7 +188,16 @@ class PyDB(object):
         self.inspect_enabled = False
         self._inspect_extra_data = {}
         self._selected_widget = None
-        self._id_to_widget = weakref.WeakValueDictionary()
+
+        # Mapping from QWidget object's ID to QWidget object
+        # The reason for using dict instead of WeakValueDictionary,
+        # is that for some internal child controls (such as QSpinbox.lineEdit()),
+        # there are no references at the Python level.
+        # This results in the wrapper objects being recycled by gc, and subsequently, these controls can't be found.
+        # Using dict can prolong the lifecycle of these wrappers,
+        # but each time it's accessed, it needs to check whether it is valid, if it is not, it needs to be removed.
+        self._id_to_widget = {}
+        self.global_event_filter = None
 
     def _try_reconnect(self):
         """
@@ -449,13 +457,27 @@ class PyDB(object):
 
     def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
         widget = self._id_to_widget.get(widget_id, None)
-        if widget is not None:
-            set_widget_highlight(widget, is_highlight)
+
+        if widget is None:
+            return
+
+        if not is_wrapped_pointer_valid(widget):
+            del self._id_to_widget[widget_id]
+            return
+
+        set_widget_highlight(widget, is_highlight)
 
     def select_widget_by_id(self, widget_id):
         widget = self._id_to_widget.get(widget_id, None)
-        if widget is not None:
-            self.select_widget(widget)
+
+        if widget is None:
+            return
+
+        if not is_wrapped_pointer_valid(widget):
+            del self._id_to_widget[widget_id]
+            return
+
+        self.select_widget(widget)
 
     def send_widget_info_to_server(self, widget, extra=None):
         if extra is None:
@@ -483,7 +505,12 @@ class PyDB(object):
 
     def notify_widget_info(self, widget_id, extra):
         widget = self._id_to_widget.get(widget_id, None)
+
         if widget is None:
+            return
+
+        if not is_wrapped_pointer_valid(widget):
+            del self._id_to_widget[widget_id]
             return
 
         self.send_widget_info_to_server(widget, extra)
@@ -497,7 +524,12 @@ class PyDB(object):
         @note: used for the bottom hierarchy view of the server GUI program.
         """
         widget = self._id_to_widget.get(widget_id, None)
+
         if widget is None:
+            return
+
+        if not is_wrapped_pointer_valid(widget):
+            del self._id_to_widget[widget_id]
             return
 
         children_info_list = list(get_children_info(widget))
