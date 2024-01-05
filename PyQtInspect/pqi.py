@@ -198,6 +198,7 @@ class PyDB(object):
         # but each time it's accessed, it needs to check whether it is valid, if it is not, it needs to be removed.
         self._id_to_widget = {}
         self.global_event_filter = None
+        self.global_native_event_filter = None
 
     def _try_reconnect(self):
         """

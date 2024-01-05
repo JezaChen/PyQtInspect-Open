@@ -1,6 +1,8 @@
 # -*- encoding:utf-8 -*-
 import collections
+import sys
 from contextlib import redirect_stdout
+from ctypes import wintypes
 from io import StringIO
 import os
 
@@ -276,10 +278,6 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         def eventFilter(self, obj, event):
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
-            # Avoid the situation that attributes being dynamically added inside the `__init__` method
-            # and Qt inside directly executing the `event` method.
-            # At this point, some custom classes may not have fully initialized
-            # hence the event method can reference an uninitialized attribute.
             if (event.type() == QtCore.QEvent.DynamicPropertyChange
                     and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
                 return True
@@ -309,22 +307,75 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
                     obj._pqi_exec(code)
             return False
 
+    class NativeEventListener(QtCore.QAbstractNativeEventFilter):
+        """
+        For some widgets that have overloaded the nativeEvent, mouse events may be intercepted earlier.
+        Therefore, a NativeEventFilter needs to be implemented to prevent mouse events from being intercepted.
+        """
+        HTCLIENT = 1
+        WM_NCHITTEST = 0x0084
+        def nativeEventFilter(self, eventType, message):
+            if not _is_inspect_enabled():
+                # If inspect is disabled, do not handle native events
+                return False, 0
+
+            msg = wintypes.MSG.from_address(int(message))
+            if msg.message == self.WM_NCHITTEST:
+                return True, self.HTCLIENT
+            return False, 0
+
     def _initGlobalEventFilter():
-        """ Initialize the global event filter when it does not exist """
+        """ Initialize the global event filters when it does not exist """
         debugger = get_global_debugger()
         assert debugger is not None
+
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            sys.stderr.write("QtWidgets.QApplication.instance() is None, stop attaching...")
+            sys.stderr.flush()
+            return
+
+        # find one of the top-level widgets to move the event filter to the main thread
+        topLevelWidgets = QtWidgets.QApplication.topLevelWidgets()
+        if not topLevelWidgets:
+            sys.stderr.write("Top-level widgets not found, stop attaching...")
+            sys.stderr.flush()
+            return
+
+        topLevelWgt = topLevelWidgets[0]
+
+        # Global event filter
         if debugger.global_event_filter is None:
             eventFilter = EventListener()
+            # We need to move the event filter to the main thread
+            eventFilter.moveToThread(topLevelWgt.thread())
             debugger.global_event_filter = eventFilter
-            QtCore.QCoreApplication.instance().installEventFilter(eventFilter)
+            app.installEventFilter(eventFilter)
 
-    def _registerWidget(obj):
+        # Global native event filter
+        if debugger.global_native_event_filter is None:
+            nativeEventFilter = NativeEventListener()
+            debugger.global_native_event_filter = nativeEventFilter
+            app.installNativeEventFilter(nativeEventFilter)
+
+    def _patchWidget(obj, *, attach=False):
         """ Install event listener and register widget to debugger """
         debugger = get_global_debugger()
         assert debugger is not None
-        # We use the Qt property system to mark the widget inspected
-        # Because Python binding instance may change and lose the mark
-        obj.setProperty(_PQI_INSPECTED_PROP_NAME, True)
+        if not attach:
+            # We use the Qt property system to mark the widget inspected
+            #   because Python binding instance may change and lose the mark
+            # To avoid the situation that attributes being dynamically added inside the `__init__` method
+            #   and Qt inside directly executing the `event` method.
+            # At this point, some custom classes may not have fully initialized
+            #   and the event method can reference an uninitialized attribute.
+            # So we use the QTimer and wait for `__init__` to finish.
+            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True))
+        else:
+            # Attach thread may be different from the main thread,
+            #   so the timer method will be invalid.
+            # We just set the property directly because the widget has been initialized.
+            obj.setProperty(_PQI_INSPECTED_PROP_NAME, True)
         # === register widget === #
         _register_widget(obj)
 
@@ -337,20 +388,24 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         # === save stack when create === #
         frames = getStackFrame()
         setattr(self, '_pqi_stacks_when_create', frames)
+
         # Initialize the global filter when it does not exist
         _initGlobalEventFilter()
-        _registerWidget(self)
+
+        # Patch widget
+        _patchWidget(self)
+        # Patch special widgets created by C++
         for specialMethod in ['viewport', 'tabBar', 'header']:
             if hasattr(self, specialMethod):
                 p = getattr(self, specialMethod)
                 if callable(p) and isinstance(p(), QtWidgets.QWidget):
                     for child in self.findChildren(QtWidgets.QWidget):
                         if not child.property(_PQI_INSPECTED_PROP_NAME):
-                            _registerWidget(child)
+                            _patchWidget(child)
                     break
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(self, QtWidgets.QAbstractSpinBox):
-            _registerWidget(self.lineEdit())
+            _patchWidget(self.lineEdit())
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
@@ -384,14 +439,8 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             if isdeleted(widget) or not ispycreated(widget):
                 continue
 
-            event_listener = EventListener()
-            # We must move the event listener to the thread of the widget during attach
-            event_listener.moveToThread(widget.thread())
-            widget._pqi_event_listener = event_listener
-            widget.installEventFilter(widget._pqi_event_listener)
-
-            # === register widget === #
-            _register_widget(widget)
+            # === patch widget ===
+            _patchWidget(widget, attach=True)
 
             widgetsToPatch.extend(widget.findChildren(QtWidgets.QWidget))
 
