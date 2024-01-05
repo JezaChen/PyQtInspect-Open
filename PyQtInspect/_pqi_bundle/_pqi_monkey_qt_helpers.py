@@ -255,6 +255,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
             # inspect finished
             debugger.notify_inspect_finished(obj)
+            debugger.disable_inspect()
             HighlightController.unhighlight(obj)
             _entered_widget_stack.clear()
             _clear_obj_inspected_mark(obj)
