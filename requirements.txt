@@ -1,2 +1,6 @@
 psutil
-wingrab
+wingrab~=0.0.1a4
+
+PyQtInspect~=0.1b0
+PyQt5~=5.15.10
+setuptools~=65.5.0
