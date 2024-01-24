@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="PyQtInspect",
-    version="0.2.0",
+    version="0.2.1",
     url="https://git-cc.nie.netease.com/pc/pyqtinspect",
     author="Chen Jianzhang",
     author_email="jezachen@163.com",
