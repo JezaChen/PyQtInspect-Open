@@ -7,11 +7,12 @@ from PyQtInspect._pqi_bundle.pqi_path_helper import find_compile_pqi_tool, get_c
 
 def process_command_line(argv):
     setup = {}
-    setup['port'] = 5678  # Default port for PyDev remote debugger
+    setup['port'] = 19394  # Default port
     setup['pid'] = 0
     setup['host'] = '127.0.0.1'
     setup['protocol'] = ''
     setup['debug-mode'] = ''
+    setup['qt-support'] = 'pyqt5'
 
     i = 0
     while i < len(argv):

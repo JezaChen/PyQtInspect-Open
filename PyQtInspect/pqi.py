@@ -561,8 +561,8 @@ def set_debug(setup):
 # settrace
 # =======================================================================================================================
 def settrace(
-        host=None,
-        port=5678,
+        host='127.0.0.1',
+        port=19394,
         patch_multiprocessing=False,
         qt_support='pyqt5',
         is_attach=False,

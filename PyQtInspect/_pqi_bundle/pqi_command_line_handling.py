@@ -66,8 +66,8 @@ class ArgHandlerBool:
 
 
 ACCEPTED_ARG_HANDLERS = [
-    ArgHandlerWithParam('port', int, 0),
-    ArgHandlerWithParam('client'),
+    ArgHandlerWithParam('port', int, 19394),
+    ArgHandlerWithParam('client', default_val='127.0.0.1'),
     ArgHandlerWithParam('stack-max-depth', int, 0),
 
     ArgHandlerBool('server'),
@@ -76,7 +76,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
     ArgHandlerBool('show-pqi-stack'),
-    ArgHandlerWithParamAndEqualSign('qt-support'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
+    ArgHandlerWithParamAndEqualSign('qt-support', default_val='pyqt5'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
 ]
 
 ARGV_REP_TO_HANDLER = {}
@@ -144,7 +144,6 @@ def process_command_line(argv):
     for handler in ACCEPTED_ARG_HANDLERS:
         setup[handler.arg_name] = handler.default_val
     setup['file'] = ''
-    setup['qt-support'] = ''
     setup['show-pqi-stack'] = False
 
     i = 0
