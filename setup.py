@@ -1,12 +1,6 @@
 from setuptools import find_packages, setup
 
 
-def pack_pqi_attach_module():
-    import os
-    for root, dirs, files in os.walk('PyQtInspect/pqi_attach'):
-        yield root, [os.path.join(root, file) for file in files]
-
-
 setup(
     name="PyQtInspect",
     version="0.01_beta",
