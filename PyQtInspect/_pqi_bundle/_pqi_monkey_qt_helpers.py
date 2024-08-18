@@ -81,6 +81,9 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         ispycreated = _shiboken.createdByPython
 
     def _create_mouse_event(event_type, pos, button):
+        """ Create a mouse event with the specified parameters.
+        It is safe, because the event object created by Python is allocated on the heap.
+        """
         return QtGui.QMouseEvent(event_type, QtCore.QPointF(pos), button, button, KeyboardModifierEnum.NoModifier)
 
     def _register_widget(widget):
@@ -260,10 +263,24 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     # Then, change the original event and send it again
                     event = _create_mouse_event(EventEnum.MouseButtonRelease, event.pos(), MouseButtonEnum.LeftButton)
                     setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
-                # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
-                QtCore.QCoreApplication.postEvent(obj, event)
-                # stop event propagation
-                return True
+                    # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
+                    QtCore.QCoreApplication.postEvent(obj, event)
+                    # stop event propagation
+                    return True
+                else:
+                    # Bug Fixed 20240810: We CAN NOT re-post the original event,
+                    # because it will be deleted after the event loop.
+                    # see: https://doc.qt.io/qt-5/qcoreapplication.html#postEvent
+                    # ---
+                    # The event must be allocated on the heap
+                    # since the post event queue will take ownership of the event
+                    # and delete it once it has been posted.
+                    # It is not safe to access the event after it has been posted.
+                    # ---
+                    # Note: all objects created in Python are allocated on the heap.
+                    # see: https://docs.python.org/3/c-api/memory.html
+                    # ---
+                    return False
 
             # inspect finished
             debugger.notify_inspect_finished(obj)
