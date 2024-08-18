@@ -645,6 +645,12 @@ def main():
         sys.argv.remove(debug_option)
         _set_debug()
 
+    # open high-resolution support
+    QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
+        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
+
     app = QtWidgets.QApplication(sys.argv)
     window = PQIWindow()
     window.show()
