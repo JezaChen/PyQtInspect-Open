@@ -131,7 +131,11 @@ def patch_qt(qt_support_mode, is_attach=False):
             return
         try:
             import PySide6.QtCore  # @UnresolvedImport
+            import PySide6.QtWidgets  # @UnresolvedImport
+            import PySide6.QtGui  # @UnresolvedImport
+
             _internal_patch_qt(PySide6.QtCore, qt_support_mode)
+            _internal_patch_qt_widgets(PySide6, qt_support_mode, is_attach)
         except:
             return
     elif qt_support_mode == 'pyside2':
@@ -142,10 +146,11 @@ def patch_qt(qt_support_mode, is_attach=False):
             return
         try:
             import PySide2.QtCore  # @UnresolvedImport
-            import PySide2.QtWidgets
+            import PySide2.QtWidgets  # @UnresolvedImport
+            import PySide2.QtGui  # @UnresolvedImport
+
             _internal_patch_qt(PySide2.QtCore, qt_support_mode)
-            _internal_patch_qt_widgets(PySide2.QtWidgets, PySide2.QtCore, PySide2.QtGui,
-                                       qt_support_mode, is_attach)
+            _internal_patch_qt_widgets(PySide2, qt_support_mode, is_attach)
         except:
             return
 
@@ -159,7 +164,11 @@ def patch_qt(qt_support_mode, is_attach=False):
     elif qt_support_mode == 'pyqt6':
         try:
             import PyQt6.QtCore  # @UnresolvedImport
+            import PyQt6.QtWidgets  # @UnresolvedImport
+            import PyQt6.QtGui  # @UnresolvedImport
+
             _internal_patch_qt(PyQt6.QtCore)
+            _internal_patch_qt_widgets(PyQt6, qt_support_mode, is_attach)
         except:
             return
 
@@ -167,10 +176,10 @@ def patch_qt(qt_support_mode, is_attach=False):
         try:
             import PyQt5.QtCore  # @UnresolvedImport
             import PyQt5.QtWidgets  # @UnresolvedImport
+            import PyQt5.QtGui  # @UnresolvedImport
 
             _internal_patch_qt(PyQt5.QtCore)
-            _internal_patch_qt_widgets(PyQt5.QtWidgets, PyQt5.QtCore, PyQt5.QtGui,
-                                       qt_support_mode, is_attach)
+            _internal_patch_qt_widgets(PyQt5, qt_support_mode, is_attach)
         except Exception:
             pqi_log.error('Error patching PyQt5', exc_info=True)
             return
@@ -512,5 +521,5 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
     QtCore.QProcess = QProcessWrapper
 
 
-def _internal_patch_qt_widgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=False):
-    patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode, is_attach)
+def _internal_patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
+    patch_QtWidgets(QtModule, qt_support_mode, is_attach)

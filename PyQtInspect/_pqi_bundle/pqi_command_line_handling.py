@@ -164,7 +164,7 @@ def process_command_line(argv):
             elif argv[i].startswith('--qt-support='):
                 qt_support = argv[i][len('--qt-support='):]
                 qt_support = qt_support.lower()
-                valid_modes = ('pyqt5', 'pyside2')  # TODO ONLY SUPPORTS PYQT5 AND PYSIDE2
+                valid_modes = ('pyqt5', 'pyqt6', 'pyside2', 'pyside6')  # TODO ONLY SUPPORTS PYQT5/6 AND PYSIDE2/6
                 if qt_support not in valid_modes:
                     raise ValueError("qt-support mode invalid: " + qt_support)
                 if qt_support == 'none':

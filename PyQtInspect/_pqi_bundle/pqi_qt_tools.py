@@ -22,6 +22,7 @@ def find_method_by_name_and_call(obj, name, *args, **kwargs):
     if callable(getattr(obj, name)):
         return getattr(obj, name)(*args, **kwargs)
     else:
+        # Sometimes, ``obj`` has a variable with the same name as the method
         return find_callable_var(obj, name)(obj, *args, **kwargs)
 
 
@@ -78,8 +79,12 @@ def import_Qt(qt_type: str):
     """
     if qt_type == 'pyqt5':
         import PyQt5 as QtLib
+    elif qt_type == 'pyqt6':
+        import PyQt6 as QtLib
     elif qt_type == 'pyside2':
         import PySide2 as QtLib
+    elif qt_type == 'pyside6':
+        import PySide6 as QtLib
     else:
         raise ValueError(f'Unsupported Qt type: {qt_type}')
 
@@ -95,8 +100,14 @@ def import_wrap_module(qt_type: str):
     if qt_type == 'pyqt5':
         from PyQt5 import sip as wrap_module
         wrap_module._pqi_is_valid = lambda x: wrap_module.isdeleted(x) == False
+    elif qt_type == 'pyqt6':
+        from PyQt6 import sip as wrap_module
+        wrap_module._pqi_is_valid = lambda x: wrap_module.isdeleted(x) == False
     elif qt_type == 'pyside2':
         import shiboken2 as wrap_module
+        wrap_module._pqi_is_valid = wrap_module.isValid
+    elif qt_type == 'pyside6':
+        import shiboken6 as wrap_module
         wrap_module._pqi_is_valid = wrap_module.isValid
     else:
         raise ValueError(f'Unsupported Qt type: {qt_type}')
@@ -108,7 +119,8 @@ def _send_custom_event(target_widget, key: str, val):
     from PyQtInspect.pqi import SetupHolder
 
     QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
-    event = QtCore.QEvent(QtCore.QEvent.User)
+    EventEnum = QtCore.QEvent.Type if hasattr(QtCore.QEvent, 'Type') else QtCore.QEvent
+    event = QtCore.QEvent(EventEnum.User)
     setattr(event, key, val)
     QtCore.QCoreApplication.postEvent(target_widget, event)
 
@@ -137,5 +149,4 @@ def is_wrapped_pointer_valid(ptr):
     :param ptr: The pointer to check.
     """
     from PyQtInspect.pqi import SetupHolder
-
     return import_wrap_module(SetupHolder.setup['qt-support'])._pqi_is_valid(ptr)

@@ -58,18 +58,30 @@ def _is_inspect_enabled():
     return debugger is not None and debugger.inspect_enabled
 
 
-def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=False):
+def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
+    QtWidgets = QtModule.QtWidgets
+    QtGui = QtModule.QtGui
+    QtCore = QtModule.QtCore
+
+    EventEnum = QtCore.QEvent.Type if hasattr(QtCore.QEvent, 'Type') else QtCore.QEvent
+    WidgetAttributeEnum = QtCore.Qt.WidgetAttribute if hasattr(QtCore.Qt, 'WidgetAttribute') else QtCore.Qt
+    MouseButtonEnum = QtCore.Qt.MouseButton if hasattr(QtCore.Qt, 'MouseButton') else QtCore.Qt
+    KeyboardModifierEnum = QtCore.Qt.KeyboardModifier if hasattr(QtCore.Qt, 'KeyboardModifier') else QtCore.Qt
+
     if qt_support_mode.startswith("pyqt"):
-        import sip
+        sip = QtModule.sip
         isdeleted = sip.isdeleted
         ispycreated = sip.ispycreated
     elif qt_support_mode.startswith("pyside"):  # todo pyside6 also use this?
-        import shiboken2  # todo: or shiboken?
-        isdeleted = lambda obj: not shiboken2.isValid(obj)
-        ispycreated = shiboken2.createdByPython
+        if qt_support_mode == 'pyside2':
+            import shiboken2 as _shiboken
+        elif qt_support_mode == 'pyside6':
+            import shiboken6 as _shiboken
+        isdeleted = lambda obj: not _shiboken.isValid(obj)
+        ispycreated = _shiboken.createdByPython
 
     def _create_mouse_event(event_type, pos, button):
-        return QtGui.QMouseEvent(event_type, pos, button, button, QtCore.Qt.NoModifier)
+        return QtGui.QMouseEvent(event_type, QtCore.QPointF(pos), button, button, KeyboardModifierEnum.NoModifier)
 
     def _register_widget(widget):
         debugger = get_global_debugger()
@@ -82,7 +94,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         QtWidgets.QWidget._original_QWidget_init(widget, parent)
         widget.setFixedSize(*get_widget_size(parent))
         # 不要响应鼠标事件
-        widget.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        widget.setAttribute(WidgetAttributeEnum.WA_TransparentForMouseEvents)
         widget.setObjectName("_pqi_highlight_fg")
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
         return widget
@@ -226,7 +238,7 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
             if not _is_inspect_enabled():
                 return False
 
-            print(f'click: {obj}, button: {event.button()}')
+            # print(f'click: {obj}, button: {event.button()}')
             if not _is_obj_inspected(obj):
                 return False
 
@@ -237,16 +249,16 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
 
             debugger = get_global_debugger()
 
-            if event.button() != QtCore.Qt.LeftButton:
-                if debugger is not None and debugger.mock_left_button_down and event.button() == QtCore.Qt.RightButton:
+            if event.button() != MouseButtonEnum.LeftButton:
+                if debugger is not None and debugger.mock_left_button_down and event.button() == MouseButtonEnum.RightButton:
                     # mock left button press and release event
                     # First, send a mouse press event
-                    pressEvent = _create_mouse_event(QtCore.QEvent.MouseButtonPress, event.pos(), QtCore.Qt.LeftButton)
+                    pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(), MouseButtonEnum.LeftButton)
                     # 使用postEvent传播事件, 而不是直接调用obj.mousePressEvent, 以便其他的eventFilter能够接收到这个事件
                     QtCore.QCoreApplication.postEvent(obj, pressEvent)
 
                     # Then, change the original event and send it again
-                    event = _create_mouse_event(QtCore.QEvent.MouseButtonRelease, event.pos(), QtCore.Qt.LeftButton)
+                    event = _create_mouse_event(EventEnum.MouseButtonRelease, event.pos(), MouseButtonEnum.LeftButton)
                     setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
                 # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
                 QtCore.QCoreApplication.postEvent(obj, event)
@@ -279,22 +291,22 @@ def patch_QtWidgets(QtWidgets, QtCore, QtGui, qt_support_mode='auto', is_attach=
         def eventFilter(self, obj, event):
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
-            if (event.type() == QtCore.QEvent.DynamicPropertyChange
+            if (event.type() == EventEnum.DynamicPropertyChange
                     and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
                 return True
 
             if not obj.property(_PQI_INSPECTED_PROP_NAME):
                 return False
 
-            if event.type() == QtCore.QEvent.Enter:
+            if event.type() == EventEnum.Enter:
                 self._handleEnterEvent(obj, event)
-            elif event.type() == QtCore.QEvent.Leave:
+            elif event.type() == EventEnum.Leave:
                 self._handleLeaveEvent(obj, event)
-            elif event.type() == QtCore.QEvent.MouseButtonPress:
+            elif event.type() == EventEnum.MouseButtonPress:
                 return self._handleMousePressEvent(obj, event)
-            elif event.type() == QtCore.QEvent.MouseButtonRelease:
+            elif event.type() == EventEnum.MouseButtonRelease:
                 return self._handleMouseReleaseEvent(obj, event)
-            elif event.type() == QtCore.QEvent.User:
+            elif event.type() == EventEnum.User:
                 # handle highlight
                 if hasattr(event, '_pqi_is_highlight'):
                     is_highlight = event._pqi_is_highlight

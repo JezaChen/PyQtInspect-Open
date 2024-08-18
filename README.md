@@ -1,6 +1,11 @@
 <div style="text-align: center;"><h1>PyQtInspect</h1></div>
 <div style="text-align: center;">像Chrome元素检查工具一样检查PyQt/PySide程序元素</div>
 
+## 要求
+
+- Python 3.7+
+- 目前已支持 PyQt5/PySide2/PyQt6/Pyside6
+
 ## 安装
 
 使用`pip install PyQtInspect`安装即可.
@@ -117,6 +122,7 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 - **多继承两个以上的PyQt类会patch失效**, 例如`class A(B, C)`的情况, 其中`B`和`C`继承于`QObject`, 这样可能会导致`C`的`__init__`方法无法被执行, 从而引发异常.
   > [PyQt作者曾提醒过不要多继承两个以上的PyQt类][2], 因为这样也会容易导致PyQt自身行为异常
 
+- PySide6无法选中一些控件
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html

@@ -658,7 +658,8 @@ def _locked_settrace(
 def usage(do_exit=True, exit_code=0):
     sys.stdout.write('Usage:\n')
     sys.stdout.write(
-        '\tpqi.py --port N --client hostname [--multiprocess] [--show-pqi-stack] --qt-support=[pyqt5 | pyside2] '
+        '\tpqi.py --port N --client hostname [--multiprocess] [--show-pqi-stack] '
+        '--qt-support=[pyqt5|pyqt6|pyside2|pyside6] '
         '--file executable [file_options]\n'
     )
     if do_exit:
