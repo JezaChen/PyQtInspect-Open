@@ -2,8 +2,7 @@ import os
 import re
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, getCCTemplateSrcPath
-from PyQtInspect.pqi_gui.utils.file_mapping import map_to_local_path
+from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -42,12 +41,8 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
                     if fileName:
                         self.openFile(fileName, lineNo)
                 else:  # we need to map to our local directory
-                    ccTemplateSrcPath = getCCTemplateSrcPath()
-                    localPath = map_to_local_path(fileName, ccTemplateSrcPath)
-                    if localPath and os.path.exists(localPath):
-                        self.openFile(localPath, lineNo)
-                    else:
-                        QtWidgets.QMessageBox.critical(self, "Error", f"File not found: {fileName}")
+                    # todo add a dialog to ask user to map the file
+                    ...
 
     def findPycharm(self):
         pycharmPath = getPyCharmPath()

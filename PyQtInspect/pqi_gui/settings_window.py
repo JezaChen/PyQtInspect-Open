@@ -11,8 +11,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath, getCCTemplateSrcPath, \
-    setCCTemplateSrcPath
+from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 
 
@@ -71,40 +70,16 @@ class PycharmPathSettingLineEdit(SimpleSettingLineEdit):
         return os.path.exists(path) and os.path.isfile(path)
 
 
-class CCTemplateSrcPathSettingLineEdit(SimpleSettingLineEdit):
-    def __init__(self, parent):
-        super().__init__(parent, "CCTemplate Source Path: ")
-
-        self._openButton = QtWidgets.QPushButton(self)
-        self._openButton.setText("...")
-        self._openButton.setFixedSize(40, 30)
-        self._openButton.clicked.connect(self._openFileDialog)
-
-        self._layout.addWidget(self._openButton)
-
-    def _openFileDialog(self):
-        srcPath = QtWidgets.QFileDialog.getExistingDirectory(self, "Select CCTemplate Source code directory",
-                                                             self._valueLineEdit.text())
-        normalPath = os.path.normpath(srcPath)
-        if srcPath:
-            self._valueLineEdit.setText(normalPath)
-
-    def isValueValid(self) -> bool:
-        path = self._valueLineEdit.text()
-        if not path:
-            return False
-        return os.path.exists(path) and os.path.isdir(path)
-
-
 class SettingWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setWindowIcon(get_icon())
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
         self.resize(500, 300)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)
-        self._mainLayout.setContentsMargins(0, 0, 0, 0)
+        self._mainLayout.setContentsMargins(0, 10, 0, 0)
         self._mainLayout.setSpacing(5)
         self._mainLayout.addSpacing(4)
 
@@ -114,11 +89,6 @@ class SettingWindow(QtWidgets.QDialog):
             pycharmPathInSettings = findDefaultPycharmPath()
         self._pycharmPathLine.setValue(pycharmPathInSettings)
         self._mainLayout.addWidget(self._pycharmPathLine)
-
-        self._ccTemplateSrcPathLine = CCTemplateSrcPathSettingLineEdit(self)
-        ccTemplateSrcPathInSettings = getCCTemplateSrcPath()
-        self._ccTemplateSrcPathLine.setValue(ccTemplateSrcPathInSettings)
-        self._mainLayout.addWidget(self._ccTemplateSrcPathLine)
 
         self._mainLayout.addStretch()
 
@@ -147,11 +117,6 @@ class SettingWindow(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid PyCharm Path")
             return
 
-        if self._ccTemplateSrcPathLine.isValueValid():
-            setCCTemplateSrcPath(self._ccTemplateSrcPathLine.getValue())
-        else:
-            QtWidgets.QMessageBox.critical(self, "Error", "Invalid CCTemplate Source Path")
-            return
         self.close()
 
 
