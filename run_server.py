@@ -7,7 +7,7 @@ try:
 except Exception:
     try:
         subprocess.Popen("python --version").wait()
-        p = subprocess.Popen("python -m pip install git+https://git-cc.nie.netease.com/pc/pyqtinspect.git@dev_alpha".split())
+        p = subprocess.Popen("python -m pip install PyQtInspect".split())
         status = p.wait()
         print(status)
         p = subprocess.Popen("pqi-server")

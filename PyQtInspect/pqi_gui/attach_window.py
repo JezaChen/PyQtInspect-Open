@@ -12,7 +12,7 @@ import PyQtInspect.pqi_gui.data_center as DataCenter
 
 import wingrab
 
-PYTHON_NAMES = ['python', 'cc_sub']
+PYTHON_NAMES = ['python', ]
 
 
 def _getAllPySubprocess(parent_pid):

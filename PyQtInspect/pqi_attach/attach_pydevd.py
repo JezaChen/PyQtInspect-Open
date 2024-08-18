@@ -1,9 +1,6 @@
 import sys
 import os
 
-from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_path_helper import find_compile_pqi_tool, get_cc_sub_compiled_pqi_path
-
 
 def process_command_line(argv):
     setup = {}
@@ -56,20 +53,6 @@ def main(setup):
         setup['pythonpath'] = pydevd_dirname.replace('\\', '/')
         setup['pythonpath2'] = os.path.dirname(__file__).replace('\\', '/')
         path2_rel_path = os.path.relpath(setup['pythonpath2'], pydevd_dirname).replace('\\', '/')
-
-        if "cc_sub" in psutil.Process(setup['pid']).name():
-            pqi_log.debug("cc_sub process, compile pqi module")
-            cc_sub_exe = psutil.Process(setup['pid']).exe()
-            compile_tool_path = find_compile_pqi_tool()
-
-            import subprocess
-            cc_sub_compiled_pqi_path = get_cc_sub_compiled_pqi_path()
-            subprocess.Popen([cc_sub_exe, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
-                             shell=True).wait()
-
-            setup['pythonpath'] = cc_sub_compiled_pqi_path
-            setup['pythonpath2'] = os.path.join(cc_sub_compiled_pqi_path, path2_rel_path).replace('\\', '/')
-            pqi_log.debug(f"run pyd in cc_sub: setup: {setup}")
 
         python_code = '''import sys;
 sys.path.append("%(pythonpath)s");

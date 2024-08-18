@@ -28,6 +28,6 @@ else:
     try:
         import xmlrpc.client as xmlrpclib
         import xmlrpc.server as _pydev_SimpleXMLRPCServer
-    except ImportError:  # cc_sub
+    except ImportError:  # maybe some python version does not have xmlrpc.client
         pass
     import http.server as BaseHTTPServer

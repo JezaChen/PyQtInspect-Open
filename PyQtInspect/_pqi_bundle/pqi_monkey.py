@@ -14,7 +14,7 @@ from PyQtInspect._pqi_bundle.pqi_contants import (
     IS_PY311_OR_GREATER
 )
 
-PYTHON_NAMES = ['python', 'jython', 'pypy', 'cc_sub']
+PYTHON_NAMES = ['python', 'jython', 'pypy']
 
 # ===============================================================================
 # Things that are dependent on having the pydevd debugger
@@ -133,12 +133,6 @@ def is_python(path):
         if filename.find(name) != -1:
             return True
     return not IS_WINDOWS and is_executable(path) and starts_with_python_shebang(path)
-
-
-def is_cc_sub(path):
-    path = _format_executable_path(path)
-    filename = os.path.basename(path).lower()
-    return filename.find('cc_sub') != -1
 
 
 def remove_quotes_from_args(args):

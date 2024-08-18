@@ -4,7 +4,6 @@
 # Time: 2023/8/18 15:00
 # Description: 
 # ==============================================
-from PyQtInspect._pqi_bundle.pqi_path_helper import find_compile_pqi_tool, get_cc_sub_compiled_pqi_path
 
 
 class ArgHandlerWithParam:
@@ -84,40 +83,14 @@ for handler in ACCEPTED_ARG_HANDLERS:
     ARGV_REP_TO_HANDLER[handler.arg_v_rep] = handler
 
 
-def _compile_pqi_files(python_path: str):
-    """ cc_sub import第三方库的时候会因为op混淆导致执行异常,
-    因此需要使用cc_sub对pqi编译一次, 再执行编译后的pyc
-
-    @todo 每次都会编译一次, 可以考虑缓存编译结果
-    """
-    compile_tool_path = find_compile_pqi_tool()
-    cc_sub_compiled_pqi_path = get_cc_sub_compiled_pqi_path()
-
-    import subprocess
-    # 当程序运行在Pycharm时, 会因为site钩子导入了`pycharm_matplotlib_backend`引发异常(cc_sub混淆了op, 导致import第三方库机制异常)
-    # 因此使用`-S`参数, 屏蔽掉site模块的导入
-    subprocess.Popen([python_path, '-S', compile_tool_path, f'{cc_sub_compiled_pqi_path}/PyQtInspect'],
-                     shell=True).wait()
-    return f'{cc_sub_compiled_pqi_path}/PyQtInspect/pqi.pyc'
-
-
 def get_pydevd_file(executable_path):
     import PyQtInspect.pqi
-    from PyQtInspect._pqi_bundle.pqi_monkey import is_cc_sub
 
     f = PyQtInspect.pqi.__file__
-
-    if is_cc_sub(executable_path):
-        if f.endswith('.pyc'):
-            return f
-        compiled_pqi_file = _compile_pqi_files(executable_path)
-        return compiled_pqi_file
-
-    else:
-        if f.endswith('.pyc'):
-            f = f[:-1]
-        elif f.endswith('$py.class'):
-            f = f[:-len('$py.class')] + '.py'
+    if f.endswith('.pyc'):
+        f = f[:-1]
+    elif f.endswith('$py.class'):
+        f = f[:-len('$py.class')] + '.py'
 
     return f
 

@@ -1,3 +1,2 @@
 recursive-include PyQtInspect/pqi_attach *
 recursive-include PyQtInspect/_pqi_compile *
-recursive-exclude PyQtInspect/_pqi_compile/cc_sub_compiled_pqi *
