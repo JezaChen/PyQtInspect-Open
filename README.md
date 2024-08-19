@@ -172,6 +172,9 @@ pressing F8 **WILL NOT start selection** if inspection is not active.
 
 - Cannot select some controls for **PyQt6**.
 
+- For some computers, sometimes the `QEnterEvent` will have the type `170` (which is `QEvent.DynamicPropertyChange`),
+    which may cause crash when accessing the `propertyName` method.
+
 ## Source Code
 
 Currently, the source code distribution package can be downloaded from 
