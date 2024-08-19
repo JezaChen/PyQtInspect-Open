@@ -139,6 +139,10 @@ def _try_get_qtlib_type():
             return 'pyqt5'
         elif module_name.startswith('PySide2'):
             return 'pyside2'
+        elif module_name.startswith('PyQt6'):
+            return 'pyqt6'
+        elif module_name.startswith('PySide6'):
+            return 'pyside6'
 
     # No Qt libraries are imported
     # Try to import
@@ -150,7 +154,15 @@ def _try_get_qtlib_type():
             import PySide2
             return 'pyside2'
         except ImportError:
-            pass
+            try:
+                import PyQt6
+                return 'pyqt6'
+            except ImportError:
+                try:
+                    import PySide6
+                    return 'pyside6'
+                except ImportError:
+                    pass
 
     # No Qt libraries are supported
     return ''
