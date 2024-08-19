@@ -171,8 +171,9 @@ pressing F8 **WILL NOT start selection** if inspection is not active.
 
 ## Source Code
 
-Currently, the source code distribution package can be downloaded from PyPi,
-and the GitHub repository will be opened soon.
+Currently, the source code distribution package can be downloaded from 
+[PyPi][3], and the GitHub repository will be opened soon.
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html
+[3]: https://pypi.org/project/PyQtInspect/#files
