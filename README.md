@@ -1,5 +1,5 @@
 <center>
-<img alt="icon.png" height="60" src="README_Assets/icon.png"/>
+<img alt="icon.png" height="60" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/icon.png?raw=true"/>
 </center>
 <center><h1>PyQtInspect</h1></center>
 <center>To inspect PyQt/PySide program elements like Chrome's element inspector.</center>
@@ -38,7 +38,7 @@ Enter `pqi-server` in the terminal to start the server-side GUI program.
 After launching, specify the listening port (default is `19394`) 
 and click the `Serve` button to start listening.
 
-<img alt="start_server.png" height="600" src="README_Assets/start_server.png"/>
+<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/start_server.png?raw=true"/>
 
 ### Start the Debugged Side
 
@@ -80,7 +80,7 @@ Directly debug the `PyQtInspect` module in PyCharm without affecting program deb
 Also taking [`PyQt-Fluent-Widgets`][1] as an example,
 you can create a new Debug configuration with the following parameters:
 
-![pycharm config](README_Assets/pycharm_config_en.png)
+![pycharm config](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/pycharm_config_en.png?raw=true)
 
 Then just Run/Debug as usual.
 
@@ -95,7 +95,7 @@ and click the `Attach` button.
 **Note: Most controls will not have their creation call stack information 
 unless they are created after attaching.**
 
-![attach process](README_Assets/attach_process.gif)
+![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/attach_process.gif?raw=true)
 
 ## Usage
 
@@ -104,19 +104,19 @@ unless they are created after attaching.**
 Click the `Inspect` button, **hover** the mouse over the control you want to inspect, 
 and preview the control information.
 
-![hover and inspect](README_Assets/hover_and_inspect.gif)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/hover_and_inspect.gif?raw=true)
 
 Click the left mouse button to select the control. 
 You can then locate the creation call stack, execute code, view hierarchy information, etc.
 
-![then click](README_Assets/then_click.gif)
+![then click](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/then_click.gif?raw=true)
 
 ### Call Stack Location
 
 The area below the control information section shows the call stack at the time the control was created.
 Clicking on it will open `PyCharm`, locating the corresponding file and line.
 
-![create stacks](README_Assets/create_stacks.gif)
+![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/create_stacks.gif?raw=true)
 
 If PyCharm fails to open, you can set the PyCharm path in `More->Settings` manually.
 
@@ -130,7 +130,7 @@ click the `Run Code` button to execute code within the scope of the selected con
 **(where the selected control instance is `self`, 
 essentially executing code within one of the control's methods)**.
 
-![run codes](README_Assets/run_codes.gif)
+![run codes](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/run_codes.gif?raw=true)
 
 ### Viewing Hierarchy Information
 A hierarchy navigation bar is at the bottom of the tool, 
@@ -140,7 +140,7 @@ It also makes it easier to switch between controls within the hierarchy.
 
 Combined with mouse selection, users can make more precise selections.
 
-![inspect hierachy](README_Assets/inspect_hierarchy.gif)
+![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/inspect_hierarchy.gif?raw=true)
 
 ### Simulate Left Click with Right Click During Inspection 
 
@@ -149,7 +149,7 @@ _(Enabled by Default, Disable in `More->Mock Right Button Down as Left`)_
 Since some controls only appear after a left click, 
 right-clicking can simulate a left click to facilitate inspection.
 
-![mock right button as left](README_Assets/mock_right_btn_as_left.gif)
+![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/mock_right_btn_as_left.gif?raw=true)
 
 ### Force Selection with F8 
 

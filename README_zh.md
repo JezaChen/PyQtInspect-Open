@@ -1,5 +1,5 @@
 <center>
-<img alt="icon.png" height="60" src="README_Assets/icon.png"/>
+<img alt="icon.png" height="60" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/icon.png?raw=true"/>
 </center>
 <center><h1>PyQtInspect</h1></center>
 <center>像Chrome元素检查工具一样检查PyQt/PySide程序元素</center>
@@ -31,7 +31,7 @@
 
 直接在终端上输入`pqi-server`即可启动服务端GUI程序。启动后，指定监听端口(默认为19394)并点击`Serve`按钮启动服务端。
 
-<img alt="start_server.png" height="600" src="README_Assets/start_server.png"/>
+<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/start_server.png?raw=true"/>
 
 ### 启动被调试端
 
@@ -67,7 +67,7 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 还是以[`PyQt-Fluent-Widgets`][1]为例, 可以新增一个Debug配置, 参数如下:
 
-<img alt="pycharm config" src="README_Assets/pycharm_config.png"/>
+<img alt="pycharm config" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/pycharm_config.png?raw=true"/>
 
 然后直接Run/Debug即可.
 
@@ -79,7 +79,7 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 **注意**: 此时对于大多数控件是**拿不到创造时的调用栈信息**, 除非是Attach后创建的.
 
-![attach process](README_Assets/attach_process.gif)
+![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/attach_process.gif?raw=true)
 
 ## 使用方式
 
@@ -87,17 +87,17 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 点击Inspect按钮, 将鼠标hover到需要检查的控件上, 即可预览控件的信息.
 
-![hover and inspect](README_Assets/hover_and_inspect.gif)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/hover_and_inspect.gif?raw=true)
 
 如果需要选中该控件, 单击鼠标左键, 以完成选中. 此时可以对控件进行创建时调用栈定位、执行代码、查看层次信息等操作.
 
-![then click](README_Assets/then_click.gif)
+![then click](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/then_click.gif?raw=true)
 
 ### 调用栈定位
 
 控件信息区下方是创建该控件时的调用栈，点击可以拉起Pycharm定位到对应的文件和行.
 
-![create stacks](README_Assets/create_stacks.gif)
+![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/create_stacks.gif?raw=true)
 
 如果拉起Pycharm失败, 可以在More->Settings中设置Pycharm的路径.
 
@@ -107,20 +107,20 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 控件选中后, 点击Run Code按钮, 可在选中控件的作用域内执行代码(其中选中控件实例为`self`, 实际上就是在控件的一个方法内执行代码).
 
-![run codes](README_Assets/run_codes.gif)
+![run codes](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/run_codes.gif?raw=true)
 
 ### 查看层次信息
 
 工具下方有层次关系导航条, 可以直接查看、高亮、定位选中控件的祖先控件和子控件, 方便使用者在控件的层次中来回切换.
 因此，结合已有的鼠标选中，用户可做到更精细的选择。
 
-![inspect hierachy](README_Assets/inspect_hierarchy.gif)
+![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/inspect_hierarchy.gif?raw=true)
 
 ### 检查过程中, 使用右键点击模拟左键点击(默认打开, 需要关闭前往 More->Mock Right Button Down as Left取消)
 
 由于一些控件需要左键点击后才能显示, 为了方便检查, 可以通过右键点击模拟左键点击.
 
-![mock right button as left](README_Assets/mock_right_btn_as_left.gif)
+![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/mock_right_btn_as_left.gif?raw=true)
 
 ### F8强力选中(默认打开, 需要关闭前往 More->Press F8 to Finish Inspect取消)
 
