@@ -1,10 +1,14 @@
 <div style="text-align: center;"><h1>PyQtInspect</h1></div>
 <div style="text-align: center;">像Chrome元素检查工具一样检查PyQt/PySide程序元素</div>
 
+对于使用Qt Widgets编写的PyQt/PySide程序, 如果界面并非通过QtDesigner生成, 
+我们查看程序中的控件信息、定位控件代码等操作是非常困难的, 很难像Chrome/Firefox浏览器那般轻松查看HTML的元素信息.
+本项目旨在解决这个问题, 提供一个类似Chrome元素检查工具的PyQt/PySide程序元素检查工具.
+
 ## 要求
 
 - Python 3.7+
-- 目前已支持 PyQt5/PySide2/PyQt6/Pyside6
+- 安装有以下Qt for Python的框架: PyQt5/PySide2/PyQt6/Pyside6
 
 ## 安装
 
@@ -68,7 +72,9 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 如果没有被调试程序的源代码, 可以通过Attach进程的方式**尝试**启动PyQtInspect客户端.
 
-**Attach指定进程本身:** 点击`More->Attach To Process`, 选择被调试程序的进程窗口, 点击Attach按钮即可. 注意此时对于大多数控件是拿不到创造时的调用栈信息, 除非是Attach后创建的.
+点击`More->Attach To Process`, 选择被调试程序的进程窗口, 点击Attach按钮即可. 
+
+**注意**: 此时对于大多数控件是**拿不到创造时的调用栈信息**, 除非是Attach后创建的.
 
 ![attach process](README_Assets/attach_process.gif)
 
