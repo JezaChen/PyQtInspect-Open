@@ -4,6 +4,8 @@
 <center><h1>PyQtInspect</h1></center>
 <center>To inspect PyQt/PySide program elements like Chrome's element inspector.</center>
 
+[中文文档](https://jeza-chen.com/PyQtInspect-README-zh)
+
 For Python GUI programs developed with PyQt/PySide using Qt Widgets,
 it is difficult to view control information, locate the codes where they are defined, 
 and perform other operations at runtime. 
