@@ -400,7 +400,11 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             # At this point, some custom classes may not have fully initialized
             #   and the event method can reference an uninitialized attribute.
             # So we use the QTimer and wait for `__init__` to finish.
-            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True))
+            # ---
+            # Bug Fixed 20240819: when the widget is deleted, the QTimer will not be executed.
+            #   So we need to check if the widget is deleted before setting the property.
+            # ---
+            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True) if not isdeleted(obj) else None)
         else:
             # Attach thread may be different from the main thread,
             #   so the timer method will be invalid.
