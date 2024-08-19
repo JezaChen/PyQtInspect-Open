@@ -150,7 +150,7 @@ right-clicking can simulate a left click to facilitate inspection.
 
 ### Force Selection with F8 
 
-_(Enabled by Default, Disable in More->Press F8 to Finish Inspect)_
+_(Enabled by Default, Disable in `More->Press F8 to Finish Inspect`)_
 
 For controls that are difficult to select with a mouse click, 
 you can complete the selection with F8. 
