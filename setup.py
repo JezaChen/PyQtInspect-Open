@@ -1,15 +1,23 @@
 from setuptools import find_packages, setup
 
 
+def get_long_description() -> str:
+    with open("README.md", encoding='utf8') as file:
+        return file.read()
+
 setup(
     name="PyQtInspect",
-    version="0.2.1",
-    url="https://github.com/JezaChen/PyQtInspect",
-    author="Chen Jianzhang",
+    version="0.3.0",
+    # url="https://github.com/JezaChen/PyQtInspect",
+    author="Jianzhang Chen",
     author_email="jezachen@163.com",
-    description="PyQtInspect",
+    license="GNU General Public License v3 (GPLv3)",
+    description="To inspect PyQt/PySide program elements like Chrome's element inspector",
+    long_description=get_long_description(),
+    long_description_content_type="text/markdown",
     packages=find_packages(exclude=("*examples", "*examples.*")),
     python_requires=">=3.7, <4",
+    keywords="pyqt pyside inspect",
     install_requires=[
         "psutil",
         "PyQt5",
@@ -21,14 +29,15 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Development Status :: 4 - Beta",
-        "License :: OSI Approved :: GPLv3 License",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
     entry_points={
         "console_scripts": [
             "pqi-server = PyQtInspect.pqi_server_gui:main",
         ],
     },
-    # 使用MANIFEST.in将pqi_attach目录里面的所有文件加进去
+    # Use MANIFEST.in to include all files in the pqi_attach directory
     include_package_data=True,
 )
