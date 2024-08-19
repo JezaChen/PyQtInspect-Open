@@ -1,134 +1,173 @@
 <div style="text-align: center;"><h1>PyQtInspect</h1></div>
-<div style="text-align: center;">像Chrome元素检查工具一样检查PyQt/PySide程序元素</div>
+<div style="text-align: center;">Inspect PyQt/PySide program elements like Chrome's element inspector</div>
 
-对于使用Qt Widgets编写的PyQt/PySide程序, 如果界面并非通过QtDesigner生成, 
-我们查看程序中的控件信息、定位控件代码等操作是非常困难的, 很难像Chrome/Firefox浏览器那般轻松查看HTML的元素信息.
-本项目旨在解决这个问题, 提供一个类似Chrome元素检查工具的PyQt/PySide程序元素检查工具.
+For Python GUI programs developed with PyQt/PySide using Qt Widgets,
+it is difficult to view control information, locate the codes where they are defined, 
+and perform other operations at runtime. 
+It's not as easy as inspecting HTML elements in Chrome/Firefox browsers. 
+This project aims to solve this problem by providing an element inspector tool for PyQt/PySide programs, 
+similar to Chrome's element inspector.
 
-## 要求
+## Requirements
 
 - Python 3.7+
-- 安装有以下Qt for Python的框架: PyQt5/PySide2/PyQt6/Pyside6
 
-## 安装
+- One of the following Qt for Python frameworks: PyQt5/PySide2/PyQt6/Pyside6
 
-使用`pip install PyQtInspect`安装即可.
+## Installation
 
-## 启动方式
+Simply install using `pip install PyQtInspect`.
 
-`PyQtInspect`架构分为两部分: 
+## How to Start
 
-- 调试端/服务端: GUI程序，供使用者查看元素信息、定位代码等;
+The PyQtInspect architecture is divided into _two parts_:
 
-- 被调试端/客户端: 运行在被调试的Python程序中，patch宿主程序的Python Qt框架, 将宿主程序的信息传递给GUI服务端等.
+- Debugging side (**Server**): A GUI program for viewing element information, locating code, etc.
 
-调试时, 需要先启动GUI服务端，再启动被调试的Python程序.
+- Debugged side (**Client**): Runs within the Python program to be debugged, 
+  patches the host program's Qt framework, and transmits information to the server.
 
-### 启动调试端
+When debugging, please **start the GUI server first**, then launch the Python program to be debugged.
 
-直接在终端上输入`pqi-server`即可启动服务端GUI程序。启动后，指定监听端口(默认为19394)并点击`Server`按钮启动服务端。
+### Start the Debugging Side
+
+Enter `pqi-server` in the terminal to start the server-side GUI program. 
+After launching, specify the listening port (default is `19394`) 
+and click the `Serve` button to start listening.
 
 <img alt="start_server.png" height="600" src="README_Assets/start_server.png"/>
 
-### 启动被调试端
+### Start the Debugged Side
 
-#### 1. 运行程序python源代码时附带pqi
+#### 1. Running Program Source Code with `PyQtInspect` Attached (Recommended)
 
-目前**推荐**的启动方法, 需要使用者拥有被调试程序的Python源代码并通过命令行使用python执行源代码运行程序.
+It's the **recommended** startup method which requires full access to the Python source code of 
+the program to be debugged.
 
-如果平时通过`python xxx.py param1 param2`运行程序, 则仅需要在`python`和`xxx.py`中间加入`-m PyQtInspect --file`参数,
-如`python -m PyQtInspect --file xxx.py param1 param2`, 即可启动PyQtInspect客户端.
+If you run this program to be debugged with `python xxx.py param1 param2`, 
+simply **insert** `-m PyQtInspect --file` **between** `python` and `xxx.py`, i.e.,
+use `python -m PyQtInspect --file xxx.py param1 param2` to attach the PyQtInspect client
+to the `xxx.py` program with parameters `param1` and `param2`.
 
-完整的启动命令为:
+The complete startup command is:
 
 ```powershell
-python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5 | pyside2]] --file executable_file [file_args]
+python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file executable_file [file_args]
 ```
 
-每个参数的含义如下:
+Each parameter is explained as follows:
 
-* `--port`: 指定服务端监听端口, 默认为`19394`
-* `--client`: 指定服务端监听地址, 默认为`127.0.0.1`
-* `--multiprocess`: 指定是否支持**多进程调试**, 默认不启用
-* `--show-pqi-stack`: 指定是否显示和PyQtInspect相关的调用栈, 默认不显示
-* `--qt-support`: 指定被调试程序使用的Qt框架, 目前支持`pyqt5`和`pyside2`, 默认为`pyqt5`
-* `--file`: 指定被调试程序的Python源代码文件路径
-* `file_args`: 被调试程序启动的命令行参数
+* `--port`: Specify the server's listening port, default is `19394`
+* `--client`: Specify the server's listening address, default is `127.0.0.1`
+* `--multiprocess`: Specify whether to support **multiprocess inspecting**, **disabled by default**
+* `--show-pqi-stack`: Specify whether to display the call stack related to `PyQtInspect`, **disabled by default**
+* `--qt-support`: Specify the Qt framework used by the program being debugged, **default is `pyqt5`**
+* `--file`: Specify the path to the Python source code file of the program to be debugged
+* `file_args`: Command-line arguments for starting the program to be debugged
 
-以调试[`PyQt-Fluent-Widgets`][1]为例, 其demo一般可使用`python examples/gallery/demo.py`来运行程序,
-此时可以使用`python -m PyQtInspect --file examples/gallery/demo.py`来启动PyQtInspect客户端.
+For example, to debug [`PyQt-Fluent-Widgets`][1], 
+the demo gallery program is run with `python examples/gallery/demo.py`.
+Now you can start the `PyQtInspect` client with 
+`python -m PyQtInspect --file examples/gallery/demo.py`.
 
-#### 2. 用在PyCharm上
+### 2. Using PyCharm (Recommended)
 
-直接在PyCharm调试PyQtInspect Module即可, 不影响对程序的调试.
+Directly debug the `PyQtInspect` module in PyCharm without affecting program debugging.
 
-还是以[`PyQt-Fluent-Widgets`][1]为例, 可以新增一个Debug配置, 参数如下:
+Also taking [`PyQt-Fluent-Widgets`][1] as an example,
+you can create a new Debug configuration with the following parameters:
 
-<img alt="pycharm config" height="600" src="README_Assets/pycharm_config.png"/>
+![pycharm config](README_Assets/pycharm_config_en.png)
 
-然后直接Run/Debug即可.
+Then just Run/Debug as usual.
 
-#### 3. Attach进程(目前不稳定)
+### 3. Attach to Process (Currently Unstable)
 
-如果没有被调试程序的源代码, 可以通过Attach进程的方式**尝试**启动PyQtInspect客户端.
+If the source code of the program to be debugged is not available, 
+you can attempt to start the `PyQtInspect` client by **attaching** to the process.
 
-点击`More->Attach To Process`, 选择被调试程序的进程窗口, 点击Attach按钮即可. 
+Click `More->Attach` To Process, select the process window of the program to be debugged, 
+and click the `Attach` button.
 
-**注意**: 此时对于大多数控件是**拿不到创造时的调用栈信息**, 除非是Attach后创建的.
+**Note: Most controls will not have their creation call stack information 
+unless they are created after attaching.**
 
 ![attach process](README_Assets/attach_process.gif)
 
-## 使用方式
+## Usage
 
-### 检查元素信息
+### Inspecting Element Information
 
-点击Inspect按钮, 将鼠标hover到需要检查的控件上, 即可预览控件的信息.
+Click the `Inspect` button, **hover** the mouse over the control you want to inspect, 
+and preview the control information.
 
 ![hover and inspect](README_Assets/hover_and_inspect.gif)
 
-如果需要选中该控件, 单击鼠标左键, 以完成选中. 此时可以对控件进行创建时调用栈定位、执行代码、查看层次信息等操作.
+Click the left mouse button to select the control. 
+You can then locate the creation call stack, execute code, view hierarchy information, etc.
 
 ![then click](README_Assets/then_click.gif)
 
-### 调用栈定位
+### Call Stack Location
 
-控件信息区下方是创建该控件时的调用栈，点击可以拉起Pycharm定位到对应的文件和行.
+The area below the control information section shows the call stack at the time the control was created.
+Clicking on it will open `PyCharm`, locating the corresponding file and line.
 
 ![create stacks](README_Assets/create_stacks.gif)
 
-如果拉起Pycharm失败, 可以在More->Settings中设置Pycharm的路径.
+If PyCharm fails to open, you can set the PyCharm path in `More->Settings` manually.
 
-**p.s.对于通过Attach进程方式启动的PyQtInspect客户端, 如果Attach过程中控件已经创建好了, 此时是拿不到创建时的信息的, 该调用栈区域为空**
+**p.s. For the PyQtInspect client started via Attach to Process, 
+if the control was already created during the attach process, 
+the call stack information will not be available, and this area will be empty.**
 
-### 执行代码
-
-控件选中后, 点击Run Code按钮, 可在选中控件的作用域内执行代码(其中选中控件实例为`self`, 实际上就是在控件的一个方法内执行代码).
+### Executing Code
+After selecting a control, 
+click the `Run Code` button to execute code within the scope of the selected control 
+**(where the selected control instance is `self`, 
+essentially executing code within one of the control's methods)**.
 
 ![run codes](README_Assets/run_codes.gif)
 
-### 查看层次信息
+### Viewing Hierarchy Information
+A hierarchy navigation bar is at the bottom of the tool, 
+allowing you **to directly view, highlight, 
+and locate ancestor and child controls of the selected control**.
+It also makes it easier to switch between controls within the hierarchy.
 
-工具下方有层次关系导航条, 可以直接查看、高亮、定位选中控件的祖先控件和子控件, 方便使用者在控件的层次中来回切换.
-因此，结合已有的鼠标选中，用户可做到更精细的选择。
+Combined with mouse selection, users can make more precise selections.
 
 ![inspect hierachy](README_Assets/inspect_hierarchy.gif)
 
-### 检查过程中, 使用右键点击模拟左键点击(默认打开, 需要关闭前往 More->Mock Right Button Down as Left取消)
+### Simulate Left Click with Right Click During Inspection 
 
-由于一些控件需要左键点击后才能显示, 为了方便检查, 可以通过右键点击模拟左键点击.
+_(Enabled by Default, Disable in `More->Mock Right Button Down as Left`)_
+
+Since some controls only appear after a left click, 
+right-clicking can simulate a left click to facilitate inspection.
 
 ![mock right button as left](README_Assets/mock_right_btn_as_left.gif)
 
-### F8强力选中(默认打开, 需要关闭前往 More->Press F8 to Finish Inspect取消)
+### Force Selection with F8 
 
-对于一些很难通过鼠标点击选中的控件, 可以通过F8完成选中. 注意, F8仅用于检查过程中的结束选中, 在未开启检查的情况下按F8并不会开启选中.
+_(Enabled by Default, Disable in More->Press F8 to Finish Inspect)_
 
-## 已知问题
+For controls that are difficult to select with a mouse click, 
+you can complete the selection with F8. 
+Note that F8 **is only used to finish selection** during the inspection process;
+pressing F8 **WILL NOT start selection** if inspection is not active.
 
-- **多继承两个以上的PyQt类会patch失效**, 例如`class A(B, C)`的情况, 其中`B`和`C`继承于`QObject`, 这样可能会导致`C`的`__init__`方法无法被执行, 从而引发异常.
-  > [PyQt作者曾提醒过不要多继承两个以上的PyQt类][2], 因为这样也会容易导致PyQt自身行为异常
+## Known Issues
+- **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
+    where `B` and `C` inherit from **QObject**. This might cause the `__init__` method of `C` to not execute, leading to exceptions.
+    > [The author of PyQt has warned against multiple inheritance with more than two PyQt classes][2], as it can also cause abnormal behavior in PyQt itself.
 
-- PySide6无法选中一些控件
+- Cannot select some controls for **PyQt6**.
+
+## Source Code
+
+Currently, the source code distribution package can be downloaded from PyPi,
+and the GitHub repository will be opened soon.
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html
