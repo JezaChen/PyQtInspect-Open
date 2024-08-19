@@ -10,7 +10,6 @@ from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 import PyQtInspect.pqi_gui.data_center as DataCenter
 
-import wingrab
 
 PYTHON_NAMES = ['python', ]
 
@@ -46,15 +45,23 @@ class PidLineEdit(SimpleSettingLineEdit):
         self._attachAllPySubButton.clicked.connect(self.sigAttachAllPySubprocessButtonClicked)
 
         self._layout.addWidget(self._attachAllPySubButton)
+        self._initGrabAction()
 
-        self._grabAction = self._valueLineEdit.addAction(QtGui.QIcon(":/cursors/cursor.png"),
-                                                         QtWidgets.QLineEdit.TrailingPosition)
-        self._grabAction.triggered.connect(self._tryGrab)
-        self._grabAction.setToolTip("Get pid from cursor")
+    def _initGrabAction(self):
+        """ Initialize the grab action for getting pid from cursor.
 
-    def _tryGrab(self):
-        pid = wingrab.grab()
-        self._valueLineEdit.setText(str(pid))
+        @note: Only available on Windows.
+        """
+        if sys.platform == "win32":
+            def _tryGrab():
+                import wingrab
+                pid = wingrab.grab()
+                self._valueLineEdit.setText(str(pid))
+
+            self._grabAction = self._valueLineEdit.addAction(QtGui.QIcon(":/cursors/cursor.png"),
+                                                             QtWidgets.QLineEdit.TrailingPosition)
+            self._grabAction.triggered.connect(_tryGrab)
+            self._grabAction.setToolTip("Get pid from cursor")
 
 
 class AttachInfoTextBrowser(QtWidgets.QTextBrowser):

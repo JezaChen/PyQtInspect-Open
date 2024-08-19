@@ -125,8 +125,8 @@ if __name__ == '__main__':
     import os
 
     print(f"pid: {os.getpid()}")
-    app = QApplication(sys.argv)
+    # app = QApplication(sys.argv)
 
     # main()
     main()
-    sys.exit(app.exec_())
+    # sys.exit(app.exec_())

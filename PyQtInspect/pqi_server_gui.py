@@ -9,7 +9,6 @@ import sys
 import typing
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
 from PyQtInspect.pqi_gui.workers.pqy_worker import PQYWorker, DUMMY_WORKER, DummyWorker
 
 pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
@@ -40,8 +39,9 @@ SetupHolder.setup = {
     'server': True
 }
 
-myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+if sys.platform == "win32":
+    myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 
 class BriefLine(QtWidgets.QWidget):
@@ -168,11 +168,12 @@ class PQIWindow(QtWidgets.QMainWindow):
         #     Menu Actions     #
         # ==================== #
         # Press F8 to Disable Inspect Action
-        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
-        self._pressF8ToDisableInspectAction.setCheckable(True)
-        self._pressF8ToDisableInspectAction.setChecked(True)  # default
-        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+        if sys.platform == "win32":
+            self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
+            self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
+            self._pressF8ToDisableInspectAction.setCheckable(True)
+            self._pressF8ToDisableInspectAction.setChecked(True)  # default
+            self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
 
         # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
@@ -296,7 +297,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
         self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多个进程都有选中的情况?
-        self._keyboardHookThread = self._generateKeyboardHookThread()
+        if sys.platform == "win32":
+            self._keyboardHookThread = self._generateKeyboardHookThread()
 
         self._curWidgetId = -1
         self._curHighlightedWidgetId = -1
@@ -447,7 +449,8 @@ class PQIWindow(QtWidgets.QMainWindow):
     def handle_inspect_finished_msg(self):
         self._inspectButton.setChecked(False)
         self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
-        self._stopKeyboardHookThread()
+        if sys.platform == "win32":
+            self._stopKeyboardHookThread()
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
@@ -459,11 +462,12 @@ class PQIWindow(QtWidgets.QMainWindow):
             return
         worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
 
-        if self._pressF8ToDisableInspectAction.isChecked():
-            # start keyboard hook thread if user wants to disable inspect by pressing F8
-            # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
-            self._keyboardHookThread.stop_flag.clear_flag()
-            self._keyboardHookThread.start()
+        if sys.platform == "win32":
+            if self._pressF8ToDisableInspectAction.isChecked():
+                # start keyboard hook thread if user wants to disable inspect by pressing F8
+                # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
+                self._keyboardHookThread.stop_flag.clear_flag()
+                self._keyboardHookThread.start()
 
     def _disableInspect(self):
         self._getWorker().sendDisableInspect()
@@ -576,6 +580,8 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     # region For Keyboard Hook to disable inspect
     def _generateKeyboardHookThread(self):
+        from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
+
         def _inSubThread():
             import PyQtInspect._pqi_bundle.pqi_keyboard_hook_win as kb_hook
             kb_hook.grab(0x77, flag, lambda: self.sigDisableInspectKeyPressed.emit())
@@ -587,6 +593,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         return thread
 
     def _stopKeyboardHookThread(self):
+        if not sys.platform == "win32":
+            return
         if self._keyboardHookThread.isRunning():
             self._keyboardHookThread.stop_flag.mark_stop()
             self._keyboardHookThread.quit()
