@@ -68,7 +68,7 @@ attach_script.attach(port=%(port)s, host="%(host)s", protocol="%(protocol)s");
 sys.path.append(\\\"%(pythonpath)s\\\");
 sys.path.append(\\\"%(pythonpath2)s\\\");
 import attach_script;
-attach_script.attach(port=%(port)s, host=\\\"%(host)s\\\", protocol=\\\"%(protocol)s\\\", debug_mode=\\\"%(debug-mode)s\\\");
+attach_script.attach(port=%(port)s, host=\\\"%(host)s\\\", protocol=\\\"%(protocol)s\\\");
 '''.replace('\r\n', '').replace('\r', '').replace('\n', '')
 
     python_code = python_code % setup
