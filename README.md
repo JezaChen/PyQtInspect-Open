@@ -4,7 +4,10 @@
 <h1 align="center">PyQtInspect</h1>
 <p align="center">To inspect PyQt/PySide program elements like Chrome's element inspector.</p>
 
-[中文文档](https://jeza-chen.com/PyQtInspect-README-zh)
+<p align="center">
+<a href="https://jeza-chen.com/PyQtInspect-README-zh">中文文档</a> | 
+<a href="https://pypi.org/project/PyQtInspect/">PyPI</a>
+</p>
 
 For Python GUI programs developed with PyQt/PySide using Qt Widgets,
 it is difficult to view control information, locate the codes where they are defined, 
