@@ -1,5 +1,8 @@
-<div style="text-align: center;"><h1>PyQtInspect</h1></div>
-<div style="text-align: center;">Inspect PyQt/PySide program elements like Chrome's element inspector</div>
+<center>
+<img alt="icon.png" height="60" src="README_Assets/icon.png"/>
+</center>
+<center><h1>PyQtInspect</h1></center>
+<center>To inspect PyQt/PySide program elements like Chrome's element inspector.</center>
 
 For Python GUI programs developed with PyQt/PySide using Qt Widgets,
 it is difficult to view control information, locate the codes where they are defined, 

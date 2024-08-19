@@ -1,5 +1,8 @@
-<div style="text-align: center;"><h1>PyQtInspect</h1></div>
-<div style="text-align: center;">像Chrome元素检查工具一样检查PyQt/PySide程序元素</div>
+<center>
+<img alt="icon.png" height="60" src="README_Assets/icon.png"/>
+</center>
+<center><h1>PyQtInspect</h1></center>
+<center>像Chrome元素检查工具一样检查PyQt/PySide程序元素</center>
 
 对于使用Qt Widgets编写的PyQt/PySide程序, 如果界面并非通过QtDesigner生成, 
 我们查看程序中的控件信息、定位控件代码等操作是非常困难的, 很难像Chrome/Firefox浏览器那般轻松查看HTML的元素信息.
