@@ -1,8 +1,8 @@
-<center>
+<div align="center">
 <img alt="icon.png" height="60" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/icon.png?raw=true"/>
-</center>
-<center><h1>PyQtInspect</h1></center>
-<center>To inspect PyQt/PySide program elements like Chrome's element inspector.</center>
+</div>
+<h1 align="center">PyQtInspect</h1>
+<p align="center">To inspect PyQt/PySide program elements like Chrome's element inspector.</p>
 
 [中文文档](https://jeza-chen.com/PyQtInspect-README-zh)
 
