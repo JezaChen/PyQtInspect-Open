@@ -11,6 +11,7 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetCl
 from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
+from _pqi_bundle.pqi_log.log_utils import log_exception
 
 
 _PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
@@ -308,33 +309,34 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         def eventFilter(self, obj, event):
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
-            if (event.type() == EventEnum.DynamicPropertyChange
-                    and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
-                return True
+            with log_exception(suppress=True):
+                if (event.type() == EventEnum.DynamicPropertyChange
+                        and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
+                    return True
 
-            if not obj.property(_PQI_INSPECTED_PROP_NAME):
-                return False
+                if not obj.property(_PQI_INSPECTED_PROP_NAME):
+                    return False
 
-            if event.type() == EventEnum.Enter:
-                self._handleEnterEvent(obj, event)
-            elif event.type() == EventEnum.Leave:
-                self._handleLeaveEvent(obj, event)
-            elif event.type() == EventEnum.MouseButtonPress:
-                return self._handleMousePressEvent(obj, event)
-            elif event.type() == EventEnum.MouseButtonRelease:
-                return self._handleMouseReleaseEvent(obj, event)
-            elif event.type() == EventEnum.User:
-                # handle highlight
-                if hasattr(event, '_pqi_is_highlight'):
-                    is_highlight = event._pqi_is_highlight
-                    if is_highlight:
-                        HighlightController.highlight(obj)
-                    else:
-                        HighlightController.unhighlight(obj)
-                # handle code exec
-                if hasattr(event, '_pqi_exec_code'):
-                    code = event._pqi_exec_code
-                    obj._pqi_exec(code)
+                if event.type() == EventEnum.Enter:
+                    self._handleEnterEvent(obj, event)
+                elif event.type() == EventEnum.Leave:
+                    self._handleLeaveEvent(obj, event)
+                elif event.type() == EventEnum.MouseButtonPress:
+                    return self._handleMousePressEvent(obj, event)
+                elif event.type() == EventEnum.MouseButtonRelease:
+                    return self._handleMouseReleaseEvent(obj, event)
+                elif event.type() == EventEnum.User:
+                    # handle highlight
+                    if hasattr(event, '_pqi_is_highlight'):
+                        is_highlight = event._pqi_is_highlight
+                        if is_highlight:
+                            HighlightController.highlight(obj)
+                        else:
+                            HighlightController.unhighlight(obj)
+                    # handle code exec
+                    if hasattr(event, '_pqi_exec_code'):
+                        code = event._pqi_exec_code
+                        obj._pqi_exec(code)
             return False
 
     class NativeEventListener(QtCore.QAbstractNativeEventFilter):
