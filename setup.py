@@ -7,11 +7,11 @@ def get_long_description() -> str:
 
 setup(
     name="PyQtInspect",
-    version="0.3.0",
+    version="0.3.2",
     # url="https://github.com/JezaChen/PyQtInspect",
     author="Jianzhang Chen",
     author_email="jezachen@163.com",
-    license="GNU General Public License v3 (GPLv3)",
+    license="GPLv3",
     description="To inspect PyQt/PySide program elements like Chrome's element inspector",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
