@@ -59,7 +59,7 @@ class BriefLine(QtWidgets.QWidget):
         self._keyLabel.setText(key)
         self._keyLabel.setAlignment(QtCore.Qt.AlignCenter)
         self._keyLabel.setWordWrap(True)
-        self._keyLabel.setMinimumWidth(80)
+        self._keyLabel.setMinimumWidth(90)
         self._keyLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         self._layout.addWidget(self._keyLabel)
