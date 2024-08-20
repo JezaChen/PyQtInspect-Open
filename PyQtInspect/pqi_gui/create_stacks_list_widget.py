@@ -1,8 +1,7 @@
 import os
-import re
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath
+from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -48,6 +47,8 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
         pycharmPath = getPyCharmPath()
         if not pycharmPath:
             pycharmPath = findDefaultPycharmPath()
+            if pycharmPath:
+                setPyCharmPath(pycharmPath)
         return pycharmPath
 
     def openFile(self, fileName: str, lineNo: int):
@@ -56,7 +57,7 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
         pycharm = self.findPycharm()
         if pycharm:
             try:
-                subprocess.Popen(f"{pycharm} --line {lineNo} {fileName}")
+                subprocess.Popen(f'"{pycharm}" --line {lineNo} "{fileName}"', shell=True)
             except Exception as e:
                 # message box
                 QtWidgets.QMessageBox.critical(self, "Error", f"Error occurred when opening file: {e}")
