@@ -21,7 +21,7 @@ setup(
     install_requires=[
         "psutil",
         "PyQt5",
-        "wingrab",
+        "wingrab; platform_system=='Windows'",  # Only available on Windows
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
