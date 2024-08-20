@@ -72,7 +72,13 @@ class PQYWorker(QtCore.QObject):
             # For linux, we need to shut down the socket before close it.
             # Otherwise, the socket will be in TIME_WAIT state and block program.
             # ---
-            self._socket.shutdown(SHUT_RDWR)
+            try:
+                self._socket.shutdown(SHUT_RDWR)
+            except:
+                # ---
+                # Fixed 20240820: Ignore the exception when shutdown the socket in macOS.
+                # ---
+                pass
             self._socket.close()
 
     def onMsg(self, info: dict):
