@@ -181,7 +181,7 @@ Currently, the source code distribution package can be downloaded from
     which may cause crash when accessing the `propertyName` method.
 
 **If you encounter any problems before the GitHub repository is opened,
-please email me at `jezachen@163.com`.**
+please email me at [`jezachen@163.com`](mailto:jezachen@163.com).**
 
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
