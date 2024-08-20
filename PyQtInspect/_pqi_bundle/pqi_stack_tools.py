@@ -4,13 +4,17 @@
 
 import sys
 import inspect
+import typing
 
 
-def getFrameLineNo(frame):
-    return frame.f_lineno
+class FrameInfo(typing.NamedTuple):
+    """ The information of a frame in the stack. """
+    filename: str
+    line_no: int
+    func_name: str
 
 
-def getStackFrame(useGetFrame=True):
+def getStackFrame(useGetFrame=True) -> typing.List[FrameInfo]:
     '''
     Brief:
         Gets a stack frame with the passed in num on the stack.
@@ -21,12 +25,23 @@ def getStackFrame(useGetFrame=True):
     # All should have inspect, though it is really slow
     if useGetFrame and hasattr(sys, '_getframe'):
         frame = sys._getframe(0)
-        frames = [(frame, frame.f_lineno),]  # 需要在创建期间获取stack就捕获行号, 否则后续的f_lineno会走到最后一行去
+        frames = [
+            FrameInfo(
+                filename=frame.f_code.co_filename,
+                line_no=frame.f_lineno,
+                func_name=frame.f_code.co_name
+            )
+        ]  # 需要在创建期间获取stack就捕获行号, 否则后续的f_lineno会走到最后一行去
 
         while frame.f_back is not None:
-            frames.append((frame.f_back, frame.f_back.f_lineno))
+            frames.append(
+                FrameInfo(
+                    filename=frame.f_back.f_code.co_filename,
+                    line_no=frame.f_back.f_lineno,
+                    func_name=frame.f_back.f_code.co_name
+                )
+            )
             frame = frame.f_back
 
         return frames
-    else:
-        return inspect.stack()
+    return [FrameInfo(*frame[1:4]) for frame in inspect.stack()]

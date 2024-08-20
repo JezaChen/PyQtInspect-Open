@@ -13,25 +13,9 @@ from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
 
-
 _PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
 _PQI_INSPECTED_PROP_NAME = '_pqi_inspected'
 _PQI_INSPECTED_PROP_NAME_BYTES = b'_pqi_inspected'
-
-
-def _get_filename_from_frame(frame):
-    return frame.f_code.co_filename
-
-
-def _try_get_file_name(frame):
-    """
-    :return: filename, is source code
-    """
-    try:
-        # src_filename = inspect.getsourcefile(frame)
-        return _get_filename_from_frame(frame)
-    except TypeError:
-        return '', False
 
 
 def filter_trace_stack(traceStacks):
@@ -41,15 +25,14 @@ def filter_trace_stack(traceStacks):
     showPqiStack = SetupHolder.setup["show-pqi-stack"]
     pqi_module_path = find_pqi_module_path()
     stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
-    for frame, lineno in stacks:
-        filename = _get_filename_from_frame(frame)
+    for filename, lineno, func_name in stacks:
         if not showPqiStack and is_relative_to(filename, pqi_module_path):
             break
         filteredStacks.append(
             {
                 'filename': filename,
                 'lineno': lineno,
-                'function': frame.f_code.co_name,
+                'function': func_name,
             }
         )
     return filteredStacks
@@ -258,7 +241,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 if debugger is not None and debugger.mock_left_button_down and event.button() == MouseButtonEnum.RightButton:
                     # mock left button press and release event
                     # First, send a mouse press event
-                    pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(), MouseButtonEnum.LeftButton)
+                    pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(),
+                                                     MouseButtonEnum.LeftButton)
                     # 使用postEvent传播事件, 而不是直接调用obj.mousePressEvent, 以便其他的eventFilter能够接收到这个事件
                     QtCore.QCoreApplication.postEvent(obj, pressEvent)
 
@@ -355,6 +339,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             """
             HTCLIENT = 1
             WM_NCHITTEST = 0x0084
+
             def nativeEventFilter(self, eventType, message):
                 if not _is_inspect_enabled():
                     # If inspect is disabled, do not handle native events
@@ -459,7 +444,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             # Bug Fixed 20240819: when the widget is deleted, the QTimer will not be executed.
             #   So we need to check if the widget is deleted before setting the property.
             # ---
-            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True) if not isdeleted(obj) else None)
+            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True) if not isdeleted(
+                obj) else None)
         else:
             # Attach thread may be different from the main thread,
             #   so the timer method will be invalid.
