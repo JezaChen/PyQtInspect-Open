@@ -83,7 +83,7 @@ Now you can start the `PyQtInspect` client with
 **Note: Only PyQt5 programs do not need the `--qt-support` parameter; 
 other frameworks need to specify this parameter explicitly!**
 
-### 2. Using PyCharm (Recommended)
+#### 2. Using PyCharm (Recommended)
 
 Directly debug the `PyQtInspect` module in PyCharm without affecting program debugging.
 
@@ -94,7 +94,7 @@ you can create a new Debug configuration with the following parameters:
 
 Then just Run/Debug as usual.
 
-### 3. Attach to Process (Currently Unstable)
+#### 3. Attach to Process (Currently Unstable)
 
 If the source code of the program to be debugged is not available, 
 you can attempt to start the `PyQtInspect` client by **attaching** to the process.
