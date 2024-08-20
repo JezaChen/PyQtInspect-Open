@@ -2,7 +2,7 @@
 import sys
 from PyQt5 import QtCore
 import traceback
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 
 from PyQtInspect.pqi_gui.workers.dispatcher import Dispatcher
 
@@ -30,11 +30,11 @@ class PQYWorker(QtCore.QObject):
         self._socket = socket(AF_INET, SOCK_STREAM)
         self._socket.settimeout(None)
 
-        # try:
-        #     from socket import SO_REUSEPORT
-        #     s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
-        # except ImportError:
-        #     s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        try:
+            from socket import SO_REUSEPORT
+            self._socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        except ImportError:
+            self._socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
             self._socket.bind(('', self.port))
             self._socket.listen(1)
