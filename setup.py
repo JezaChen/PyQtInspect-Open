@@ -7,8 +7,8 @@ def get_long_description() -> str:
 
 setup(
     name="PyQtInspect",
-    version="0.3.2",
-    # url="https://github.com/JezaChen/PyQtInspect",
+    version="0.3.3",
+    url="https://jeza-chen.com/PyqtInspect",
     author="Jianzhang Chen",
     author_email="jezachen@163.com",
     license="GPLv3",
