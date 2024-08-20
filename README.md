@@ -16,6 +16,8 @@ It's not as easy as inspecting HTML elements in Chrome/Firefox browsers.
 This project aims to solve this problem by providing an element inspector tool for PyQt/PySide programs, 
 similar to Chrome's element inspector.
 
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/hover_and_inspect.gif?raw=true)
+
 ## Requirements
 
 - Python 3.7+
@@ -69,7 +71,7 @@ Each parameter is explained as follows:
 * `--client`: Specify the server's listening address, default is `127.0.0.1`
 * `--multiprocess`: Specify whether to support **multiprocess inspecting**, **disabled by default**
 * `--show-pqi-stack`: Specify whether to display the call stack related to `PyQtInspect`, **disabled by default**
-* `--qt-support`: Specify the Qt framework used by the program being debugged, **default is `pyqt5`**
+* `--qt-support`: Specify the Qt framework used by the program being debugged, **default is `pyqt5`**; optional values are `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
 * `--file`: Specify the path to the Python source code file of the program to be debugged
 * `file_args`: Command-line arguments for starting the program to be debugged
 
@@ -77,6 +79,9 @@ For example, to debug [`PyQt-Fluent-Widgets`][1],
 the demo gallery program is run with `python examples/gallery/demo.py`.
 Now you can start the `PyQtInspect` client with 
 `python -m PyQtInspect --file examples/gallery/demo.py`.
+
+**Note: Only PyQt5 programs do not need the `--qt-support` parameter; 
+other frameworks need to specify this parameter explicitly!**
 
 ### 2. Using PyCharm (Recommended)
 
