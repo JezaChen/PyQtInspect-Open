@@ -18,7 +18,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder
+from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
@@ -163,6 +163,9 @@ class PyDB(object):
        These are placed on the internal command queue.
     """
 
+    _RECONNECT_DELAY = 1
+    _RECONNECT_TRIES = 10 if IS_WINDOWS else 100
+
     def __init__(self, set_as_global=True):
         if set_as_global:
             set_global_debugger(self)
@@ -208,13 +211,19 @@ class PyDB(object):
         Returns True if reconnection was successful, False otherwise.
         """
         retry_count = 0
-        while retry_count <= 10:
+        while retry_count <= self._RECONNECT_TRIES:
             try:
                 self.connect(self._last_host, self._last_port)
                 pqi_log.info("Reconnected to %s:%s" % (self._last_host, self._last_port))
                 return True  # success
             except:
                 retry_count += 1
+                if not IS_WINDOWS:
+                    # ---
+                    # For non-Windows platforms, we need to wait a bit longer between retries
+                    # because in Windows, connect() will block until the connection is established or times out.
+                    # ---
+                    time.sleep(self._RECONNECT_DELAY)
         return False
 
     def finish_debugging_session(self):

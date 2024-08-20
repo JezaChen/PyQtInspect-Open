@@ -18,6 +18,7 @@ _PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
 _PQI_INSPECTED_PROP_NAME = '_pqi_inspected'
 _PQI_INSPECTED_PROP_NAME_BYTES = b'_pqi_inspected'
 
+
 def _get_filename_from_frame(frame):
     return frame.f_code.co_filename
 

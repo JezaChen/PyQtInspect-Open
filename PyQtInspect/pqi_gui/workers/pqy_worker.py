@@ -2,7 +2,7 @@
 import sys
 from PyQt5 import QtCore
 import traceback
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, SHUT_RDWR
 
 from PyQtInspect.pqi_gui.workers.dispatcher import Dispatcher
 
@@ -54,7 +54,7 @@ class PQYWorker(QtCore.QObject):
                 dispatcherId += 1
 
         except Exception as e:
-            if getattr(e, 'errno') == 10038:
+            if not self._isServing or getattr(e, 'errno') == 10038:
                 return  # Socket closed.
 
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
@@ -68,6 +68,11 @@ class PQYWorker(QtCore.QObject):
             dispatcher.close()
 
         if self._socket:
+            # ---
+            # For linux, we need to shut down the socket before close it.
+            # Otherwise, the socket will be in TIME_WAIT state and block program.
+            # ---
+            self._socket.shutdown(SHUT_RDWR)
             self._socket.close()
 
     def onMsg(self, info: dict):
