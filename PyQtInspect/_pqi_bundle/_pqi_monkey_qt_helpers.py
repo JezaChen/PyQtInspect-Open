@@ -7,7 +7,7 @@ from io import StringIO
 import os
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
 from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
@@ -327,6 +327,13 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 elif event.type() == EventEnum.MouseButtonRelease:
                     return self._handleMouseReleaseEvent(obj, event)
                 elif event.type() == EventEnum.User:
+                    # handle enter & leave
+                    if hasattr(event, '_pqi_is_enter'):
+                        is_enter = event._pqi_is_enter
+                        if is_enter:
+                            self._handleEnterEvent(obj, event)
+                        else:
+                            self._handleLeaveEvent(obj, event)
                     # handle highlight
                     if hasattr(event, '_pqi_is_highlight'):
                         is_highlight = event._pqi_is_highlight
@@ -340,22 +347,67 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                         obj._pqi_exec(code)
             return False
 
-    class NativeEventListener(QtCore.QAbstractNativeEventFilter):
-        """
-        For some widgets that have overloaded the nativeEvent, mouse events may be intercepted earlier.
-        Therefore, a NativeEventFilter needs to be implemented to prevent mouse events from being intercepted.
-        """
-        HTCLIENT = 1
-        WM_NCHITTEST = 0x0084
-        def nativeEventFilter(self, eventType, message):
-            if not _is_inspect_enabled():
-                # If inspect is disabled, do not handle native events
-                return False, 0
+    if IS_WINDOWS:
+        class NativeEventListener(QtCore.QAbstractNativeEventFilter):
+            """
+            For some widgets that have overloaded the nativeEvent, mouse events may be intercepted earlier.
+            Therefore, a NativeEventFilter needs to be implemented to prevent mouse events from being intercepted.
+            """
+            HTCLIENT = 1
+            WM_NCHITTEST = 0x0084
+            def nativeEventFilter(self, eventType, message):
+                if not _is_inspect_enabled():
+                    # If inspect is disabled, do not handle native events
+                    return False, 0
 
-            msg = wintypes.MSG.from_address(int(message))
-            if msg.message == self.WM_NCHITTEST:
-                return True, self.HTCLIENT
-            return False, 0
+                msg = wintypes.MSG.from_address(int(message))
+                if msg.message == self.WM_NCHITTEST:
+                    return True, self.HTCLIENT
+                return False, 0
+    elif IS_MACOS:
+        class NativeEventListener(QtCore.QAbstractNativeEventFilter):
+            """
+            For macOS, when the window is not focused, the mouse event will not be triggered.
+            Therefore, a NativeEventFilter needs to be implemented to obtain the mouse position
+            and generate the corresponding enter and leave events.
+            """
+            __last_widget = None
+
+            def nativeEventFilter(self, eventType, _):
+                if not _is_inspect_enabled():
+                    # If inspect is disabled, do not handle native events
+                    return False, 0
+
+                if eventType == 'mac_generic_NSEvent':
+                    if QtGui.QGuiApplication.instance().focusWindow():
+                        # If the window is focused, the event handle is not needed
+                        self.__last_widget = None
+                        return False, 0
+
+                    locationInWindow = QtGui.QCursor.pos()
+                    targetWidget = QtWidgets.QApplication.instance().widgetAt(locationInWindow)
+                    if not targetWidget:
+                        if self.__last_widget:
+                            leaveEvent = QtCore.QEvent(EventEnum.User)
+                            leaveEvent._pqi_is_enter = False
+                            QtWidgets.QApplication.postEvent(self.__last_widget, leaveEvent)
+                        self.__last_widget = None
+                        return False, 0
+
+                    if targetWidget != self.__last_widget:
+                        # generate enter event
+                        enterEvent = QtCore.QEvent(EventEnum.User)
+                        enterEvent._pqi_is_enter = True
+                        QtWidgets.QApplication.postEvent(targetWidget, enterEvent)
+                        # generate leave event
+                        if self.__last_widget:
+                            leaveEvent = QtCore.QEvent(EventEnum.User)
+                            leaveEvent._pqi_is_enter = False
+                            QtWidgets.QApplication.postEvent(self.__last_widget, leaveEvent)
+                        self.__last_widget = targetWidget
+                return False, 0
+    else:
+        NativeEventListener = None
 
     def _initGlobalEventFilter():
         """ Initialize the global event filters when it does not exist """
@@ -386,7 +438,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             app.installEventFilter(eventFilter)
 
         # Global native event filter
-        if debugger.global_native_event_filter is None:
+        if debugger.global_native_event_filter is None and NativeEventListener is not None:
             nativeEventFilter = NativeEventListener()
             debugger.global_native_event_filter = nativeEventFilter
             app.installNativeEventFilter(nativeEventFilter)
