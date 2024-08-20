@@ -165,6 +165,11 @@ you can complete the selection with F8.
 Note that F8 **is only used to finish selection** during the inspection process;
 pressing F8 **WILL NOT start selection** if inspection is not active.
 
+## Source Code
+
+Currently, the source code distribution package can be downloaded from 
+[PyPi][3], and the GitHub repository will be opened soon.
+
 ## Known Issues
 - **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
     where `B` and `C` inherit from **QObject**. This might cause the `__init__` method of `C` to not execute, leading to exceptions.
@@ -175,10 +180,9 @@ pressing F8 **WILL NOT start selection** if inspection is not active.
 - For some computers, sometimes the `QEnterEvent` will have the type `170` (which is `QEvent.DynamicPropertyChange`),
     which may cause crash when accessing the `propertyName` method.
 
-## Source Code
+**If you encounter any problems before the GitHub repository is opened,
+please email me at `jezachen@163.com`.**
 
-Currently, the source code distribution package can be downloaded from 
-[PyPi][3], and the GitHub repository will be opened soon.
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html
