@@ -66,7 +66,7 @@ class PycharmPathSettingLineEdit(SimpleSettingLineEdit):
     def isValueValid(self) -> bool:
         path = self._valueLineEdit.text()
         if not path:
-            return False
+            return True  # Updated 20240820: Empty path is valid
         return os.path.exists(path) and os.path.isfile(path)
 
 
