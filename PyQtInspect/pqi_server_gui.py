@@ -176,7 +176,8 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
         self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
-        self._pressF8ToDisableInspectAction.setCheckable(self._keyboardHookHandler.isValid())
+        self._pressF8ToDisableInspectAction.setCheckable(True)
+        self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
         self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
         # --- Connect Signals ---
         # main gui -> keyboard hook handler
@@ -223,7 +224,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.setSpacing(0)
 
         # ====================
-        # Top Container
+        #    Top Container   #
         # ====================
         self._topContainer = QtWidgets.QWidget(self)
         self._topContainer.setFixedHeight(30)
