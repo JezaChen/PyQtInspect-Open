@@ -52,6 +52,7 @@ class PidLineEdit(SimpleSettingLineEdit):
 
         @note: Only available on Windows.
         """
+        import sys
         if sys.platform == "win32":
             def _tryGrab():
                 import wingrab

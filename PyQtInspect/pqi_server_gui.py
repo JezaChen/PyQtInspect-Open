@@ -31,6 +31,8 @@ from PyQtInspect.pqi_gui.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
+from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
+
 
 # ==== SetupHolder ====
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
@@ -149,7 +151,9 @@ class WidgetBriefWidget(QtWidgets.QWidget):
 
 
 class PQIWindow(QtWidgets.QMainWindow):
-    sigDisableInspectKeyPressed = QtCore.pyqtSignal()
+    _sigInspectFinished = QtCore.pyqtSignal()
+    _sigInspectBegin = QtCore.pyqtSignal()
+    _sigInspectDisabled = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -168,12 +172,22 @@ class PQIWindow(QtWidgets.QMainWindow):
         #     Menu Actions     #
         # ==================== #
         # Press F8 to Disable Inspect Action
-        if sys.platform == "win32":
-            self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-            self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
-            self._pressF8ToDisableInspectAction.setCheckable(True)
-            self._pressF8ToDisableInspectAction.setChecked(True)  # default
-            self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+        self._keyboardHookHandler = KeyboardHookHandler(self)
+
+        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
+        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
+        self._pressF8ToDisableInspectAction.setCheckable(self._keyboardHookHandler.isValid())
+        self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
+        # --- Connect Signals ---
+        # main gui -> keyboard hook handler
+        self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
+        self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
+        self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
+        self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
+        # keyboard hook handler -> main gui
+        self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
+
+        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
 
         # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
@@ -297,17 +311,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
         self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多个进程都有选中的情况?
-        if sys.platform == "win32":
-            self._keyboardHookThread = self._generateKeyboardHookThread()
 
         self._curWidgetId = -1
         self._curHighlightedWidgetId = -1
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
-        self._initConnections()
-
-    def _initConnections(self):
-        self.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
 
     # region For Serve Button
     def _onServeButtonToggled(self, checked: bool):
@@ -449,8 +457,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def handle_inspect_finished_msg(self):
         self._inspectButton.setChecked(False)
         self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
-        if sys.platform == "win32":
-            self._stopKeyboardHookThread()
+        self._sigInspectFinished.emit()
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.on_widget_info_recv)
@@ -461,18 +468,12 @@ class PQIWindow(QtWidgets.QMainWindow):
         if not worker:
             return
         worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
-
-        if sys.platform == "win32":
-            if self._pressF8ToDisableInspectAction.isChecked():
-                # start keyboard hook thread if user wants to disable inspect by pressing F8
-                # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
-                self._keyboardHookThread.stop_flag.clear_flag()
-                self._keyboardHookThread.start()
+        self._sigInspectBegin.emit()
 
     def _disableInspect(self):
         self._getWorker().sendDisableInspect()
         self._currDispatcherIdForSelectedWidget = None
-        self._stopKeyboardHookThread()
+        self._sigInspectDisabled.emit()
 
     def _onInspectButtonClicked(self, checked: bool):
         if not self._getWorker():
@@ -578,27 +579,6 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._attachWindow = AttachWindow(self)
         self._attachWindow.show()
 
-    # region For Keyboard Hook to disable inspect
-    def _generateKeyboardHookThread(self):
-        from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
-
-        def _inSubThread():
-            import PyQtInspect._pqi_bundle.pqi_keyboard_hook_win as kb_hook
-            kb_hook.grab(0x77, flag, lambda: self.sigDisableInspectKeyPressed.emit())
-
-        thread = QtCore.QThread(self)
-        flag = GrabFlag()  # 可指示内部grab线程停止的标志, 用于解决GUI程序退出后grab线程仍无法退出的问题
-        thread.started.connect(_inSubThread)
-        thread.stop_flag = flag
-        return thread
-
-    def _stopKeyboardHookThread(self):
-        if not sys.platform == "win32":
-            return
-        if self._keyboardHookThread.isRunning():
-            self._keyboardHookThread.stop_flag.mark_stop()
-            self._keyboardHookThread.quit()
-
     def _onInspectKeyPressed(self):
         """ 当停止inspect热键按下后, 停止inspect """
         self._inspectButton.setChecked(False)
@@ -655,7 +635,8 @@ def main():
 
     # open high-resolution support
     QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
-        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
 
