@@ -15,12 +15,15 @@ class FrameInfo(typing.NamedTuple):
 
 
 def getStackFrame(useGetFrame=True) -> typing.List[FrameInfo]:
-    '''
+    """
     Brief:
         Gets a stack frame with the passed in num on the stack.
             If useGetFrame, uses sys._getframe (implementation detail of Cython)
                 Otherwise or if sys._getframe is missing, uses inspect.stack() (which is really slow).
-    '''
+    Update:
+        - 20240820: We CANNOT Store the raw frame object outputted by `sys.getframe()`
+            because it will cause memory leak. We should store the information we need.
+    """
     # Not all versions of python have the sys._getframe() method.
     # All should have inspect, though it is really slow
     if useGetFrame and hasattr(sys, '_getframe'):
