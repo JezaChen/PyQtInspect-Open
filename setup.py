@@ -34,7 +34,7 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
     entry_points={
-        "console_scripts": [
+        "gui_scripts": [
             "pqi-server = PyQtInspect.pqi_server_gui:main",
         ],
     },
