@@ -32,14 +32,14 @@ Simply install using `pip install PyQtInspect`.
 
 The PyQtInspect architecture is divided into _two parts_:
 
-- Debugging side (**Server**): A GUI program for viewing element information, locating code, etc.
+- Debugger side (**Server**): A GUI program for viewing element information, locating code, etc.
 
 - Debugged side (**Client**): Runs within the Python program to be debugged, 
   patches the host program's Qt framework, and transmits information to the server.
 
-When debugging, please **start the GUI server first**, then launch the Python program to be debugged.
+When debugging, please [**start the GUI server first**](#start-the-debugger-side), then [launch the Python program to be debugged](#start-the-debugged-side).
 
-### Start the Debugging Side
+### Start the Debugger Side
 
 Enter `pqi-server` in the terminal to start the server-side GUI program. 
 After launching, specify the listening port (default is `19394`) 
