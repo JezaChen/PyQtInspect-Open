@@ -8,10 +8,11 @@ from PyQtInspect.pqi_gui.workers.dispatcher import Dispatcher
 
 
 class PQYWorker(QtCore.QObject):
-    start = QtCore.pyqtSignal()
-    widgetInfoRecv = QtCore.pyqtSignal(dict)
+    sigWidgetInfoRecv = QtCore.pyqtSignal(dict)
     sigNewDispatcher = QtCore.pyqtSignal(Dispatcher)
-    socketError = QtCore.pyqtSignal(str)
+    sigDispatcherExited = QtCore.pyqtSignal(int)
+    sigAllDispatchersExited = QtCore.pyqtSignal()
+    sigSocketError = QtCore.pyqtSignal(str)
 
     def __init__(self, parent, port):
         super().__init__(parent)
@@ -19,8 +20,6 @@ class PQYWorker(QtCore.QObject):
 
         self.dispatchers = []
         self.idToDispatcher = {}
-
-        self.start.connect(self.run)
 
         self._isServing = False
         self._socket = None
@@ -43,9 +42,11 @@ class PQYWorker(QtCore.QObject):
 
             while self._isServing:
                 newSock, _addr = self._socket.accept()
-                # 新建个线程来处理
+                # Create a new thread to handle the connection.
                 dispatcher = Dispatcher(None, newSock, dispatcherId)
-                dispatcher.sigDelete.connect(self._onDispatcherDelete)
+                # The connection type must be DirectConnection,
+                # otherwise the signal will be ignored because the thread event loop is not running.
+                dispatcher.sigClosed.connect(self._onDispatcherClosed, QtCore.Qt.DirectConnection)
                 self.dispatchers.append(dispatcher)
                 self.idToDispatcher[dispatcherId] = dispatcher
 
@@ -60,7 +61,7 @@ class PQYWorker(QtCore.QObject):
             sys.stderr.write("Could not bind to port: %s\n" % (self.port,))
             sys.stderr.flush()
             traceback.print_exc()
-            self.socketError.emit(str(e))
+            self.sigSocketError.emit(str(e))
 
     def stop(self):
         self._isServing = False
@@ -82,7 +83,7 @@ class PQYWorker(QtCore.QObject):
             self._socket.close()
 
     def onMsg(self, info: dict):
-        self.widgetInfoRecv.emit(info)
+        self.sigWidgetInfoRecv.emit(info)
 
     def sendEnableInspect(self, extra: dict):
         for dispatcher in self.dispatchers:
@@ -122,11 +123,18 @@ class PQYWorker(QtCore.QObject):
         if dispatcher:
             dispatcher.sendRequestChildrenInfoEvent(widgetId)
 
-    def _onDispatcherDelete(self, id: int):
-        dispatcher = self.idToDispatcher.pop(id)
-        self.dispatchers.remove(dispatcher)
-        dispatcher.close()
-        dispatcher.deleteLater()
+    def _onDispatcherClosed(self, id: int):
+        try:
+            dispatcher = self.idToDispatcher.pop(id)
+            self.dispatchers.remove(dispatcher)
+            dispatcher.deleteLater()
+            # emit once
+            self.sigDispatcherExited.emit(id)
+        except KeyError:  # may be already removed.
+            pass
+
+        if not self.dispatchers:
+            self.sigAllDispatchersExited.emit()
 
 
 class DummyWorker:

@@ -7,6 +7,7 @@
 import pathlib
 import sys
 import typing
+import argparse
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect.pqi_gui.workers.pqy_worker import PQYWorker, DUMMY_WORKER, DummyWorker
@@ -20,8 +21,11 @@ import json
 from PyQt5 import QtWidgets, QtCore
 from PyQtInspect.pqi_gui.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
-from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR, \
-    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS
+from PyQtInspect._pqi_bundle.pqi_comm_constants import (
+    CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR,
+    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS,
+    CMD_EXIT
+)
 
 import ctypes
 
@@ -33,7 +37,6 @@ import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
 
-
 # ==== SetupHolder ====
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
@@ -44,6 +47,9 @@ SetupHolder.setup = {
 if sys.platform == "win32":
     myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+# ==== Default Values ====
+_DEFAULT_PORT = 19394
 
 
 class BriefLine(QtWidgets.QWidget):
@@ -155,8 +161,9 @@ class PQIWindow(QtWidgets.QMainWindow):
     _sigInspectBegin = QtCore.pyqtSignal()
     _sigInspectDisabled = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, defaultPort: int = _DEFAULT_PORT):
         super().__init__(parent)
+
         self.setWindowTitle("PyQtInspect")
         self.setWindowIcon(get_icon())
         self.resize(700, 1000)
@@ -234,9 +241,18 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._topLayout.setContentsMargins(0, 0, 0, 0)
         self._topLayout.setSpacing(0)
 
+        self._portLabel = QtWidgets.QLabel(self._topContainer)
+        self._portLabel.setText("Port: ")
+        self._portLabel.setFixedHeight(30)
+        self._portLabel.setFixedWidth(50)
+        self._portLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self._portLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+
+        self._topLayout.addWidget(self._portLabel)
+
         self._portLineEdit = QtWidgets.QLineEdit(self._topContainer)
         self._portLineEdit.setFixedHeight(30)
-        self._portLineEdit.setText("19394")
+        self._portLineEdit.setText(str(defaultPort))
         self._portLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         self._topLayout.addWidget(self._portLineEdit)
@@ -321,18 +337,24 @@ class PQIWindow(QtWidgets.QMainWindow):
     # region For Serve Button
     def _onServeButtonToggled(self, checked: bool):
         if checked:
-            try:
-                port = int(self._portLineEdit.text())
-            except ValueError:
-                QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
-                self._serveButton.setChecked(False)
-                return
-
-            DataCenter.instance.setServerConfig({"port": port})
-
-            self._runWorker()
+            self._startServer()
         else:
-            self._askStopWorkerConfirmation()
+            self._stopServer()
+
+    def _startServer(self):
+        try:
+            port = int(self._portLineEdit.text())
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
+            self._serveButton.setChecked(False)
+            return
+
+        DataCenter.instance.setServerConfig({"port": port})
+
+        self._runWorker()
+
+    def _stopServer(self):
+        self._askStopWorkerConfirmation()
 
     def _runWorker(self):
         if self._worker is not None:
@@ -346,9 +368,11 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._attachAction.setEnabled(True)
 
         self._worker = PQYWorker(None, port)  # The parent of worker must be None!
-        self._worker.widgetInfoRecv.connect(self.on_widget_info_recv)
+        self._worker.sigWidgetInfoRecv.connect(self.onWidgetInfoRecv)
         self._worker.sigNewDispatcher.connect(self.onNewDispatcher)
-        self._worker.socketError.connect(self._onWorkerSocketError)
+        self._worker.sigSocketError.connect(self._onWorkerSocketError)
+        self._worker.sigDispatcherExited.connect(self._onDispatcherExited)
+        self._worker.sigAllDispatchersExited.connect(self._onAllDispatchersExited)
         self._workerThread = QtCore.QThread()
 
         self._worker.moveToThread(self._workerThread)
@@ -406,9 +430,17 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._cleanUpWhenWorkerStopped()
         self._serveButton.setChecked(False)
 
+    def _onDispatcherExited(self, dispatcherId: int):
+        """ Only log the info when a dispatcher exited. """
+        pqi_log.info(f"PyQtInspect: Dispatcher {dispatcherId} exited.")
+
+    def _onAllDispatchersExited(self):
+        """ Only log the info when all dispatchers exited. """
+        pqi_log.info("PyQtInspect: All dispatchers exited.")
+
     # endregion
 
-    def on_widget_info_recv(self, dispatcherId: int, info: dict):
+    def onWidgetInfoRecv(self, dispatcherId: int, info: dict):
         cmdId = info.get("cmd_id")
         text = info.get("text", "")
         if cmdId == CMD_QT_PATCH_SUCCESS:
@@ -440,7 +472,8 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._hierarchyBar.setMenuData(widgetId, childrenInfoDict["child_classes"],
                                            childrenInfoDict["child_object_names"],
                                            childrenInfoDict["child_ids"])
-        # self._bottomStatusTextBrowser.append(f"recv: {info}")
+        elif cmdId == CMD_EXIT:  # the client has exited elegantly
+            pqi_log.info(f"PyQtInspect: Dispatcher {dispatcherId} exited elegantly.")
 
     def handleWidgetInfoMsg(self, info):
         self._curWidgetId = info["id"]
@@ -461,7 +494,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._sigInspectFinished.emit()
 
     def onNewDispatcher(self, dispatcher):
-        dispatcher.sigMsg.connect(self.on_widget_info_recv)
+        dispatcher.sigMsg.connect(self.onWidgetInfoRecv)
         dispatcher.registerMainUIReady()
 
     def _enableInspect(self):
@@ -604,6 +637,54 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def cleanUp(self):
         self._disableInspect()
+        self._cleanUpWhenWorkerStopped()
+
+    # region APIs
+    def setPort(self, port: int):
+        """ Set the port to listen. """
+        if self._portLineEdit.isEnabled():
+            self._portLineEdit.setText(str(port))
+
+    def listen(self, newPort: typing.Optional[int] = None):
+        """ Start the server to listen to the port. """
+        if newPort is not None:
+            self.setPort(newPort)
+        self._startServer()
+
+    def stop(self):
+        """ Stop the server. """
+        self._stopServer()
+
+    @classmethod
+    def createWindow(cls, args: argparse.Namespace):
+        """ A factory method to create a window. """
+        window = cls(defaultPort=args.port)
+        return window
+    # endregion
+
+
+class DirectModePQIWindow(PQIWindow):
+    def __init__(self, parent=None, defaultPort: int = _DEFAULT_PORT):
+        super().__init__(parent, defaultPort)
+        self.setWindowTitle(f"PyQtInspect (Direct Mode)")
+        # Hide the top container and the attach action because in the direct mode
+        # the server connects to the only one process.
+        self._serveButton.setVisible(False)
+        self._attachAction.setVisible(False)
+
+    def _onAllDispatchersExited(self):
+        """ Override the method to close the window when all dispatchers exited. """
+        super()._onAllDispatchersExited()
+        self._cleanUpWhenWorkerStopped()
+        self.close()
+
+    @classmethod
+    def createWindow(cls, args: argparse.Namespace):
+        """ Create a window in direct mode. """
+        window = cls(defaultPort=args.port)
+        window.listen()  # start the server directly after the window is created.
+
+        return window
 
 
 def _set_debug():
@@ -625,13 +706,37 @@ def _set_debug():
                                                                  DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
 
 
+def _createWindow(args: argparse.Namespace):
+    if args.direct:  # direct mode
+        return DirectModePQIWindow.createWindow(args)
+
+    # default
+    return PQIWindow.createWindow(args)
+
+
 def main():
     import sys
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--debug', action='store_true', help='Set debug mode'
+    )
+    parser.add_argument(
+        '--direct',
+        action='store_true',
+        help='Set direct mode, it will hide the top container and listen to the port directly'
+    )
+    parser.add_argument(
+        '--port',
+        type=int,
+        help='Set the port to listen',
+        default=_DEFAULT_PORT
+    )
+
+    args = parser.parse_args()  # type: argparse.Namespace
+
     # Check if the debug option is set.
-    debug_option = '--debug'
-    if debug_option in sys.argv:
-        sys.argv.remove(debug_option)
+    if args.debug:
         _set_debug()
 
     # open high-resolution support
@@ -642,7 +747,7 @@ def main():
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
 
     app = QtWidgets.QApplication(sys.argv)
-    window = PQIWindow()
+    window = _createWindow(args)
     window.show()
     sys.exit(app.exec())
 

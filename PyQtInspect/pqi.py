@@ -4,6 +4,8 @@
 # Time: 2023/8/18 14:52
 # Description: 
 # ==============================================
+import atexit
+import subprocess
 import sys
 import os
 import time
@@ -24,6 +26,8 @@ from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
 from PyQtInspect._pqi_bundle import pqi_log
+from PyQtInspect._pqi_bundle.pqi_connect_tools import random_port
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_server_gui_entry
 
 import traceback
 
@@ -149,6 +153,21 @@ class TrackedLock(object):
 connected = False
 
 
+def stoptrace():
+    """Stops tracing in the current process and undoes all monkey-patches done by the debugger."""
+    # TODO need to un-patch the Qt modules
+
+    global connected
+
+    if connected:
+        debugger = get_global_debugger()
+
+        if debugger:
+            debugger.exiting()
+
+        connected = False
+
+
 class PyDB(object):
     """ Main debugging class
     Lots of stuff going on here:
@@ -250,9 +269,6 @@ class PyDB(object):
         self.initialize_network(s)
         if host:
             self.send_process_created_message()
-
-    def check_output_redirect(self):
-        pass
 
     def send_process_created_message(self):
         """Sends a message that a new process has been created.
@@ -399,7 +415,6 @@ class PyDB(object):
             sys.stderr.flush()
         except:
             pass
-        self.check_output_redirect()
         cmd = self.cmd_factory.make_exit_message()
         self.writer.add_command(cmd)
 
@@ -416,7 +431,7 @@ class PyDB(object):
     def stoptrace():
         """A proxy method for calling :func:`stoptrace` from the modules where direct import
         is impossible because, for example, a circular dependency."""
-        pass
+        stoptrace()
 
     def dispose_and_kill_all_pqi_threads(self):
         # TODO
@@ -582,7 +597,7 @@ def settrace(
         host)
 
     @param port: specifies which port to use for communicating with the server (note that the server must be started
-        in the same port). @note: currently it's hard-coded at 5678 in the client
+        in the same port).
 
     @param patch_multiprocessing: if True we'll patch the functions which create new processes so that launched
         processes are debugged.
@@ -651,7 +666,7 @@ def _locked_settrace(
             time.sleep(0.1)  # busy wait until we receive run command
 
         # Stop the tracing as the last thing before the actual shutdown for a clean exit.
-        # atexit.register(stoptrace)  todo
+        atexit.register(stoptrace)
 
     try:
         import PyQtInspect._pqi_bundle.pqi_monkey_qt
@@ -695,8 +710,34 @@ def main():
     DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = setup.get('LOG_TO_CONSOLE_LEVEL', DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
 
     # connect
-    port = setup['port']
-    host = setup['client']
+    if not setup['direct']:
+        port = setup['port']
+        host = setup['client']
+    else:
+        host = setup['client'] = '127.0.0.1'
+        port = setup['port'] = random_port()
+        try:
+            subprocess.run(
+                ['pqi-server', '--port', str(port), '--direct'],
+                check=True,
+                close_fds=True, stdin=None, stdout=None, stderr=None,
+            )
+        except Exception as e:
+            # If we can't start the server by calling ``pqi-server``,
+            # try to run the GUI entry directly.
+            pqi_log.warning(f'Failed to start pqi-server: "{e}", trying to run GUI entry directly.')
+            try:
+                gui_entry = find_pqi_server_gui_entry()
+                subprocess.Popen(
+                    [sys.executable, gui_entry, '--port', str(port), '--direct'],
+                    close_fds=True, stdin=None, stdout=None, stderr=None,
+                    creationflags=subprocess.DETACHED_PROCESS if IS_WINDOWS else 0,
+                )
+            except:
+                # OK, we tried our best, let's give up...
+                pqi_log.error(f'Failed to start pqi-server GUI entry: "{e}", exiting.')
+                sys.stderr.write(f'Error: "{e}"\n')
+                sys.exit(1)
 
     debugger = PyDB()
 
@@ -707,6 +748,11 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
+    global connected
+    connected = True  # Mark that we're connected when started from cli.
+
+    atexit.register(stoptrace)
+
     import PyQtInspect._pqi_bundle.pqi_monkey
 
     if setup['multiprocess']:
@@ -715,6 +761,7 @@ def main():
     is_module = setup['module']
 
     enable_qt_support(setup['qt-support'])
+
     if setup['file']:
         debugger.run(setup["file"], None, None, is_module)
 

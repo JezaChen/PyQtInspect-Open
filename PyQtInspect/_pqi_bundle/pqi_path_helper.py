@@ -5,11 +5,13 @@ __all__ = [
     'is_relative_to',
     'find_pqi_module_path',
     'find_compile_pqi_tool',
+    'find_pqi_server_gui_entry',
 ]
 
 _PQI_COMPILE_SUBDIR = '_pqi_compile'
 _COMPILE_PQI_TOOL_PY = 'compile_pqi.py'
 _PQI_ENTRY_FILE_NAME = 'pqi.py'
+_PQI_SERVER_GUI_ENTRY_FILE_NAME = 'pqi_server_gui.py'
 
 
 # === COMMON UTILS ===
@@ -60,3 +62,12 @@ def find_compile_pqi_tool():
     result = str(path).replace('\\', '/')
     _COMPILE_PQI_TOOL_PATH_CACHE = result
     return result
+
+
+def find_pqi_server_gui_entry():
+    """ get the absolute path of pqi_server_gui.py """
+    path = pathlib.Path(__file__).parent.parent / _PQI_SERVER_GUI_ENTRY_FILE_NAME
+    if not path.exists():
+        raise FileNotFoundError(f'Cant find {_PQI_SERVER_GUI_ENTRY_FILE_NAME} at {path}')
+    return str(path).replace('\\', '/')
+

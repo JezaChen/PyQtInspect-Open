@@ -511,6 +511,9 @@ class NetCommandFactory:
             **dataclasses.asdict(children_info)
         ))
 
+    def make_exit_message(self):
+        return NetCommand(CMD_EXIT, 0, '')
+
 
 INTERNAL_TERMINATE_THREAD = 1
 INTERNAL_SUSPEND_THREAD = 2

@@ -31,7 +31,7 @@ class DispatchReader(ReaderThread):
 
 class Dispatcher(QtCore.QThread):
     sigMsg = QtCore.pyqtSignal(int, dict)  # dispatcher_id, info
-    sigDelete = QtCore.pyqtSignal(int)
+    sigClosed = QtCore.pyqtSignal(int)
 
     def __init__(self, parent, sock, id):
         super().__init__(parent)
@@ -63,17 +63,19 @@ class Dispatcher(QtCore.QThread):
             self.sock.close()
         except:
             pass
+        self.sigClosed.emit(self.id)
 
     def registerMainUIReady(self):
-        """ 告知dispatcher, 主界面已经准备好了, 可以处理消息了
+        """ The Main UI is ready and we can start processing messages.
         """
         self._mainUIReady = True
         for cmd_id, seq, text in self._msg_buffer:
             self.notify(cmd_id, seq, text)
+        self._msg_buffer.clear()
 
     def notify(self, cmd_id, seq, text):
         if not self._mainUIReady:
-            # 缓存起来
+            # Not ready yet, buffer the message.
             self._msg_buffer.append((cmd_id, seq, text))
         self.sigMsg.emit(self.id, {"cmd_id": cmd_id, "seq": seq, "text": text})
 
@@ -99,7 +101,4 @@ class Dispatcher(QtCore.QThread):
         self.writer.add_command(self.net_command_factory.make_req_children_info_message(widgetId))
 
     def notifyDelete(self):
-        self.reader.do_kill_pydev_thread()
-        self.writer.do_kill_pydev_thread()
-
-        self.sigDelete.emit(self.id)
+        self.close()

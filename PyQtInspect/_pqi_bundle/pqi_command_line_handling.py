@@ -70,6 +70,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerWithParam('stack-max-depth', int, 0),
 
     ArgHandlerBool('server'),
+    ArgHandlerBool('direct'),
     ArgHandlerBool('DEBUG_RECORD_SOCKET_READS'),
     ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
     ArgHandlerBool('module'),
