@@ -257,14 +257,14 @@ class PyDB(object):
         self.writer.start()
         self.reader.start()
 
-    def connect(self, host, port):
+    def connect(self, host, port, *, output_connection_errors=True):
         self._last_host, self._last_port = host, port
         if host:
             self.communication_role = CommunicationRole.CLIENT
-            s = start_client(host, port)
+            s = start_client(host, port, output_errors=output_connection_errors)
         else:
             self.communication_role = CommunicationRole.SERVER
-            s = start_server(port)
+            s = start_server(port, output_errors=output_connection_errors)
 
         self.initialize_network(s)
         if host:
@@ -579,6 +579,7 @@ def set_debug(setup):
     setup['DEBUG_RECORD_SOCKET_READS'] = True
     setup['LOG_TO_FILE_LEVEL'] = logging.DEBUG
     setup['LOG_TO_CONSOLE_LEVEL'] = logging.DEBUG
+    setup['SHOW_CONNECTION_ERRORS'] = True
 
 
 # =======================================================================================================================
@@ -710,16 +711,22 @@ def main():
     DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = setup.get('LOG_TO_CONSOLE_LEVEL', DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
 
     # connect
-    if not setup['direct']:
+    is_direct_mode = setup.get('direct', False)
+    if not is_direct_mode:
         port = setup['port']
         host = setup['client']
     else:
+        # ===============================================
+        #  Direct mode: run the server at the same time
+        # ===============================================
+        # Override the host and port to localhost and a random port
         host = setup['client'] = '127.0.0.1'
         port = setup['port'] = random_port()
+        # Run server first
         try:
-            subprocess.run(
+            # Run with detached mode
+            subprocess.Popen(
                 ['pqi-server', '--port', str(port), '--direct'],
-                check=True,
                 close_fds=True, stdin=None, stdout=None, stderr=None,
             )
         except Exception as e:
@@ -739,14 +746,28 @@ def main():
                 sys.stderr.write(f'Error: "{e}"\n')
                 sys.exit(1)
 
+    # run the client
     debugger = PyDB()
 
-    try:
-        debugger.connect(host, port)
-    except:
-        sys.stderr.write("Could not connect to %s: %s\n" % (host, port))
-        traceback.print_exc()
-        sys.exit(1)
+    while True:
+        try:
+            debugger.connect(
+                host, port,
+                # show connection errors if (1. not in direct mode) or (2. in debug mode)
+                output_connection_errors=(not is_direct_mode or setup.get('SHOW_CONNECTION_ERRORS', False))
+            )
+            # Connected successfully, break the loop.
+            break
+        except:
+            if not is_direct_mode:
+                # If not in direct mode, just give up if we can't connect.
+                sys.stderr.write("Could not connect to %s: %s\n" % (host, port))
+                traceback.print_exc()
+                sys.exit(1)
+            else:
+                # Otherwise, keep trying to connect in direct mode until succeed. (For Mac, it's necessary)
+                time.sleep(0.1)
+                continue
 
     global connected
     connected = True  # Mark that we're connected when started from cli.

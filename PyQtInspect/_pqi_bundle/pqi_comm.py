@@ -167,8 +167,7 @@ class ReaderThread(PyDBDaemonThread):
 
                 read_buffer += r
                 if DebugInfoHolder.DEBUG_RECORD_SOCKET_READS:
-                    sys.stderr.write(u'PyQtInspect: received >>%s<<\n' % (read_buffer,))
-                    sys.stderr.flush()
+                    pqi_log.debug('PyQtInspect: received >>%s<<' % (read_buffer,))
 
                 if len(read_buffer) == 0:
                     self.handle_except()
@@ -183,8 +182,7 @@ class ReaderThread(PyDBDaemonThread):
                         self.process_command(cmd_id, int(args[1]), args[2])
                     except:
                         traceback.print_exc()
-                        sys.stderr.write("Can't process net command: %s\n" % command)
-                        sys.stderr.flush()
+                        pqi_log.error("Can't process net command: %s" % command)
 
         except:
             traceback.print_exc()
@@ -288,7 +286,7 @@ class WriterThread(PyDBDaemonThread):
 # =======================================================================================================================
 # start_server
 # =======================================================================================================================
-def start_server(port):
+def start_server(port, *, output_errors=True):
     """ binds to a port, waits for the debugger to connect """
     s = socket(AF_INET, SOCK_STREAM)
     s.settimeout(None)
@@ -312,15 +310,15 @@ def start_server(port):
         return newSock
 
     except:
-        sys.stderr.write("Could not bind to port: %s\n" % (port,))
-        sys.stderr.flush()
+        if output_errors:
+            pqi_log.error("Could not bind to port: %s" % (port,))
         traceback.print_exc()
 
 
 # =======================================================================================================================
 # start_client
 # =======================================================================================================================
-def start_client(host, port):
+def start_client(host, port, *, output_errors=True):
     """ connects to a host/port """
     pqi_log.info(f"Connecting to {host}:{port}")
 
@@ -350,9 +348,8 @@ def start_client(host, port):
         pqi_log.info("Connected.")
         return s
     except:
-        sys.stderr.write("Could not connect to %s: %s\n" % (host, port))
-        sys.stderr.flush()
-        traceback.print_exc()
+        if output_errors:
+            pqi_log.error(f'Could not connect to {host}:{port}', exc_info=True)
         raise
 
 
