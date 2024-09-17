@@ -53,7 +53,7 @@ Detached Mode supports remote debugging (the server and client are on different 
 whereas Direct Mode does not, as both the client and the server which is automatically launched run on the same machine.
 
 Additionally, PyQtInspect supports [running in PyCharm and other IDEs](#running-pyqtinspect-in-pycharm-supports-detached-modedirect-mode-recommended), 
-and [attaching to PyQt/PySide processes](#attach-to-process-detached-mode-only-currently-unstable).
+and [attaching to PyQt/PySide processes](#attach-to-process-supports-detached-mode-only-currently-unstable).
 
 ### Start in Direct Mode
 
