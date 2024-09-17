@@ -101,7 +101,7 @@ and click the `Serve` button to start listening.
 
 <img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/start_server.png?raw=true"/>
 
-#### Start the Debugged Side: Running Program Source Code with `PyQtInspect` Attached (Recommended)
+#### Start the Debugged Side: Running Program Source Code attached with `PyQtInspect`
 
 This requires full access to the Python source code of the debugged program.
 
