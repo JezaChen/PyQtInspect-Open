@@ -37,9 +37,63 @@ The PyQtInspect architecture is divided into _two parts_:
 - Debugged side (**Client**): Runs within the Python program to be debugged, 
   patches the host program's Qt framework, and transmits information to the server.
 
-When debugging, please [**start the GUI server first**](#start-the-debugger-side), then [launch the Python program to be debugged](#start-the-debugged-side).
+### Start Modes
 
-### Start the Debugger Side
+Two start modes are currently supported:
+
+- [**Detached Mode**](#start-in-detached-mode): Manually start the server first, then launch the client to connect to the server. 
+    **The server will not close when the client closes.**
+- [**Direct Mode**](#start-in-direct-mode): Start the client directly, **which will also launch a local server at the same time** 
+    (no need to launch the server in advance). **The server will close when the client closes.**
+
+In Direct Mode, running each debugged program will automatically create a corresponding server, 
+forming a one-to-one relationship. 
+Users cannot manually specify the server’s listening port, close the connection, or attach to other processes. 
+Detached Mode supports remote debugging (the server and client are on different machines), 
+whereas Direct Mode does not, as both the client and the server which is automatically launched run on the same machine.
+
+Additionally, PyQtInspect supports [running in PyCharm and other IDEs](#running-pyqtinspect-in-pycharm-supports-detached-modedirect-mode-recommended), 
+and [attaching to PyQt/PySide processes](#attach-to-process-detached-mode-only-currently-unstable).
+
+### Start in Direct Mode
+
+This is the **recommended** method, which starts both the PyQtInspect server and client at the same time. 
+It requires **full access to the Python source code** of the debugged program.
+
+If you typically run **PyQt5 applications** using `python xxx.py param1 param2`,
+just add the `-m PyQtInspect --direct --file` argument between `python` and `xxx.py`,
+like so: `python -m PyQtInspect --direct --file xxx.py param1 param2` to start PyQtInspect.
+
+If the debugged program uses **PySide2/PyQt6/Pyside6**, 
+you need to add the `--qt-support` parameter to specify the corresponding Qt framework. 
+For example, for a PySide2 program, 
+the full command is `python -m PyQtInspect --direct --file xxx.py --qt-support=pyside2 param1 param2`.
+
+The complete command is:
+
+```powershell
+python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file executable_file [file_args]
+```
+
+Explanation of parameters:
+
+* `--direct`: Specifies the start mode as **Direct Mode**
+* `--multiprocess`: Specify whether to support **multiprocess inspecting**, **disabled by default**
+* `--show-pqi-stack`: Specify whether to display the call stack related to `PyQtInspect`, **disabled by default**
+* `--qt-support`: Specify the Qt framework used by the program being debugged, **default is `pyqt5`**; optional values are `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
+* `--file`: Specify the path to the Python source code file of the program to be debugged
+* `file_args`: Command-line arguments for starting the program to be debugged
+
+For example, to debug the **PySide2 version** of [PyQt-Fluent-Widgets][1],
+which is usually run with `python examples/gallery/demo.py`, 
+new you can use `python -m PyQtInspect --direct --qt-support=pyside2 --file examples/gallery/demo.py`
+to start the PyQtInspect server and client in Direct Mode.
+
+### Start in Detached Mode
+
+In Detached Mode, make sure to start the GUI server before launching the debugged Python program.
+
+#### Start the Debugger Side
 
 Enter `pqi-server` in the terminal to start the server-side GUI program. 
 After launching, specify the listening port (default is `19394`) 
@@ -47,12 +101,9 @@ and click the `Serve` button to start listening.
 
 <img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/start_server.png?raw=true"/>
 
-### Start the Debugged Side
+#### Start the Debugged Side: Running Program Source Code with `PyQtInspect` Attached (Recommended)
 
-#### 1. Running Program Source Code with `PyQtInspect` Attached (Recommended)
-
-It's the **recommended** startup method which requires full access to the Python source code of 
-the program to be debugged.
+This requires full access to the Python source code of the debugged program.
 
 If you run this program to be debugged with `python xxx.py param1 param2`, 
 simply **insert** `-m PyQtInspect --file` **between** `python` and `xxx.py`, i.e.,
@@ -75,15 +126,19 @@ Each parameter is explained as follows:
 * `--file`: Specify the path to the Python source code file of the program to be debugged
 * `file_args`: Command-line arguments for starting the program to be debugged
 
-For example, to debug [`PyQt-Fluent-Widgets`][1], 
+For example, to debug the **PySide2 version** of [`PyQt-Fluent-Widgets`][1], 
 the demo gallery program is run with `python examples/gallery/demo.py`.
 Now you can start the `PyQtInspect` client with 
-`python -m PyQtInspect --file examples/gallery/demo.py`.
+`python -m PyQtInspect --qt-support=pyside2 --file examples/gallery/demo.py`.
+You can specify other parameters as needed.
+**Make sure the server is already running and listening on port `19394`(default port) before starting the client.**
 
 **Note: Only PyQt5 programs do not need the `--qt-support` parameter; 
 other frameworks need to specify this parameter explicitly!**
 
-#### 2. Using PyCharm (Recommended)
+### Other Running Methods
+
+#### Running PyQtInspect in PyCharm (supports Detached Mode/Direct Mode) (Recommended)
 
 Directly debug the `PyQtInspect` module in PyCharm without affecting program debugging.
 
@@ -94,9 +149,9 @@ you can create a new Debug configuration with the following parameters:
 
 Then just Run/Debug as usual.
 
-#### 3. Attach to Process (Currently Unstable)
+#### Attach to Process (Detached Mode only, currently unstable)
 
-If the source code of the program to be debugged is not available, 
+**If the source code of the program to be debugged is not available**, 
 you can attempt to start the `PyQtInspect` client by **attaching** to the process.
 
 Click `More->Attach` To Process, select the process window of the program to be debugged, 
