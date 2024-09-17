@@ -9,6 +9,11 @@ import sys
 import typing
 import argparse
 
+# Ensure the ``PyQtInspect`` module is in the sys.path
+pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
+if pyqt_inspect_module_dir not in sys.path:
+    sys.path.insert(0, pyqt_inspect_module_dir)
+
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect.pqi_gui.workers.pqy_worker import PQYWorker, DUMMY_WORKER, DummyWorker
 
