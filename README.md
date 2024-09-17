@@ -61,13 +61,13 @@ This is the **recommended** method, which starts both the PyQtInspect server and
 It requires **full access to the Python source code** of the debugged program.
 
 If you typically run **PyQt5 applications** using `python xxx.py param1 param2`,
-just add the `-m PyQtInspect --direct --file` argument between `python` and `xxx.py`,
+just insert the `-m PyQtInspect --direct --file` argument between `python` and `xxx.py`,
 like so: `python -m PyQtInspect --direct --file xxx.py param1 param2` to start PyQtInspect.
 
 If the debugged program uses **PySide2/PyQt6/Pyside6**, 
 you need to add the `--qt-support` parameter to specify the corresponding Qt framework. 
 For example, for a PySide2 program, 
-the full command is `python -m PyQtInspect --direct --file xxx.py --qt-support=pyside2 param1 param2`.
+the full command is `python -m PyQtInspect --direct --qt-support=pyside2 --file xxx.py param1 param2`.
 
 The complete command is:
 
@@ -149,7 +149,7 @@ you can create a new Debug configuration with the following parameters:
 
 Then just Run/Debug as usual.
 
-#### Attach to Process (Detached Mode only, currently unstable)
+#### Attach to Process (supports Detached Mode only, currently unstable)
 
 **If the source code of the program to be debugged is not available**, 
 you can attempt to start the `PyQtInspect` client by **attaching** to the process.
