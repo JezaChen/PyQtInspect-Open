@@ -5,6 +5,7 @@
 <p align="center">To inspect PyQt/PySide program elements like Chrome's element inspector.</p>
 
 <p align="center">
+<a href="https://github.com/JezaChen/PyQtInspect-Open">Source Code</a> |
 <a href="https://jeza-chen.com/PyQtInspect-README-zh">中文文档</a> | 
 <a href="https://pypi.org/project/PyQtInspect/">PyPI</a>
 </p>
