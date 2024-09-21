@@ -226,11 +226,6 @@ you can complete the selection with F8.
 Note that F8 **is only used to finish selection** during the inspection process;
 pressing F8 **WILL NOT start selection** if inspection is not active.
 
-## Source Code
-
-Currently, the source code distribution package can be downloaded from 
-[PyPi][3], and the GitHub repository will be opened soon.
-
 ## Known Issues
 - **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
     where `B` and `C` inherit from **QObject**. This might cause the `__init__` method of `C` to not execute, leading to exceptions.
