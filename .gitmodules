@@ -1,0 +1,6 @@
+[submodule ".README_Assets"]
+	path = .README_Assets
+	url = https://github.com/JezaChen/PyQtInspect-README-Assets
+[submodule ".README_zh"]
+	path = .README_zh
+	url = https://github.com/JezaChen/PyQtInspect-README-zh
