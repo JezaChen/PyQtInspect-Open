@@ -1,3 +1,4 @@
 psutil
-wingrab~=0.0.1a4; platform_system=="Windows"
+wingrab~=0.0.2; platform_system=="Windows"
 PyQt5~=5.15.10
+ihook
