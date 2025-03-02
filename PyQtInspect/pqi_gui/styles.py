@@ -1,29 +1,10 @@
 # -*- encoding:utf-8 -*-
 # https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
-GLOBAL_STYLESHEET2 = """
-QPushButton {
-    border: 1px solid rgba(31, 35, 40, 0.15);
-    border-radius: 2px;
-    padding-left: 8px;
-    padding-right: 8px;
-    background-color: rgb(246, 248, 250);
-    font: 12px "Microsoft Yahei";
-    color: rgb(36, 41, 47);
-}
-
-QPushButton:hover {
-    border: 1px solid rgb(221, 221, 221);
-}
-"""
 
 GLOBAL_STYLESHEET = """
 * {
     font-family: "Microsoft Yahei";
-}
-
-QMainWindow {
-    background-color: #F0F0F0;
 }
 
 QPushButton {
@@ -31,7 +12,7 @@ QPushButton {
     border: 1px solid rgba(27, 31, 35, 0.15);
     border-radius: 3px;
     color: #24292E;
-    font: 12px "Microsoft Yahei";
+    font-size: 12px;
     padding: 6px 10px;
 }
 
@@ -57,7 +38,7 @@ QLineEdit {
     border: 1px solid #D1D5DA;
     border-radius: 3px;
     padding: 6px 8px;
-    font: 12px "Microsoft Yahei";
+    font-size: 12px;
     color: #24292E;
 }
 
@@ -92,6 +73,13 @@ QListWidget#stacksListWidget::item {
 }
 
 QGroupBox {
-    font: 13px "Microsoft Yahei";
+    font-size: 13px;
 }
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0px 5px;
+}
+
 """

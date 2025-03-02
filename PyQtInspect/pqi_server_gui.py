@@ -23,7 +23,7 @@ if pyqt_inspect_module_dir not in sys.path:
 
 import json
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQtInspect.pqi_gui.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
 from PyQtInspect._pqi_bundle.pqi_comm_constants import (
@@ -42,16 +42,23 @@ import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
 
-# ==== SetupHolder ====
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
-SetupHolder.setup = {
-    'server': True
-}
+def _setup():
+    # ==== SetupHolder ====
+    setup_dict = {'server': True}
 
-if sys.platform == "win32":
-    myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    if SetupHolder.setup is not None:
+        SetupHolder.setup.update(setup_dict)
+    else:
+        SetupHolder.setup = setup_dict
+
+    # ==== Set App ID For Windows ====
+    if sys.platform == "win32":
+        myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+_setup()
 
 # ==== Default Values ====
 _DEFAULT_PORT = 19394
@@ -81,11 +88,20 @@ class BriefLine(QtWidgets.QWidget):
         self._valueLineEdit.setAlignment(QtCore.Qt.AlignCenter)
         self._valueLineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._valueLineEdit.setReadOnly(True)
+        self._valueLineEdit.textChanged.connect(self._updateToolTipForValueLineEdit)
 
         self._layout.addWidget(self._valueLineEdit)
 
     def setValue(self, value: str):
         self._valueLineEdit.setText(value)
+
+    def _updateToolTipForValueLineEdit(self, text: str):
+        # If the text is too long, set the tooltip to the full text.
+        metrics = self._valueLineEdit.fontMetrics()
+        if metrics.width(text) > self._valueLineEdit.width():
+            self._valueLineEdit.setToolTip(text)
+        else:
+            self._valueLineEdit.setToolTip("")
 
 
 class BriefLineWithEditButton(BriefLine):
@@ -752,6 +768,14 @@ def main():
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
 
     app = QtWidgets.QApplication(sys.argv)
+
+    # Use the fusion palette
+    style = QtWidgets.QStyleFactory.create("Fusion")
+    if style:
+        fusion_palette = style.standardPalette()
+        fusion_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(255, 255, 255))
+        app.setPalette(fusion_palette)
+
     window = _createWindow(args)
     window.show()
     sys.exit(app.exec())
