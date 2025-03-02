@@ -103,10 +103,18 @@ def setup_to_argv(executable_path, setup):
 
     :note: does not handle --file nor --DEBUG.
     '''
+
+    filtered = {
+        # Bug fixed 20250302
+        # We don't pass this parameter to the subprocess, otherwise, when a new process is created,
+        #   it'd try to launch a new debugger, which is not what we want.
+        'direct',
+    }
+
     ret = [get_pydevd_file(executable_path)]
 
     for handler in ACCEPTED_ARG_HANDLERS:
-        if handler.arg_name in setup:
+        if handler.arg_name in setup and handler.arg_name not in filtered:
             handler.to_argv(ret, setup)
     return ret
 
