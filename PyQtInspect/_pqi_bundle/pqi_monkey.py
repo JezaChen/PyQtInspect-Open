@@ -248,7 +248,7 @@ def patch_args(args):
 
         i = 1
         # Original args should be something as:
-        # ['X:\\pysrc\\pydevd.py', '--multiprocess', '--print-in-debugger-startup',
+        # ['X:\\pysrc\\pqi.py', '--multiprocess', '--print-in-debugger-startup',
         #  '--vm_type', 'python', '--client', '127.0.0.1', '--port', '56352', '--file', 'x:\\snippet1.py']
         from PyQtInspect._pqi_bundle.pqi_command_line_handling import setup_to_argv
         SetupHolder.setup['module'] = False  # clean module param from parent process
