@@ -6,7 +6,3 @@
 # ==============================================
 
 import PyQtInspect.pqi as pqi
-
-
-def version():
-    return '0.3.3'

@@ -39,6 +39,8 @@ import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
+from PyQtInspect import version
+
 
 def _setup():
     # ==== SetupHolder ====
@@ -53,6 +55,7 @@ def _setup():
     if sys.platform == "win32":
         myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 
 _setup()
 
@@ -181,7 +184,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def __init__(self, parent=None, defaultPort: int = _DEFAULT_PORT):
         super().__init__(parent)
 
-        self.setWindowTitle("PyQtInspect")
+        self.setWindowTitle(self._getWindowTitle())
         self.setWindowIcon(get_icon())
         self.resize(700, 1000)
 
@@ -235,6 +238,14 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._settingAction.setText("Settings")
         self._moreMenu.addAction(self._settingAction)
         self._settingAction.triggered.connect(self._openSettingWindow)
+
+        self._moreMenu.addSeparator()
+
+        # About Action
+        self._aboutAction = QtWidgets.QAction(self)
+        self._aboutAction.setText("About")
+        self._moreMenu.addAction(self._aboutAction)
+        self._aboutAction.triggered.connect(self._openAboutWindow)
 
         # Child Windows
         self._settingWindow = None
@@ -677,13 +688,24 @@ class PQIWindow(QtWidgets.QMainWindow):
         """ A factory method to create a window. """
         window = cls(defaultPort=args.port)
         return window
+
+    # endregion
+
+    # region About & Title
+    def _openAboutWindow(self):
+        QtWidgets.QMessageBox.about(self, "About PyQtInspect",
+                                    f"PyQtInspect {version.PQI_VERSION}\n"
+                                    "© 2025 Jeza Chen (陈建彰)\n\n"
+                                    "PyQtInspect is a tool for developers to inspect the native elements in the running PyQt/PySide applications.")
+
+    def _getWindowTitle(self) -> str:
+        return f"PyQtInspect {version.PQI_VERSION}"
     # endregion
 
 
 class DirectModePQIWindow(PQIWindow):
     def __init__(self, parent=None, defaultPort: int = _DEFAULT_PORT):
         super().__init__(parent, defaultPort)
-        self.setWindowTitle(f"PyQtInspect (Direct Mode)")
         # Hide the top container and the attach action because in the direct mode
         # the server connects to the only one process.
         self._serveButton.setVisible(False)
@@ -702,6 +724,9 @@ class DirectModePQIWindow(PQIWindow):
         window.listen()  # start the server directly after the window is created.
 
         return window
+
+    def _getWindowTitle(self) -> str:
+        return super()._getWindowTitle() + " (Direct Mode)"
 
 
 def _set_debug():
