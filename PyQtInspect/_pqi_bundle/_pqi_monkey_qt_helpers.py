@@ -471,13 +471,20 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         _patchWidget(self)
         # Patch special widgets created by C++
         for specialMethod in ['viewport', 'tabBar', 'header']:
-            if hasattr(self, specialMethod):
-                p = getattr(self, specialMethod)
-                if callable(p) and isinstance(p(), QtWidgets.QWidget):
-                    for child in self.findChildren(QtWidgets.QWidget):
-                        if not child.property(_PQI_INSPECTED_PROP_NAME):
-                            _patchWidget(child)
-                    break
+            # Bug fixed 20250302: Use a safer way to get the attribute
+            # For some widget class which override the `__getattr__` method, where the object may access its own attribute
+            #   but the attribute is not initialized yet (because the `__init__` method is not finished when patching),
+            #   the `__getattr__` method will recursively call itself infinitely.
+            # --> Spyder MainWindow
+            try:
+                p = object.__getattribute__(self, specialMethod)
+            except AttributeError:
+                continue
+            if callable(p) and isinstance(p(), QtWidgets.QWidget):
+                for child in self.findChildren(QtWidgets.QWidget):
+                    if not child.property(_PQI_INSPECTED_PROP_NAME):
+                        _patchWidget(child)
+                break
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(self, QtWidgets.QAbstractSpinBox):
             _patchWidget(self.lineEdit())
