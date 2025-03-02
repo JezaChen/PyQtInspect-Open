@@ -110,6 +110,8 @@ class SettingWindow(QtWidgets.QDialog):
 
         self._mainLayout.addLayout(self._buttonLayout)
 
+        self._mainLayout.addSpacing(4)
+
     def saveSettings(self):
         if self._pycharmPathLine.isValueValid():
             setPyCharmPath(self._pycharmPathLine.getValue())
