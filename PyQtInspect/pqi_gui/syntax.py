@@ -5,6 +5,7 @@
 # Description: 
 # ==============================================
 # syntax.py
+# For more details, see https://wiki.python.org/moin/PyQt/Python%20syntax%20highlighting
 
 import sys
 

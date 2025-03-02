@@ -769,12 +769,13 @@ def main():
 
     app = QtWidgets.QApplication(sys.argv)
 
-    # Use the fusion palette
-    style = QtWidgets.QStyleFactory.create("Fusion")
-    if style:
-        fusion_palette = style.standardPalette()
-        fusion_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(255, 255, 255))
-        app.setPalette(fusion_palette)
+    # Use the fusion palette for macOS
+    if sys.platform == "darwin":
+        style = QtWidgets.QStyleFactory.create("Fusion")
+        if style:
+            fusion_palette = style.standardPalette()
+            fusion_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(255, 255, 255))
+            app.setPalette(fusion_palette)
 
     window = _createWindow(args)
     window.show()
