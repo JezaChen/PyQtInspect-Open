@@ -317,7 +317,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         #     Create Stack     #
         # ==================== #
         self._createStackGroupBox = QtWidgets.QGroupBox(self)
-        self._createStackGroupBox.setTitle("Create Stacks")
+        self._createStackGroupBox.setTitle("Create Stack")
 
         self._createStackGroupBoxLayout = QtWidgets.QVBoxLayout(self._createStackGroupBox)
         self._createStackGroupBoxLayout.setContentsMargins(4, 4, 4, 6)
