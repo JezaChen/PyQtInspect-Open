@@ -5,8 +5,8 @@
 def find_name_in_mro(cls, name, default):
     """ Emulate _PyType_Lookup() in Objects/typeobject.c """
     for base in cls.__mro__:
-        if hasattr(base, name):
-            yield base, getattr(base, name)
+        if name in vars(base):
+            yield base, vars(base)[name]
     yield default, default
 
 
