@@ -76,7 +76,7 @@ class SettingWindow(QtWidgets.QDialog):
         self.setWindowTitle("Settings")
         self.setWindowIcon(get_icon())
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
-        self.resize(500, 300)
+        self.setMinimumWidth(500)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)
         self._mainLayout.setContentsMargins(0, 10, 0, 0)
