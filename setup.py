@@ -5,9 +5,20 @@ def get_long_description() -> str:
     with open("README.md", encoding='utf8') as file:
         return file.read()
 
+def get_version() -> str:
+    import sys
+    import pathlib
+
+    base_dir = str(pathlib.Path(__file__).resolve().parent)
+    sys.path.insert(0, base_dir)
+
+    from PyQtInspect import version
+    return version.PQI_VERSION
+
+
 setup(
     name="PyQtInspect",
-    version="0.3.7",
+    version=get_version(),
     url="https://jeza-chen.com/PyqtInspect",
     author="Jianzhang Chen",
     author_email="jezachen@163.com",
