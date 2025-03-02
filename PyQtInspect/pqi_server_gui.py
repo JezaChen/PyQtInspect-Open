@@ -8,6 +8,8 @@ import pathlib
 import sys
 import typing
 import argparse
+import json
+import ctypes
 
 # Ensure the ``PyQtInspect`` module is in the sys.path
 pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
@@ -21,8 +23,6 @@ pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
-import json
-
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQtInspect.pqi_gui.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
@@ -31,9 +31,6 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS,
     CMD_EXIT
 )
-
-import ctypes
-
 from PyQtInspect.pqi_gui.code_window import CodeWindow
 from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.settings_window import SettingWindow
@@ -41,7 +38,6 @@ from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
-
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
 def _setup():
