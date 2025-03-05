@@ -52,6 +52,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
     WidgetAttributeEnum = QtCore.Qt.WidgetAttribute if hasattr(QtCore.Qt, 'WidgetAttribute') else QtCore.Qt
     MouseButtonEnum = QtCore.Qt.MouseButton if hasattr(QtCore.Qt, 'MouseButton') else QtCore.Qt
     KeyboardModifierEnum = QtCore.Qt.KeyboardModifier if hasattr(QtCore.Qt, 'KeyboardModifier') else QtCore.Qt
+    QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason if hasattr(QtGui.QContextMenuEvent, 'Reason') else QtGui.QContextMenuEvent
 
     if qt_support_mode.startswith("pyqt"):
         sip = QtModule.sip
@@ -249,7 +250,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     # Then, change the original event and send it again
                     event = _create_mouse_event(EventEnum.MouseButtonRelease, event.pos(), MouseButtonEnum.LeftButton)
                     setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
-                    # 同理, 为了能让后面的eventFilter能够接收到鼠标事件, 这里使用postEvent再次将事件传播出去
+                    # Similarly, to allow subsequent eventFilters to receive the mouse event, we use postEvent to propagate the event again
                     QtCore.QCoreApplication.postEvent(obj, event)
                     # stop event propagation
                     return True
@@ -291,6 +292,42 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             # 防止点击后某些eventFilter在处理MousePress事件时使得inspect的控件改变, 导致后续的MouseRelease事件处理不正常
             return True
 
+        def _handleCustomEvent(self, obj, event):
+            # handle enter & leave
+            if hasattr(event, '_pqi_is_enter'):
+                is_enter = event._pqi_is_enter
+                if is_enter:
+                    self._handleEnterEvent(obj, event)
+                else:
+                    self._handleLeaveEvent(obj, event)
+            # handle highlight
+            if hasattr(event, '_pqi_is_highlight'):
+                is_highlight = event._pqi_is_highlight
+                if is_highlight:
+                    HighlightController.highlight(obj)
+                else:
+                    HighlightController.unhighlight(obj)
+            # handle code exec
+            if hasattr(event, '_pqi_exec_code'):
+                code = event._pqi_exec_code
+                obj._pqi_exec(code)
+
+        def _handleContextMenuEvent(self, obj, event):
+            """ #1 https://github.com/JezaChen/PyQtInspect-Open/issues/1
+            When mocking right-click is enabled,
+            we need to prevent the context menu from popping up when user right-clicks on the widget.
+            """
+            if not _is_inspect_enabled():
+                return False
+            if not _is_obj_inspected(obj):
+                return False
+            if hasattr(event, 'reason') and event.reason() != QContextMenuEventReasonEnum.Mouse:
+                # If the context menu is not triggered by the mouse, do not intercept
+                return False
+            debugger = get_global_debugger()
+            # Prevent the context menu from popping up
+            return debugger is not None and debugger.mock_left_button_down
+
         def eventFilter(self, obj, event):
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
@@ -310,25 +347,10 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     return self._handleMousePressEvent(obj, event)
                 elif event.type() == EventEnum.MouseButtonRelease:
                     return self._handleMouseReleaseEvent(obj, event)
+                elif event.type() == EventEnum.ContextMenu:
+                    return self._handleContextMenuEvent(obj, event)
                 elif event.type() == EventEnum.User:
-                    # handle enter & leave
-                    if hasattr(event, '_pqi_is_enter'):
-                        is_enter = event._pqi_is_enter
-                        if is_enter:
-                            self._handleEnterEvent(obj, event)
-                        else:
-                            self._handleLeaveEvent(obj, event)
-                    # handle highlight
-                    if hasattr(event, '_pqi_is_highlight'):
-                        is_highlight = event._pqi_is_highlight
-                        if is_highlight:
-                            HighlightController.highlight(obj)
-                        else:
-                            HighlightController.unhighlight(obj)
-                    # handle code exec
-                    if hasattr(event, '_pqi_exec_code'):
-                        code = event._pqi_exec_code
-                        obj._pqi_exec(code)
+                    self._handleCustomEvent(obj, event)
             return False
 
     if IS_WINDOWS:
@@ -342,7 +364,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
             def nativeEventFilter(self, eventType, message):
                 if not _is_inspect_enabled():
-                    # If inspect is disabled, do not handle native events
+                    # If inspect is disabled, do not filter native events
                     return False, 0
 
                 msg = wintypes.MSG.from_address(int(message))
