@@ -491,7 +491,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
         # Patch widget
         _patchWidget(self)
-        # Patch special widgets created by C++
+
+        # === SPECIAL PATCH WIDGETS CREATED BY C++ === #
         for specialMethod in ['viewport', 'tabBar', 'header']:
             # Bug fixed 20250302: Use a safer way to get the attribute
             # For some widget class which override the `__getattr__` method, where the object may access its own attribute
@@ -507,9 +508,15 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     if not child.property(_PQI_INSPECTED_PROP_NAME):
                         _patchWidget(child)
                 break
+
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(self, QtWidgets.QAbstractSpinBox):
             _patchWidget(self.lineEdit())
+
+        # for QDialogButtonBox we should install event listener on its buttons (Issue #2)
+        if isinstance(self, QtWidgets.QDialogButtonBox):
+            for button in self.buttons():
+                _patchWidget(button)
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()
