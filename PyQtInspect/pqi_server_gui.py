@@ -188,64 +188,77 @@ class PQIWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(get_icon())
         self.resize(700, 1000)
 
-        self._menuBar = QtWidgets.QMenuBar(self)
-        self.setMenuBar(self._menuBar)
+        def _init_more_menu():
+            self._menuBar = QtWidgets.QMenuBar(self)
+            self.setMenuBar(self._menuBar)
 
-        self._moreMenu = QtWidgets.QMenu(self._menuBar)
-        self._moreMenu.setTitle("More")
-        self._menuBar.addMenu(self._moreMenu)
+            self._moreMenu = QtWidgets.QMenu(self._menuBar)
+            self._moreMenu.setTitle("More")
+            self._menuBar.addMenu(self._moreMenu)
 
-        # ==================== #
-        #     Menu Actions     #
-        # ==================== #
-        # Press F8 to Disable Inspect Action
-        self._keyboardHookHandler = KeyboardHookHandler(self)
+            # ==================== #
+            #     Menu Actions     #
+            # ==================== #
+            # Always on Top Action
+            self._alwaysOnTopAction = QtWidgets.QAction(self)
+            self._alwaysOnTopAction.setText("Always on Top")
+            self._alwaysOnTopAction.setCheckable(True)
+            self._alwaysOnTopAction.setChecked(False)  # default
+            # Use trigger instead of toggled
+            # because the toggled signal will be emitted when the `setChecked` method in the code is called
+            self._alwaysOnTopAction.triggered.connect(self._onAlwaysOnTopActionToggled)
+            self._moreMenu.addAction(self._alwaysOnTopAction)
 
-        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
-        self._pressF8ToDisableInspectAction.setCheckable(True)
-        self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
-        self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
-        # --- Connect Signals ---
-        # main gui -> keyboard hook handler
-        self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
-        self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
-        self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
-        self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
-        # keyboard hook handler -> main gui
-        self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
+            # Press F8 to Disable Inspect Action
+            self._keyboardHookHandler = KeyboardHookHandler(self)
 
-        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+            self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
+            self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
+            self._pressF8ToDisableInspectAction.setCheckable(True)
+            self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
+            self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
+            # --- Connect Signals ---
+            # main gui -> keyboard hook handler
+            self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
+            self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
+            self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
+            self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
+            # keyboard hook handler -> main gui
+            self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
 
-        # Mock Left Button Down Action
-        self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
-        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
-        self._isMockLeftButtonDownAction.setCheckable(True)
-        self._isMockLeftButtonDownAction.setChecked(True)  # default
-        self._moreMenu.addAction(self._isMockLeftButtonDownAction)
+            self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
 
-        # Attach Action
-        self._attachAction = QtWidgets.QAction(self)
-        self._attachAction.setText("Attach To Process")
-        self._moreMenu.addAction(self._attachAction)
-        self._attachAction.triggered.connect(self._onAttachActionTriggered)
-        self._attachAction.setEnabled(False)
+            # Mock Left Button Down Action
+            self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
+            self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
+            self._isMockLeftButtonDownAction.setCheckable(True)
+            self._isMockLeftButtonDownAction.setChecked(True)  # default
+            self._moreMenu.addAction(self._isMockLeftButtonDownAction)
 
-        self._moreMenu.addSeparator()
+            # Attach Action
+            self._attachAction = QtWidgets.QAction(self)
+            self._attachAction.setText("Attach To Process")
+            self._moreMenu.addAction(self._attachAction)
+            self._attachAction.triggered.connect(self._openAttachWindow)
+            self._attachAction.setEnabled(False)
 
-        # Setting Action
-        self._settingAction = QtWidgets.QAction(self)
-        self._settingAction.setText("Settings")
-        self._moreMenu.addAction(self._settingAction)
-        self._settingAction.triggered.connect(self._openSettingWindow)
+            self._moreMenu.addSeparator()
 
-        self._moreMenu.addSeparator()
+            # Setting Action
+            self._settingAction = QtWidgets.QAction(self)
+            self._settingAction.setText("Settings")
+            self._moreMenu.addAction(self._settingAction)
+            self._settingAction.triggered.connect(self._openSettingWindow)
 
-        # About Action
-        self._aboutAction = QtWidgets.QAction(self)
-        self._aboutAction.setText("About")
-        self._moreMenu.addAction(self._aboutAction)
-        self._aboutAction.triggered.connect(self._openAboutWindow)
+            self._moreMenu.addSeparator()
+
+            # About Action
+            self._aboutAction = QtWidgets.QAction(self)
+            self._aboutAction.setText("About")
+            self._moreMenu.addAction(self._aboutAction)
+            self._aboutAction.triggered.connect(self._openAboutWindow)
+
+        _init_more_menu()
 
         # Child Windows
         self._settingWindow = None
@@ -361,6 +374,25 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._curHighlightedWidgetId = -1
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
+
+    # region For always on top action
+    def _onAlwaysOnTopActionToggled(self, checked: bool):
+        window = self.windowHandle()
+        if window is None:
+            # Fallback logic
+            # it will cause a short blink when the window is shown again
+            if checked:
+                self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+            else:
+                self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+            # After changing the window flags, the window will be hidden, we need to show it again.
+            self.show()
+        else:  # window is not None
+            if checked:
+                window.setFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+            else:
+                window.setFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+    # endregion
 
     # region For Serve Button
     def _onServeButtonToggled(self, checked: bool):
@@ -636,7 +668,7 @@ class PQIWindow(QtWidgets.QMainWindow):
                                             False)
             self._curHighlightedWidgetId = -1
 
-    def _onAttachActionTriggered(self):
+    def _openAttachWindow(self):
         if self._attachWindow is None:
             self._attachWindow = AttachWindow(self)
         self._attachWindow.show()
