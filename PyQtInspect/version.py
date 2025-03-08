@@ -1,1 +1,1 @@
-PQI_VERSION = '0.3.8'
+PQI_VERSION = '0.3.9'
