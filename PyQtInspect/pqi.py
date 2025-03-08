@@ -122,7 +122,7 @@ def execfile(file, glob=None, loc=None):
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
 
-class TrackedLock(object):
+class TrackedLock:
     """The lock that tracks if it has been acquired by the current thread
     """
 
@@ -168,7 +168,7 @@ def stoptrace():
         connected = False
 
 
-class PyDB(object):
+class PyDB:
     """ Main debugging class
     Lots of stuff going on here:
 
