@@ -4,7 +4,7 @@ import os
 import sys
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle._pqi_monkey_qt_helpers import patch_QtWidgets
+from PyQtInspect._pqi_bundle.pqi_monkey_qt_helpers import patch_QtWidgets
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_monkey import str_to_args_windows, is_python, patch_args
 

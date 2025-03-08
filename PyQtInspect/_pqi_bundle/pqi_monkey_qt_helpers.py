@@ -8,39 +8,32 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
-from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
-
-_PQI_MOCKED_EVENT_ATTR = '_pqi_mocked'
-_PQI_INSPECTED_PROP_NAME = '_pqi_inspected'
-_PQI_INSPECTED_PROP_NAME_BYTES = b'_pqi_inspected'
-
-
-def filter_trace_stack(traceStacks):
-    filteredStacks = []
-    from PyQtInspect.pqi import SetupHolder
-    stackMaxDepth = SetupHolder.setup["stack-max-depth"]
-    showPqiStack = SetupHolder.setup["show-pqi-stack"]
-    pqi_module_path = find_pqi_module_path()
-    stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
-    for filename, lineno, func_name in stacks:
-        if not showPqiStack and is_relative_to(filename, pqi_module_path):
-            break
-        filteredStacks.append(
-            {
-                'filename': filename,
-                'lineno': lineno,
-                'function': func_name,
-            }
-        )
-    return filteredStacks
-
+from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
+    _PQI_MOCKED_EVENT_ATTR,
+    _PQI_INSPECTED_PROP_NAME,
+    _PQI_INSPECTED_PROP_NAME_BYTES,
+    _PQI_WIDGET_INSPECTED_MARK,
+    _PQI_HIGHLIGHT_FG_NAME,
+    _PQI_CUSTOM_EVENT_IS_ENTER_ATTR,
+    _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
+    _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
+    _PQI_STACK_WHEN_CREATED_ATTR,
+)
 
 def _is_inspect_enabled():
     debugger = get_global_debugger()
     return debugger is not None and debugger.inspect_enabled
+
+
+def _isWidgetPatched(obj) -> bool:
+    return bool(obj.property(_PQI_INSPECTED_PROP_NAME))
+
+
+def _markPatched(widget):
+    widget.setProperty(_PQI_INSPECTED_PROP_NAME, True)
 
 
 def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
@@ -84,19 +77,19 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         widget.setFixedSize(*get_widget_size(parent))
         # 不要响应鼠标事件
         widget.setAttribute(WidgetAttributeEnum.WA_TransparentForMouseEvents)
-        widget.setObjectName("_pqi_highlight_fg")
+        widget.setObjectName(_PQI_HIGHLIGHT_FG_NAME)
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
         return widget
 
     def _mark_obj_inspected(obj):
-        setattr(obj, '_pqi_inspected_mark', True)
+        setattr(obj, _PQI_WIDGET_INSPECTED_MARK, True)
 
     def _clear_obj_inspected_mark(obj):
-        if hasattr(obj, '_pqi_inspected_mark'):
-            del obj._pqi_inspected_mark
+        if hasattr(obj, _PQI_WIDGET_INSPECTED_MARK):
+            delattr(obj, _PQI_WIDGET_INSPECTED_MARK)
 
     def _is_obj_inspected(obj):
-        return hasattr(obj, '_pqi_inspected_mark')
+        return hasattr(obj, _PQI_WIDGET_INSPECTED_MARK)
 
     class HighlightController:
         last_highlighted_widget = None
@@ -120,19 +113,21 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             if cls._is_ignored(widget):
                 return
 
-            if not hasattr(widget, '_pqi_highlight_fg'):
-                widget._pqi_highlight_fg = _createHighlightFg(widget)
+            if not hasattr(widget, _PQI_HIGHLIGHT_FG_NAME):
+                setattr(widget, _PQI_HIGHLIGHT_FG_NAME, _createHighlightFg(widget))
 
-            widget._pqi_highlight_fg.setFixedSize(*get_widget_size(widget))
+            fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME)
+            fg.setFixedSize(*get_widget_size(widget))
             cls.unhighlight_last()
-            widget._pqi_highlight_fg.show()
-            cls.last_highlighted_widget = widget._pqi_highlight_fg
+            fg.show()
+            cls.last_highlighted_widget = fg
 
         @classmethod
         def unhighlight(cls, widget):
-            if hasattr(widget, '_pqi_highlight_fg'):
-                widget._pqi_highlight_fg.hide()
-                if cls.last_highlighted_widget is widget._pqi_highlight_fg:
+            fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME, None)
+            if fg is not None:
+                fg.hide()
+                if cls.last_highlighted_widget is fg:
                     cls.last_highlighted_widget = None
 
     class EnteredWidgetStack:
@@ -294,22 +289,22 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
         def _handleCustomEvent(self, obj, event):
             # handle enter & leave
-            if hasattr(event, '_pqi_is_enter'):
-                is_enter = event._pqi_is_enter
+            if hasattr(event, _PQI_CUSTOM_EVENT_IS_ENTER_ATTR):
+                is_enter = getattr(event, _PQI_CUSTOM_EVENT_IS_ENTER_ATTR)
                 if is_enter:
                     self._handleEnterEvent(obj, event)
                 else:
                     self._handleLeaveEvent(obj, event)
             # handle highlight
-            if hasattr(event, '_pqi_is_highlight'):
-                is_highlight = event._pqi_is_highlight
+            if hasattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR):
+                is_highlight = getattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR)
                 if is_highlight:
                     HighlightController.highlight(obj)
                 else:
                     HighlightController.unhighlight(obj)
             # handle code exec
-            if hasattr(event, '_pqi_exec_code'):
-                code = event._pqi_exec_code
+            if hasattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR):
+                code = getattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR)
                 obj._pqi_exec(code)
 
         def _handleContextMenuEvent(self, obj, event):
@@ -336,7 +331,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                         and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
                     return True
 
-                if not obj.property(_PQI_INSPECTED_PROP_NAME):
+                if not _isWidgetPatched(obj):
                     return False
 
                 if event.type() == EventEnum.Enter:
@@ -466,13 +461,12 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             # Bug Fixed 20240819: when the widget is deleted, the QTimer will not be executed.
             #   So we need to check if the widget is deleted before setting the property.
             # ---
-            QtCore.QTimer.singleShot(0, lambda: obj.setProperty(_PQI_INSPECTED_PROP_NAME, True) if not isdeleted(
-                obj) else None)
+            QtCore.QTimer.singleShot(0, lambda: _markPatched(obj) if not isdeleted(obj) else None)
         else:
             # Attach thread may be different from the main thread,
             #   so the timer method will be invalid.
             # We just set the property directly because the widget has been initialized.
-            obj.setProperty(_PQI_INSPECTED_PROP_NAME, True)
+            _markPatched(obj)
         # === register widget === #
         _register_widget(obj)
 
@@ -484,7 +478,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
         # === save stack when create === #
         frames = getStackFrame()
-        setattr(self, '_pqi_stacks_when_create', frames)
+        setattr(self, _PQI_STACK_WHEN_CREATED_ATTR, frames)
 
         # Initialize the global filter when it does not exist
         _initGlobalEventFilter()
@@ -505,7 +499,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 continue
             if callable(p) and isinstance(p(), QtWidgets.QWidget):
                 for child in self.findChildren(QtWidgets.QWidget):
-                    if not child.property(_PQI_INSPECTED_PROP_NAME):
+                    if not _isWidgetPatched(child):
                         _patchWidget(child)
                 break
 
