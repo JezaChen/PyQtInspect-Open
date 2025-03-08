@@ -236,9 +236,6 @@ pressing F8 **WILL NOT start selection** if inspection is not active.
 - For some computers, sometimes the `QEnterEvent` will have the type `170` (which is `QEvent.DynamicPropertyChange`),
     which may cause crash when accessing the `propertyName` method.
 
-**If you encounter any problems before the GitHub repository is opened,
-please email me at [`jezachen@163.com`](mailto:jezachen@163.com).**
-
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html
