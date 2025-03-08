@@ -47,7 +47,7 @@ MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make t
 VERSION_STRING = "@@BUILD_NUMBER@@"
 
 
-class CommunicationRole(object):
+class CommunicationRole:
     """The class that contains the constants of roles that `PyDB` can play in
     the communication with the IDE.
     """
