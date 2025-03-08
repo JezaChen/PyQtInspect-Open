@@ -1,5 +1,31 @@
 # PQI Tools for Qt
 
+from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
+    _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR, _PQI_STACK_WHEN_CREATED_ATTR
+)
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
+
+
+def _filter_trace_stack(traceStacks):
+    filteredStacks = []
+    from PyQtInspect.pqi import SetupHolder
+    stackMaxDepth = SetupHolder.setup["stack-max-depth"]
+    showPqiStack = SetupHolder.setup["show-pqi-stack"]
+    pqi_module_path = find_pqi_module_path()
+    stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
+    for filename, lineno, func_name in stacks:
+        if not showPqiStack and is_relative_to(filename, pqi_module_path):
+            break
+        filteredStacks.append(
+            {
+                'filename': filename,
+                'lineno': lineno,
+                'function': func_name,
+            }
+        )
+    return filteredStacks
+
+
 # ==== TODO ====
 # 这个最好写个单元测试代码
 def find_name_in_mro(cls, name, default):
@@ -71,6 +97,10 @@ def get_children_info(widget):
         yield get_widget_class_name(child), id(child), get_widget_object_name(child)
 
 
+def get_create_stack(widget):
+    return _filter_trace_stack(getattr(widget, _PQI_STACK_WHEN_CREATED_ATTR, []))
+
+
 def import_Qt(qt_type: str):
     """
     Import Qt libraries by type.
@@ -135,11 +165,11 @@ def set_widget_highlight(widget, highlight: bool):
 
     :param highlight: A boolean indicating whether to highlight the widget or not.
     """
-    _send_custom_event(widget, '_pqi_is_highlight', highlight)
+    _send_custom_event(widget, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR, highlight)
 
 
 def exec_code_in_widget(widget, code: str):
-    _send_custom_event(widget, '_pqi_exec_code', code)
+    _send_custom_event(widget, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR, code)
 
 
 def is_wrapped_pointer_valid(ptr):
