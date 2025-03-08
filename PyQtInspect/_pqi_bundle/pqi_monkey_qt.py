@@ -477,44 +477,50 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
             return _original_QProcess_execute(patched_arguments[0], patched_arguments[1:])
 
         # Patch hybrid methods (static or member)
-        def startDetached(__arg1=_EMPTY, __arg2=_EMPTY, __arg3=_EMPTY, *args, **kwargs):
+        def startDetached(__arg1=_EMPTY, __arg2=_EMPTY, __arg3=_EMPTY, __arg4=_EMPTY, *args, **kwargs):
             """
-            startDetached(program: Optional[str], arguments: Iterable[Optional[str]], workingDirectory: Optional[str]) -> (bool, Optional[int])
-            startDetached(program: Optional[str], arguments: Iterable[Optional[str]])
-            startDetached(command: Optional[str]) #!!! it is a command!
-            startDetached(self) -> (bool, Optional[int])
+            - Static methods:
+              startDetached(program: Optional[str], arguments: Iterable[Optional[str]], workingDirectory: Optional[str]) -> (bool, Optional[int])
+              startDetached(program: Optional[str], arguments: Iterable[Optional[str]])
+              startDetached(command: Optional[str]) #!!! it is a command!
+
+            - Member methods:
+              startDetached(self) -> (bool, Optional[int])
             """
             if args or kwargs:  # if there are other params, raise an error
                 raise RuntimeError('Not supported')
 
             if isinstance(__arg1, _original_QProcess):  # member method
                 # startDetached(self) -> (bool, Optional[int])
-                if __arg2 is not _EMPTY or __arg3 is not _EMPTY:
-                    raise TypeError('startDetached() takes 1 positional argument but 3 were given')
-                self = __arg1
-                self._pqi_patch_original_program_and_args()
-                return _original_QProcess_startDetached(self)
-            else:  # static method
-                if __arg1 is _EMPTY and __arg2 is _EMPTY and __arg3 is _EMPTY:  # no params
-                    # start(self, mode = QIODevice.ReadWrite)
-                    return _original_QProcess_startDetached()  # must raise an error
-                elif __arg2 is _EMPTY and __arg3 is _EMPTY:  # single param
-                    # startDetached(command: Optional[str])
-                    command = __arg1
-                    arguments = (str_to_args_windows if IS_WINDOWS else _qt_split_command)(command)
-                    patched_arguments = patch_args(arguments)
-                    patched_command = ' '.join(patched_arguments)
-                    return _original_QProcess_startDetached(patched_command)
-                elif __arg3 is _EMPTY:  # two params
-                    # startDetached(program: Optional[str], arguments: Iterable[Optional[str]])
-                    program, arguments = __arg1, __arg2
-                    patched_arguments = patch_args([program] + arguments)
-                    return _original_QProcess_startDetached(patched_arguments[0], patched_arguments[1:])
-                else:  # three params
-                    # startDetached(program: Optional[str], arguments: Iterable[Optional[str]], workingDirectory: Optional[str])
-                    program, arguments, workingDir = __arg1, __arg2, __arg3
-                    patched_arguments = patch_args([program] + arguments)
-                    return _original_QProcess_startDetached(patched_arguments[0], patched_arguments[1:], workingDir)
+                if __arg2 is _EMPTY and __arg3 is _EMPTY and __arg4 is _EMPTY:
+                    self = __arg1
+                    self._pqi_patch_original_program_and_args()
+                    return _original_QProcess_startDetached(self)
+                else:  # maybe the user called the static method with the instance
+                    # remove the self parameter, and left-shift the other parameters
+                    __arg1, __arg2, __arg3, __arg4 = __arg2, __arg3, __arg4, _EMPTY  # noqa
+
+            # static method
+            if __arg1 is _EMPTY and __arg2 is _EMPTY and __arg3 is _EMPTY:  # no params
+                # start(self, mode = QIODevice.ReadWrite)
+                return _original_QProcess_startDetached()  # must raise an error
+            elif __arg2 is _EMPTY and __arg3 is _EMPTY:  # single param
+                # startDetached(command: Optional[str])
+                command = __arg1
+                arguments = (str_to_args_windows if IS_WINDOWS else _qt_split_command)(command)
+                patched_arguments = patch_args(arguments)
+                patched_command = ' '.join(patched_arguments)
+                return _original_QProcess_startDetached(patched_command)
+            elif __arg3 is _EMPTY:  # two params
+                # startDetached(program: Optional[str], arguments: Iterable[Optional[str]])
+                program, arguments = __arg1, __arg2
+                patched_arguments = patch_args([program] + arguments)
+                return _original_QProcess_startDetached(patched_arguments[0], patched_arguments[1:])
+            else:  # three params
+                # startDetached(program: Optional[str], arguments: Iterable[Optional[str]], workingDirectory: Optional[str])
+                program, arguments, workingDir = __arg1, __arg2, __arg3
+                patched_arguments = patch_args([program] + arguments)
+                return _original_QProcess_startDetached(patched_arguments[0], patched_arguments[1:], workingDir)
 
     QtCore.QThread = ThreadWrapper
     QtCore.QRunnable = RunnableWrapper
