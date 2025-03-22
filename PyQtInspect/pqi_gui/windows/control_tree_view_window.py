@@ -56,7 +56,7 @@ class ControlTreeWindow(QtWidgets.QWidget):
         self._buttonLayout.addWidget(self._locateButton)
 
         self._inspectButton = QtWidgets.QPushButton(self)
-        self._inspectButton.setText("Inspect")
+        self._inspectButton.setText("Inspect this")
         self._inspectButton.clicked.connect(self._inspectCurrentRow)
         self._buttonLayout.addWidget(self._inspectButton)
 
