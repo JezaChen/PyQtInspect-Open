@@ -226,6 +226,13 @@ you can complete the selection with F8.
 Note that F8 **is only used to finish selection** during the inspection process;
 pressing F8 **WILL NOT start selection** if inspection is not active.
 
+### Control Tree View
+
+Click `View->Control Tree` in the menu to view the control tree structure of the current selected control's process. 
+Click (or hover) on a row in the tree to highlight the corresponding control.
+
+![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/control_tree.gif?raw=true)
+
 ## Known Issues
 - **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
     where `B` and `C` inherit from **QObject**. This might cause the `__init__` method of `C` to not execute, leading to exceptions.
