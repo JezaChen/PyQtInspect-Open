@@ -124,6 +124,9 @@ CMD_REQ_WIDGET_INFO = 1011
 # === CHILDREN INFO ===
 CMD_REQ_CHILDREN_INFO = 1012
 CMD_CHILDREN_INFO = 1013
+# === CONTROL TREE INFO ===
+CMD_REQ_CONTROL_TREE = 1014
+CMD_CONTROL_TREE = 1015
 
 ID_TO_MEANING = {
     '101': 'CMD_RUN',
@@ -219,4 +222,21 @@ ID_TO_MEANING = {
     '1011': 'CMD_REQ_WIDGET_INFO',
     '1012': 'CMD_REQ_CHILDREN_INFO',
     '1013': 'CMD_CHILDREN_INFO',
+    '1014': 'CMD_REQ_CONTROL_TREE',
+    '1015': 'CMD_CONTROL_TREE',
 }
+
+
+class TreeViewKeys:
+    OBJ_ID_KEY = 'i'
+    OBJ_NAME_KEY = 'n'
+    OBJ_CLS_NAME_KEY = 'c'
+    CHILDREN_KEY = 'ch'
+    CHILD_CNT_KEY = 'cc'
+
+class TreeViewResultKeys:
+    TREE_INFO_KEY = 't'
+    EXTRA_KEY = 'e'
+
+class TreeViewExtraKeys:
+    CURRENT_WIDGET_ID = 'c'

@@ -6,6 +6,7 @@ import threading
 
 from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_override import overrides
+from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 
 
 class DispatchReader(ReaderThread):
@@ -94,11 +95,14 @@ class Dispatcher(QtCore.QThread):
     def sendSelectWidgetEvent(self, widgetId: int):
         self.writer.add_command(self.net_command_factory.make_select_widget_message(widgetId))
 
-    def sendRequestWidgetInfoEvent(self, widgetId: int, extra: dict = None):
+    def sendRequestWidgetInfoEvent(self, widgetId: int, extra: OptionalDict = None):
         self.writer.add_command(self.net_command_factory.make_req_widget_info_message(widgetId, extra))
 
     def sendRequestChildrenInfoEvent(self, widgetId: int):
         self.writer.add_command(self.net_command_factory.make_req_children_info_message(widgetId))
+
+    def sendRequestControlTreeInfoEvent(self, extra: OptionalDict = None):
+        self.writer.add_command(self.net_command_factory.make_req_control_tree_message(extra))
 
     def notifyDelete(self):
         self.close()
