@@ -18,7 +18,7 @@ if pyqt_inspect_module_dir not in sys.path:
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
-    get_create_stack
+    get_create_stack, get_control_tree
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -542,10 +542,9 @@ class PyDB:
 
     def notify_children_info(self, widget_id):
         """
-        Notify the children information of the given widget to the PyDB debugger.
+        Notify the children information of the given widget to the debugger.
 
         @param widget_id: The ID of the widget.
-
         @note: used for the bottom hierarchy view of the server GUI program.
         """
         widget = self._id_to_widget.get(widget_id, None)
@@ -570,6 +569,11 @@ class PyDB:
         )
 
         cmd = self.cmd_factory.make_children_info_message(children_info)
+        self.writer.add_command(cmd)
+
+    def notify_control_tree(self, extra):
+        control_tree = get_control_tree()
+        cmd = self.cmd_factory.make_control_tree_message(control_tree, extra)
         self.writer.add_command(cmd)
 
 

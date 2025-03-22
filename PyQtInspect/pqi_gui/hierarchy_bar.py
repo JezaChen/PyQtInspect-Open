@@ -169,12 +169,12 @@ class HierarchyBarScrollArea(QtWidgets.QScrollArea):
 
 
 class HierarchyBar(QtWidgets.QWidget):
-    sigAncestorItemChanged = pyqtSignal(str)  # widgetId
-    sigAncestorItemHovered = pyqtSignal(str)  # widgetId
+    sigAncestorItemChanged = pyqtSignal(object)  # widgetId
+    sigAncestorItemHovered = pyqtSignal(object)  # widgetId
 
-    sigReqChildWidgetsInfo = pyqtSignal(str)  # widgetId
-    sigChildMenuItemClicked = pyqtSignal(str)  # widgetId
-    sigChildMenuItemHovered = pyqtSignal(str)  # widgetId
+    sigReqChildWidgetsInfo = pyqtSignal(object)  # widgetId
+    sigChildMenuItemClicked = pyqtSignal(object)  # widgetId
+    sigChildMenuItemHovered = pyqtSignal(object)  # widgetId
 
     sigMouseLeaveBarAndMenu = pyqtSignal()  # The mouse leaves both the bar and the popup menu.
 
@@ -305,7 +305,7 @@ class HierarchyBar(QtWidgets.QWidget):
         if self._widgetIdOfCurrMenu != itemWidget.getWidgetId():
             # 脏数据
             self._menuWidget.setLoading()
-            self.sigReqChildWidgetsInfo.emit(str(itemWidget.getWidgetId()))
+            self.sigReqChildWidgetsInfo.emit(itemWidget.getWidgetId())
         self._menu.show()
 
     def notifyHideMenu(self, itemWidget: HierarchyItem):
@@ -318,12 +318,12 @@ class HierarchyBar(QtWidgets.QWidget):
             self._curItemWithMenuShowed.menuAboutToHide()
 
     def notifyItemHovered(self, itemWidget: HierarchyItem):
-        self.sigAncestorItemHovered.emit(str(itemWidget.getWidgetId()))
+        self.sigAncestorItemHovered.emit(itemWidget.getWidgetId())
 
     def _onButtonToggled(self, btn, checked):
         if checked and btn != self._curCheckedItem:
             self._curCheckedItem = btn
-            self.sigAncestorItemChanged.emit(str(btn.getWidgetId()))
+            self.sigAncestorItemChanged.emit(btn.getWidgetId())
 
     def setMenuData(self,
                     widgetId: int,
@@ -337,7 +337,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._widgetIdOfCurrMenu = widgetId
         self._menuWidget.setMenuData(childClsNameList, childObjNameList, childWidgetIdList)
 
-    def _handleChildMenuItemHovered(self, widgetId: str):
+    def _handleChildMenuItemHovered(self, widgetId: int):
         if widgetId == "-1":
             return
 
@@ -347,7 +347,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._lastHoveredChildItemWidgetId = widgetId
         self.sigChildMenuItemHovered.emit(widgetId)
 
-    def _handleChildMenuItemClicked(self, widgetId: str):
+    def _handleChildMenuItemClicked(self, widgetId: int):
         self._menu.hide()
         if widgetId != "-1":
             self.sigChildMenuItemClicked.emit(widgetId)

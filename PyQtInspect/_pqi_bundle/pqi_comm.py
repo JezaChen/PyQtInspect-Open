@@ -39,7 +39,11 @@ except:
 from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
     CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
-    CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO, CMD_REQ_CHILDREN_INFO, CMD_CHILDREN_INFO)
+    CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO, CMD_REQ_CHILDREN_INFO, CMD_CHILDREN_INFO,
+    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE,
+    # Keys
+    TreeViewResultKeys
+)
 
 MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
 # this number can be changed if there's need to do so
@@ -219,6 +223,9 @@ class ReaderThread(PyDBDaemonThread):
         elif cmd_id == CMD_REQ_CHILDREN_INFO:
             widget_id = int(unquote(text))
             global_dbg.notify_children_info(widget_id)
+        elif cmd_id == CMD_REQ_CONTROL_TREE:
+            extra = json.loads(unquote(text))
+            global_dbg.notify_control_tree(extra)
 
 
 
@@ -492,7 +499,7 @@ class NetCommandFactory:
     def make_select_widget_message(self, widget_id: int):
         return NetCommand(CMD_SELECT_WIDGET, 0, str(widget_id))
 
-    def make_req_widget_info_message(self, widget_id: int, extra: typing.Optional[dict] = None):
+    def make_req_widget_info_message(self, widget_id: int, extra: OptionalDict = None):
         if extra is None:
             extra = {}
         return NetCommand(CMD_REQ_WIDGET_INFO, 0, self.make_json(
@@ -507,6 +514,17 @@ class NetCommandFactory:
         return NetCommand(CMD_CHILDREN_INFO, 0, self.make_json(
             **dataclasses.asdict(children_info)
         ))
+
+    def make_req_control_tree_message(self, extra: OptionalDict = None):
+        if extra is None:
+            extra = {}
+        return NetCommand(CMD_REQ_CONTROL_TREE, 0, json.dumps(extra))
+
+    def make_control_tree_message(self, control_tree: typing.List[typing.Dict], extra: typing.Dict):
+        return NetCommand(CMD_CONTROL_TREE, 0, json.dumps({
+            TreeViewResultKeys.TREE_INFO_KEY: control_tree,
+            TreeViewResultKeys.EXTRA_KEY: extra,
+        }))
 
     def make_exit_message(self):
         return NetCommand(CMD_EXIT, 0, '')

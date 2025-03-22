@@ -14,8 +14,9 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 
 
 class ChildrenMenuWidget(QWidget):
-    sigClickChild = QtCore.pyqtSignal(str)
-    sigHoverChild = QtCore.pyqtSignal(str)
+    # https://stackoverflow.com/questions/10762809/in-pyside-why-does-emiting-an-integer-0x7fffffff-result-in-overflowerror-af
+    sigClickChild = QtCore.pyqtSignal(object)
+    sigHoverChild = QtCore.pyqtSignal(object)
 
     sigMouseLeave = QtCore.pyqtSignal()
 
@@ -95,13 +96,13 @@ class ChildrenMenuWidget(QWidget):
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
             widgetId = -1  # loading项的id为-1, 由外部处理点击事件(需要隐藏的)
-        self.sigClickChild.emit(str(widgetId))
+        self.sigClickChild.emit(widgetId)
 
     def onListViewEntered(self, index):
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
             widgetId = -1  # loading项的id为-1, 由外部处理点击事件(需要隐藏的)
-        self.sigHoverChild.emit(str(widgetId))
+        self.sigHoverChild.emit(widgetId)
 
     def leaveEvent(self, event):
         super().leaveEvent(event)

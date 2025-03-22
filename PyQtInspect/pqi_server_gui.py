@@ -24,16 +24,16 @@ if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQtInspect.pqi_gui.attach_window import AttachWindow
+from PyQtInspect.pqi_gui.windows.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.create_stacks_list_widget import CreateStacksListWidget
 from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR,
-    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS,
-    CMD_EXIT
+    CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS, CMD_CONTROL_TREE,
+    CMD_EXIT, TreeViewResultKeys, TreeViewExtraKeys
 )
-from PyQtInspect.pqi_gui.code_window import CodeWindow
+from PyQtInspect.pqi_gui.windows.code_window import CodeWindow
 from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
-from PyQtInspect.pqi_gui.settings_window import SettingWindow
+from PyQtInspect.pqi_gui.windows.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
 from PyQtInspect.pqi_gui._pqi_res import get_icon
@@ -188,92 +188,108 @@ class PQIWindow(QtWidgets.QMainWindow):
         self.setWindowIcon(get_icon())
         self.resize(700, 1000)
 
-        def _init_more_menu():
-            self._menuBar = QtWidgets.QMenuBar(self)
-            self.setMenuBar(self._menuBar)
+        # region -- Menu bar --
+        self._menuBar = QtWidgets.QMenuBar(self)
+        self.setMenuBar(self._menuBar)
 
-            self._moreMenu = QtWidgets.QMenu(self._menuBar)
-            self._moreMenu.setTitle("More")
-            self._menuBar.addMenu(self._moreMenu)
+        # region -- View Menu --
+        self._viewMenu = QtWidgets.QMenu(self._menuBar)
+        self._viewMenu.setTitle("Tool")
+        self._menuBar.addMenu(self._viewMenu)
 
-            # ==================== #
-            #     Menu Actions     #
-            # ==================== #
-            # Always on Top Action
-            self._alwaysOnTopAction = QtWidgets.QAction(self)
-            self._alwaysOnTopAction.setText("Always on Top")
-            self._alwaysOnTopAction.setCheckable(True)
-            self._alwaysOnTopAction.setChecked(False)  # default
-            # Use trigger instead of toggled
-            # because the toggled signal will be emitted when the `setChecked` method in the code is called
-            self._alwaysOnTopAction.triggered.connect(self._onAlwaysOnTopActionToggled)
-            self._moreMenu.addAction(self._alwaysOnTopAction)
+        self._controlTreeAction = QtWidgets.QAction(self)
+        self._controlTreeAction.setText("Control Tree")
+        self._viewMenu.addAction(self._controlTreeAction)
+        self._viewMenu.triggered.connect(self._openControlTreeWindow)
+        # endregion
 
-            # Press F8 to Disable Inspect Action
-            self._keyboardHookHandler = KeyboardHookHandler(self)
+        # region -- More Menu --
+        self._moreMenu = QtWidgets.QMenu(self._menuBar)
+        self._moreMenu.setTitle("More")
+        self._menuBar.addMenu(self._moreMenu)
 
-            self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-            self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
-            self._pressF8ToDisableInspectAction.setCheckable(True)
-            self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
-            self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
-            # --- Connect Signals ---
-            # main gui -> keyboard hook handler
-            self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
-            self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
-            self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
-            self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
-            # keyboard hook handler -> main gui
-            self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
+        # ==================== #
+        #     Menu Actions     #
+        # ==================== #
+        # Always on Top Action
+        self._alwaysOnTopAction = QtWidgets.QAction(self)
+        self._alwaysOnTopAction.setText("Always on Top")
+        self._alwaysOnTopAction.setCheckable(True)
+        self._alwaysOnTopAction.setChecked(False)  # default
+        # Use trigger instead of toggled
+        # because the toggled signal will be emitted when the `setChecked` method in the code is called
+        self._alwaysOnTopAction.triggered.connect(self._onAlwaysOnTopActionToggled)
+        self._moreMenu.addAction(self._alwaysOnTopAction)
 
-            self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+        # Press F8 to Disable Inspect Action
+        self._keyboardHookHandler = KeyboardHookHandler(self)
 
-            # Mock Left Button Down Action
-            self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
-            self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
-            self._isMockLeftButtonDownAction.setCheckable(True)
-            self._isMockLeftButtonDownAction.setChecked(True)  # default
-            self._moreMenu.addAction(self._isMockLeftButtonDownAction)
+        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
+        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
+        self._pressF8ToDisableInspectAction.setCheckable(True)
+        self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
+        self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
+        # --- Connect Signals ---
+        # main gui -> keyboard hook handler
+        self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
+        self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
+        self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
+        self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
+        # keyboard hook handler -> main gui
+        self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
 
-            # Attach Action
-            self._attachAction = QtWidgets.QAction(self)
-            self._attachAction.setText("Attach To Process")
-            self._moreMenu.addAction(self._attachAction)
-            self._attachAction.triggered.connect(self._openAttachWindow)
-            self._attachAction.setEnabled(False)
+        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
 
-            self._moreMenu.addSeparator()
+        # Mock Left Button Down Action
+        self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
+        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
+        self._isMockLeftButtonDownAction.setCheckable(True)
+        self._isMockLeftButtonDownAction.setChecked(True)  # default
+        self._moreMenu.addAction(self._isMockLeftButtonDownAction)
 
-            # Setting Action
-            self._settingAction = QtWidgets.QAction(self)
-            self._settingAction.setText("Settings")
-            self._moreMenu.addAction(self._settingAction)
-            self._settingAction.triggered.connect(self._openSettingWindow)
+        # Attach Action
+        self._attachAction = QtWidgets.QAction(self)
+        self._attachAction.setText("Attach To Process")
+        self._moreMenu.addAction(self._attachAction)
+        self._attachAction.triggered.connect(self._openAttachWindow)
+        self._attachAction.setEnabled(False)
 
-            self._moreMenu.addSeparator()
+        self._moreMenu.addSeparator()
 
-            # About Action
-            self._aboutAction = QtWidgets.QAction(self)
-            self._aboutAction.setText("About")
-            self._moreMenu.addAction(self._aboutAction)
-            self._aboutAction.triggered.connect(self._openAboutWindow)
+        # Setting Action
+        self._settingAction = QtWidgets.QAction(self)
+        self._settingAction.setText("Settings")
+        self._moreMenu.addAction(self._settingAction)
+        self._settingAction.triggered.connect(self._openSettingWindow)
 
-        _init_more_menu()
+        self._moreMenu.addSeparator()
 
-        # Child Windows
+        # About Action
+        self._aboutAction = QtWidgets.QAction(self)
+        self._aboutAction.setText("About")
+        self._moreMenu.addAction(self._aboutAction)
+        self._aboutAction.triggered.connect(self._openAboutWindow)
+
+        # endregion
+
+        # endregion
+
+        # region -- Child Windows Definition --
         self._settingWindow = None
         self._codeWindow = None
         self._attachWindow = None
+        self._controlTreeViewWindow = None  # None | ControlTreeViewWindow
+        # endregion
 
+        # region -- Main Container --
         self._mainContainer = QtWidgets.QWidget(self)
         self.setCentralWidget(self._mainContainer)
         self._mainLayout = QtWidgets.QVBoxLayout(self._mainContainer)
         self._mainLayout.setContentsMargins(4, 4, 4, 4)
         self._mainLayout.setSpacing(0)
 
-        # ====================
-        #    Top Container   #
-        # ====================
+
+        # region -- Top Container --
         self._topContainer = QtWidgets.QWidget(self)
         self._topContainer.setFixedHeight(30)
         self._topContainer.move(0, 0)
@@ -332,10 +348,9 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._widgetInfoGroupBox)
+        # endregion
 
-        # ==================== #
-        #     Create Stack     #
-        # ==================== #
+        # region -- Create Stack --
         self._createStackGroupBox = QtWidgets.QGroupBox(self)
         self._createStackGroupBox.setTitle("Create Stack")
 
@@ -350,32 +365,36 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._createStackGroupBox)
+        # endregion
 
-        # ==================== #
-        #     Hierarchy Bar    #
-        # ==================== #
+        # region -- Hierarchy Bar --
         self._hierarchyBar = HierarchyBar(self)
         self._hierarchyBar.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-        self._hierarchyBar.sigAncestorItemHovered.connect(self._onAncestorWidgetItemHighlight)
+        self._hierarchyBar.sigAncestorItemHovered.connect(self._highlightWidget)
         self._hierarchyBar.sigAncestorItemChanged.connect(self._onAncestorWidgetItemClicked)
-        self._hierarchyBar.sigChildMenuItemHovered.connect(self._onChildWidgetItemHighlight)
-        self._hierarchyBar.sigChildMenuItemClicked.connect(self._onChildWidgetItemClicked)
+        self._hierarchyBar.sigChildMenuItemHovered.connect(self._highlightWidget)
+        self._hierarchyBar.sigChildMenuItemClicked.connect(self._inspectWidget)
         self._hierarchyBar.sigReqChildWidgetsInfo.connect(self._reqChildWidgetsInfo)
         self._hierarchyBar.sigMouseLeaveBarAndMenu.connect(self._unhighlightPrevWidget)
 
         self._mainLayout.addSpacing(3)
         self._mainLayout.addWidget(self._hierarchyBar)
+        # endregion
 
+        # endregion
+
+        # region -- Data --
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
         self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多个进程都有选中的情况?
 
         self._curWidgetId = -1
         self._curHighlightedWidgetId = -1
+        # endregion
 
         self.setStyleSheet(GLOBAL_STYLESHEET)
 
-    # region For always on top action
+    # region -- For always on top action --
     def _onAlwaysOnTopActionToggled(self, checked: bool):
         window = self.windowHandle()
         if window is None:
@@ -394,7 +413,7 @@ class PQIWindow(QtWidgets.QMainWindow):
                 window.setFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
     # endregion
 
-    # region For Serve Button
+    # region -- For Serve Button --
     def _onServeButtonToggled(self, checked: bool):
         if checked:
             self._startServer()
@@ -532,6 +551,11 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._hierarchyBar.setMenuData(widgetId, childrenInfoDict["child_classes"],
                                            childrenInfoDict["child_object_names"],
                                            childrenInfoDict["child_ids"])
+        elif cmdId == CMD_CONTROL_TREE:
+            result = json.loads(text)
+            controlTreeInfo = result[TreeViewResultKeys.TREE_INFO_KEY]
+            extra = result[TreeViewResultKeys.EXTRA_KEY]
+            self._notifyResultToControlTreeViewWindow(controlTreeInfo, extra)
         elif cmdId == CMD_EXIT:  # the client has exited elegantly
             pqi_log.info(f"PyQtInspect: Dispatcher {dispatcherId} exited elegantly.")
 
@@ -577,30 +601,10 @@ class PQIWindow(QtWidgets.QMainWindow):
         else:
             self._disableInspect()
 
-    def _notifyExecCodeInSelectedWidget(self, code: str):
+    def _onAncestorWidgetItemClicked(self, widgetId: int):
         worker = self._getWorker()
         if not worker or self._currDispatcherIdForSelectedWidget is None:
             return
-
-        worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
-
-    def _onAncestorWidgetItemHighlight(self, widgetId: str):
-        worker = self._getWorker()
-        if worker is None or self._currDispatcherIdForSelectedWidget is None:
-            return
-
-        widgetId = int(widgetId)
-        # unhighlight prev widget, and highlight current widget
-        self._unhighlightPrevWidget()
-        worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
-        self._curHighlightedWidgetId = widgetId
-
-    def _onAncestorWidgetItemClicked(self, widgetId: str):
-        worker = self._getWorker()
-        if not worker or self._currDispatcherIdForSelectedWidget is None:
-            return
-
-        widgetId = int(widgetId)
 
         self._worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._unhighlightPrevWidget()
@@ -609,48 +613,59 @@ class PQIWindow(QtWidgets.QMainWindow):
         })  # 通过bar来点击回溯获取祖先控件的信息, 带上from字段, 避免覆盖祖先控件信息(即点击导航条前面的类后, 该类后面的类全都无了, 因为此时显示的是该类的祖先控件信息)
         self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo 会不会有时序问题
 
-    def _onChildWidgetItemHighlight(self, widgetId: str):
+    def _highlightWidget(self, widgetId: int):
+        """ Highlight the widget with the given widgetId, but not inspect it.
+        """
         worker = self._getWorker()
         if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
-        widgetId = int(widgetId)
         # unhighlight prev widget, and highlight current widget
         self._unhighlightPrevWidget()
         worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
-    def _onChildWidgetItemClicked(self, widgetId: str):
+    def _inspectWidget(self, widgetId: int):
         worker = self._getWorker()
         if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
 
-        widgetId = int(widgetId)
         worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         self._unhighlightPrevWidget()
         worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
+    # region -- Setting window --
     def _openSettingWindow(self):
         if self._settingWindow is None:
             self._settingWindow = SettingWindow(self)
         self._settingWindow.show()
 
+    # endregion
+
+    # region -- code exec --
     def _openCodeWindow(self):
         if self._codeWindow is None:
             self._codeWindow = CodeWindow(self)
             self._codeWindow.sigExecCode.connect(self._notifyExecCodeInSelectedWidget)
         self._codeWindow.show()
 
+    def _notifyExecCodeInSelectedWidget(self, code: str):
+        worker = self._getWorker()
+        if not worker or self._currDispatcherIdForSelectedWidget is None:
+            return
+
+        worker.sendExecCodeEvent(self._currDispatcherIdForSelectedWidget, code)
+
     def _notifyResultToCodeWindow(self, isErr: bool, result: str):
         if self._codeWindow is None:
             return
         self._codeWindow.notifyResult(isErr, result)
+    # endregion
 
-    def _reqChildWidgetsInfo(self, widgetIdStr: str):
+    def _reqChildWidgetsInfo(self, widgetId: int):
         worker = self._getWorker()
         if worker is not None and self._currDispatcherIdForSelectedWidget is not None:
-            widgetId = int(widgetIdStr)
             worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _unhighlightPrevWidget(self):
@@ -689,8 +704,6 @@ class PQIWindow(QtWidgets.QMainWindow):
         _worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)
         # we must set the highlight status of this widget to false, because it is hovered before
         _worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId, False)
-
-    # endregion
 
     def closeEvent(self, a0):
         self.cleanUp()
@@ -734,6 +747,44 @@ class PQIWindow(QtWidgets.QMainWindow):
         return f"PyQtInspect {version.PQI_VERSION}"
     # endregion
 
+    # region Control tree
+    def _openControlTreeWindow(self):
+        if self._controlTreeViewWindow is None:
+            from PyQtInspect.pqi_gui.windows.control_tree_view_window import ControlTreeWindow
+            self._controlTreeViewWindow = ControlTreeWindow(self)
+            w = self._controlTreeViewWindow
+            # signals
+            w.sigReqControlTree.connect(self._reqControlTreeInCurrentProcess)
+            w.sigReqCurrentSelectedWidgetId.connect(
+                self._notifyCurrentSelectedWidgetIdToControlTreeView
+            )
+            w.sigReqHighlightWidget.connect(self._highlightWidget)
+            w.sigReqUnhighlightWidget.connect(self._unhighlightPrevWidget)
+            w.sigReqInspectWidget.connect(self._inspectWidget)
+        self._controlTreeViewWindow.show()
+        self._controlTreeViewWindow.refresh()
+
+    def _reqControlTreeInCurrentProcess(self, needToLocateCurWidget: bool):
+        worker = self._getWorker()
+        if not worker or self._currDispatcherIdForSelectedWidget is None:
+            return
+        extra = {}
+        if needToLocateCurWidget:
+            extra = {TreeViewExtraKeys.CURRENT_WIDGET_ID: self._curWidgetId}
+        worker.sendRequestControlTreeInfoEvent(self._currDispatcherIdForSelectedWidget, extra)
+
+    def _notifyResultToControlTreeViewWindow(self, controlTreeInfo: typing.List[typing.Dict], extra: typing.Dict):
+        if self._controlTreeViewWindow is None:
+            return
+        self._controlTreeViewWindow.notifyControlTreeInfo(controlTreeInfo)
+        if TreeViewExtraKeys.CURRENT_WIDGET_ID in extra:
+            self._controlTreeViewWindow.notifyLocateWidget(extra[TreeViewExtraKeys.CURRENT_WIDGET_ID])
+
+    def _notifyCurrentSelectedWidgetIdToControlTreeView(self):
+        if self._controlTreeViewWindow is None:
+            return
+        self._controlTreeViewWindow.notifyLocateWidget(self._curWidgetId)
+    # endregion
 
 class DirectModePQIWindow(PQIWindow):
     def __init__(self, parent=None, defaultPort: int = _DEFAULT_PORT):
