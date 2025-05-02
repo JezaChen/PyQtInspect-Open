@@ -4,6 +4,7 @@
 # Time: 2023/8/18 15:00
 # Description: 
 # ==============================================
+from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
 
 class ArgHandlerWithParam:
@@ -125,8 +126,8 @@ def process_command_line(argv):
     setup = {}
     for handler in ACCEPTED_ARG_HANDLERS:
         setup[handler.arg_name] = handler.default_val
-    setup['file'] = ''
-    setup['show-pqi-stack'] = False
+    setup[SetupHolder.KEY_FILE] = ''
+    setup[SetupHolder.KEY_SHOW_PQI_STACK] = False
 
     i = 0
     del argv[0]
@@ -141,7 +142,7 @@ def process_command_line(argv):
             # whereas now, if --qt-support is passed, it should be passed as --qt-support=<mode>, where
             # mode can be one of 'auto', 'none', 'pyqt5', 'pyqt4', 'pyside', 'pyside2'.
             if argv[i] == '--qt-support':
-                setup['qt-support'] = 'auto'
+                setup[SetupHolder.KEY_QT_SUPPORT] = 'auto'
 
             elif argv[i].startswith('--qt-support='):
                 qt_support = argv[i][len('--qt-support='):]
@@ -151,9 +152,9 @@ def process_command_line(argv):
                     raise ValueError("qt-support mode invalid: " + qt_support)
                 if qt_support == 'none':
                     # On none, actually set an empty string to evaluate to False.
-                    setup['qt-support'] = ''
+                    setup[SetupHolder.KEY_QT_SUPPORT] = ''
                 else:
-                    setup['qt-support'] = qt_support
+                    setup[SetupHolder.KEY_QT_SUPPORT] = qt_support
             else:
                 raise ValueError("Unexpected definition for qt-support flag: " + argv[i])
 
@@ -162,7 +163,7 @@ def process_command_line(argv):
         elif argv[i] == '--file':
             # --file is special because it's the last one (so, no handler for it).
             del argv[i]
-            setup['file'] = argv[i]
+            setup[SetupHolder.KEY_FILE] = argv[i]
             i = len(argv)  # pop out, file is our last argument
 
         elif argv[i] == '--DEBUG':

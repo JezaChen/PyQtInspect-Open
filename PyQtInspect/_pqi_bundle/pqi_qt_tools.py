@@ -13,8 +13,8 @@ from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_rel
 def _filter_trace_stack(traceStacks):
     filteredStacks = []
     from PyQtInspect.pqi import SetupHolder
-    stackMaxDepth = SetupHolder.setup["stack-max-depth"]
-    showPqiStack = SetupHolder.setup["show-pqi-stack"]
+    stackMaxDepth = SetupHolder.setup[SetupHolder.KEY_STACK_MAX_DEPTH]
+    showPqiStack = SetupHolder.setup[SetupHolder.KEY_SHOW_PQI_STACK]
     pqi_module_path = find_pqi_module_path()
     stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
     for filename, lineno, func_name in stacks:
@@ -234,7 +234,7 @@ def get_control_tree() -> typing.List[typing.Dict]:
 
     from PyQtInspect.pqi import SetupHolder
 
-    QtLib = import_Qt(SetupHolder.setup['qt-support'])
+    QtLib = import_Qt(SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT])
     QtWidgets, QtGui = QtLib.QtWidgets, QtLib.QtGui  # noqa
 
     top_level_widgets = QtWidgets.QApplication.topLevelWidgets()
@@ -298,7 +298,7 @@ def import_wrap_module(qt_type: str):
 def _send_custom_event(target_widget, key: str, val):
     from PyQtInspect.pqi import SetupHolder
 
-    QtCore = import_Qt(SetupHolder.setup['qt-support']).QtCore
+    QtCore = import_Qt(SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT]).QtCore
     EventEnum = QtCore.QEvent.Type if hasattr(QtCore.QEvent, 'Type') else QtCore.QEvent
     event = QtCore.QEvent(EventEnum.User)
     setattr(event, key, val)
@@ -329,4 +329,4 @@ def is_wrapped_pointer_valid(ptr):
     :param ptr: The pointer to check.
     """
     from PyQtInspect.pqi import SetupHolder
-    return import_wrap_module(SetupHolder.setup['qt-support'])._pqi_is_valid(ptr)
+    return import_wrap_module(SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT])._pqi_is_valid(ptr)

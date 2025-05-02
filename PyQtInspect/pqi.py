@@ -583,10 +583,10 @@ class PyDB:
 def set_debug(setup):
     import logging
 
-    setup['DEBUG_RECORD_SOCKET_READS'] = True
-    setup['LOG_TO_FILE_LEVEL'] = logging.DEBUG
-    setup['LOG_TO_CONSOLE_LEVEL'] = logging.DEBUG
-    setup['SHOW_CONNECTION_ERRORS'] = True
+    setup[SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS] = True
+    setup[SetupHolder.KEY_LOG_TO_FILE_LEVEL] = logging.DEBUG
+    setup[SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL] = logging.DEBUG
+    setup[SetupHolder.KEY_SHOW_CONNECTION_ERRORS] = True
 
 
 # =======================================================================================================================
@@ -639,13 +639,13 @@ def _locked_settrace(
 ):
     if SetupHolder.setup is None:
         setup = {
-            'client': host,  # dispatch expects client to be set to the host address when server is False
-            'server': False,
-            'port': int(port),
-            'multiprocess': patch_multiprocessing,
-            'qt-support': qt_support,
-            'stack-max-depth': 0,
-            'show-pqi-stack': False,
+            SetupHolder.KEY_CLIENT: host,  # dispatch expects client to be set to the host address when server is False
+            SetupHolder.KEY_SERVER: False,
+            SetupHolder.KEY_PORT: int(port),
+            SetupHolder.KEY_MULTIPROCESS: patch_multiprocessing,
+            SetupHolder.KEY_QT_SUPPORT: qt_support,
+            SetupHolder.KEY_STACK_MAX_DEPTH: 0,
+            SetupHolder.KEY_SHOW_PQI_STACK: False,
         }
         SetupHolder.setup = setup
 
@@ -712,23 +712,23 @@ def main():
     if SHOW_DEBUG_INFO_ENV:
         set_debug(setup)
 
-    DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = setup.get('DEBUG_RECORD_SOCKET_READS',
+    DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = setup.get(SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS,
                                                           DebugInfoHolder.DEBUG_RECORD_SOCKET_READS)
-    DebugInfoHolder.LOG_TO_FILE_LEVEL = setup.get('LOG_TO_FILE_LEVEL', DebugInfoHolder.LOG_TO_FILE_LEVEL)
-    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = setup.get('LOG_TO_CONSOLE_LEVEL', DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
+    DebugInfoHolder.LOG_TO_FILE_LEVEL = setup.get(SetupHolder.KEY_LOG_TO_FILE_LEVEL, DebugInfoHolder.LOG_TO_FILE_LEVEL)
+    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = setup.get(SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL, DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
 
     # connect
-    is_direct_mode = setup.get('direct', False)
+    is_direct_mode = setup.get(SetupHolder.KEY_DIRECT, False)
     if not is_direct_mode:
-        port = setup['port']
-        host = setup['client']
+        port = setup[SetupHolder.KEY_PORT]
+        host = setup[SetupHolder.KEY_CLIENT]
     else:
         # ===============================================
         #  Direct mode: run the server at the same time
         # ===============================================
         # Override the host and port to localhost and a random port
-        host = setup['client'] = '127.0.0.1'
-        port = setup['port'] = random_port()
+        host = setup[SetupHolder.KEY_CLIENT] = '127.0.0.1'
+        port = setup[SetupHolder.KEY_PORT] = random_port()
         # Run server first
         try:
             # Run with detached mode
@@ -761,7 +761,7 @@ def main():
             debugger.connect(
                 host, port,
                 # show connection errors if (1. not in direct mode) or (2. in debug mode)
-                output_connection_errors=(not is_direct_mode or setup.get('SHOW_CONNECTION_ERRORS', False))
+                output_connection_errors=(not is_direct_mode or setup.get(SetupHolder.KEY_SHOW_CONNECTION_ERRORS, False))
             )
             # Connected successfully, break the loop.
             break
@@ -783,15 +783,15 @@ def main():
 
     import PyQtInspect._pqi_bundle.pqi_monkey
 
-    if setup['multiprocess']:
+    if setup[SetupHolder.KEY_MULTIPROCESS]:
         PyQtInspect._pqi_bundle.pqi_monkey.patch_new_process_functions()
 
-    is_module = setup['module']
+    is_module = setup[SetupHolder.KEY_MODULE]
 
-    enable_qt_support(setup['qt-support'])
+    enable_qt_support(setup[SetupHolder.KEY_QT_SUPPORT])
 
-    if setup['file']:
-        debugger.run(setup["file"], None, None, is_module)
+    if setup[SetupHolder.KEY_FILE]:
+        debugger.run(setup[SetupHolder.KEY_FILE], None, None, is_module)
 
 
 if __name__ == '__main__':

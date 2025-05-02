@@ -21,7 +21,7 @@ def get_logger():
     if SetupHolder.setup is None:
         return _DummyLogger
 
-    if SetupHolder.setup.get('server'):
+    if SetupHolder.setup.get(SetupHolder.KEY_SERVER):
         from ._server import logger
     else:
         from ._client import logger

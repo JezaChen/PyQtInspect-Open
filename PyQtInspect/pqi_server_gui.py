@@ -49,7 +49,7 @@ from PyQtInspect import version
 
 def _setup():
     # ==== SetupHolder ====
-    setup_dict = {'server': True}
+    setup_dict = {SetupHolder.KEY_SERVER: True}
 
     if SetupHolder.setup is not None:
         SetupHolder.setup.update(setup_dict)
@@ -808,16 +808,16 @@ def _set_debug():
 
     # SetupHolder.setup
     SetupHolder.setup.update({
-        'DEBUG_RECORD_SOCKET_READS': True,
-        'LOG_TO_FILE_LEVEL': logging.DEBUG,
-        'LOG_TO_CONSOLE_LEVEL': logging.DEBUG
+        SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS: True,
+        SetupHolder.KEY_LOG_TO_FILE_LEVEL: logging.DEBUG,
+        SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL: logging.DEBUG
     })
     # DebugInfoHolder (for logging)
     DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = SetupHolder.setup.get(
-        'DEBUG_RECORD_SOCKET_READS',
+        SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS,
         DebugInfoHolder.DEBUG_RECORD_SOCKET_READS)
-    DebugInfoHolder.LOG_TO_FILE_LEVEL = SetupHolder.setup.get('LOG_TO_FILE_LEVEL', DebugInfoHolder.LOG_TO_FILE_LEVEL)
-    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = SetupHolder.setup.get('LOG_TO_CONSOLE_LEVEL',
+    DebugInfoHolder.LOG_TO_FILE_LEVEL = SetupHolder.setup.get(SetupHolder.KEY_LOG_TO_FILE_LEVEL, DebugInfoHolder.LOG_TO_FILE_LEVEL)
+    DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = SetupHolder.setup.get(SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL,
                                                                  DebugInfoHolder.LOG_TO_CONSOLE_LEVEL)
 
 

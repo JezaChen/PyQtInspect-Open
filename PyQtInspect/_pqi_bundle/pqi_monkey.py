@@ -51,7 +51,7 @@ def _get_python_c_args(host, port, indC, args, setup):
 def _get_host_port():
     from PyQtInspect.pqi import SetupHolder
     setup = SetupHolder.setup
-    return setup["client"], setup["port"]
+    return setup[SetupHolder.KEY_CLIENT], setup[SetupHolder.KEY_PORT]
 
 
 def _is_managed_arg(arg):
@@ -251,7 +251,7 @@ def patch_args(args):
         # ['X:\\pysrc\\pqi.py', '--multiprocess', '--print-in-debugger-startup',
         #  '--vm_type', 'python', '--client', '127.0.0.1', '--port', '56352', '--file', 'x:\\snippet1.py']
         from PyQtInspect._pqi_bundle.pqi_command_line_handling import setup_to_argv
-        SetupHolder.setup['module'] = False  # clean module param from parent process
+        SetupHolder.setup[SetupHolder.KEY_MODULE] = False  # clean module param from parent process
         original = setup_to_argv(args[0], SetupHolder.setup) + ['--file']
         while i < len(args):
             if args[i] == '-m':
