@@ -451,7 +451,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._worker.sigNewDispatcher.connect(self.onNewDispatcher)
         self._worker.sigSocketError.connect(self._onWorkerSocketError)
         self._worker.sigDispatcherExited.connect(self._onDispatcherExited)
-        self._worker.sigAllDispatchersExited.connect(self._onAllDispatchersExited)
+        # Fix issue #16: use queued connection to avoid recursive call of `PQYWorker.stop`
+        self._worker.sigAllDispatchersExited.connect(self._onAllDispatchersExited, QtCore.Qt.QueuedConnection)
         self._workerThread = QtCore.QThread()
 
         self._worker.moveToThread(self._workerThread)
