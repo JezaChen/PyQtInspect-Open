@@ -813,14 +813,14 @@ class PQIWindow(QtWidgets.QMainWindow):
         reply = QtWidgets.QMessageBox.question(
             self,
             self._getWindowTitle(),
-            "Are you sure you want to delete all logs? (The current log will be kept)",
+            "Are you sure you want to delete all logs?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             pqi_log.clear_logs()
             QtWidgets.QMessageBox.information(self, self._getWindowTitle(),
-                                              "All logs except the current one have been deleted.")
+                                              "All logs have been deleted.")
     # endregion
 
 class DirectModePQIWindow(PQIWindow):
