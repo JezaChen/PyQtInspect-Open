@@ -256,6 +256,20 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._moreMenu.addSeparator()
 
+        # Open Log Folder Action
+        self._openLogDirAction = QtWidgets.QAction(self)
+        self._openLogDirAction.setText("Open Log Folder")
+        self._moreMenu.addAction(self._openLogDirAction)
+        self._openLogDirAction.triggered.connect(self._openLogDir)
+
+        # Clear Logs Action
+        self._clearLogsAction = QtWidgets.QAction(self)
+        self._clearLogsAction.setText("Clear Logs")
+        self._moreMenu.addAction(self._clearLogsAction)
+        self._clearLogsAction.triggered.connect(self._clearLogs)
+
+        self._moreMenu.addSeparator()
+
         # Setting Action
         self._settingAction = QtWidgets.QAction(self)
         self._settingAction.setText("Settings")
@@ -785,6 +799,28 @@ class PQIWindow(QtWidgets.QMainWindow):
         if self._controlTreeViewWindow is None:
             return
         self._controlTreeViewWindow.notifyLocateWidget(self._curWidgetId)
+    # endregion
+
+
+    # region Logging
+    def _openLogDir(self):
+        """ Open the log directory in the file explorer."""
+        log_dir = pqi_log.getLogDirPath()
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(str(log_dir.resolve())))
+
+    def _clearLogs(self):
+        """ Clear the logs in the console and file. """
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            self._getWindowTitle(),
+            "Are you sure you want to delete all logs? (The current log will be kept)",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No
+        )
+        if reply == QtWidgets.QMessageBox.Yes:
+            pqi_log.clear_logs()
+            QtWidgets.QMessageBox.information(self, self._getWindowTitle(),
+                                              "All logs except the current one have been deleted.")
     # endregion
 
 class DirectModePQIWindow(PQIWindow):
