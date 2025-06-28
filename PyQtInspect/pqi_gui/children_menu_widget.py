@@ -81,7 +81,7 @@ class ChildrenMenuWidget(QWidget):
 
         for clsName, objName, widgetId in zip(childClsNameList, childObjNameList, childWidgetIdList):
             item = QStandardItem(f"{clsName}{objName and f'#{objName}'}")
-            item.setData(f"{clsName}{objName and f'#{objName}'} (id {widgetId})", Qt.ToolTipRole)
+            item.setData(f"{clsName}{objName and f'#{objName}'} (id 0x{widgetId:x})", Qt.ToolTipRole)
             item.setData(widgetId, Qt.UserRole + 1)
             self._model.appendRow(item)
 

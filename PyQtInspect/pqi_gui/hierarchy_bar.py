@@ -59,7 +59,7 @@ class HierarchyItem(QPushButton):
 
         self.setMouseTracking(True)
         self.setCheckable(True)
-        self.setToolTip(f"{self._text} (id {widgetId})")
+        self.setToolTip(f"{self._text} (id 0x{widgetId:x})")
 
         self.arrowClicked.connect(self._onArrowClicked)
 
