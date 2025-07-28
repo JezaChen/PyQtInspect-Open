@@ -41,11 +41,11 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
     QtGui = QtModule.QtGui
     QtCore = QtModule.QtCore
 
-    EventEnum = QtCore.QEvent.Type if hasattr(QtCore.QEvent, 'Type') else QtCore.QEvent
-    WidgetAttributeEnum = QtCore.Qt.WidgetAttribute if hasattr(QtCore.Qt, 'WidgetAttribute') else QtCore.Qt
-    MouseButtonEnum = QtCore.Qt.MouseButton if hasattr(QtCore.Qt, 'MouseButton') else QtCore.Qt
-    KeyboardModifierEnum = QtCore.Qt.KeyboardModifier if hasattr(QtCore.Qt, 'KeyboardModifier') else QtCore.Qt
-    QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason if hasattr(QtGui.QContextMenuEvent, 'Reason') else QtGui.QContextMenuEvent
+    EventEnum = QtCore.QEvent.Type
+    WidgetAttributeEnum = QtCore.Qt.WidgetAttribute
+    MouseButtonEnum = QtCore.Qt.MouseButton
+    KeyboardModifierEnum = QtCore.Qt.KeyboardModifier
+    QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason
 
     if qt_support_mode.startswith("pyqt"):
         sip = QtModule.sip
