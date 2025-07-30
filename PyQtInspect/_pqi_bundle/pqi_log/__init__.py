@@ -58,7 +58,7 @@ def clear_logs():
     log_dir = getLogDirPath()
     old_log_dir = getOldLogDirPath()
 
-    for d in [log_dir, old_log_dir]:
+    for d in (log_dir, old_log_dir):
         if not d.exists():
             info(f"Log directory {d} does not exist.")
             continue
