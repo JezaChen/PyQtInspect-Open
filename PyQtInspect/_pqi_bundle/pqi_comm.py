@@ -40,7 +40,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
     CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
     CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO, CMD_REQ_CHILDREN_INFO, CMD_CHILDREN_INFO,
-    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE,
+    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE, CMD_REQ_WIDGET_PROPS, CMD_WIDGET_PROPS,
     # Keys
     TreeViewResultKeys
 )
@@ -226,6 +226,9 @@ class ReaderThread(PyDBDaemonThread):
         elif cmd_id == CMD_REQ_CONTROL_TREE:
             extra = json.loads(unquote(text))
             global_dbg.notify_control_tree(extra)
+        elif cmd_id == CMD_REQ_WIDGET_PROPS:
+            widget_id = int(unquote(text))
+            global_dbg.notify_widget_props(widget_id)
 
 
 
@@ -525,6 +528,12 @@ class NetCommandFactory:
             TreeViewResultKeys.TREE_INFO_KEY: control_tree,
             TreeViewResultKeys.EXTRA_KEY: extra,
         }))
+
+    def make_req_widget_props_message(self, widget_id: int):
+        return NetCommand(CMD_REQ_WIDGET_PROPS, 0, str(widget_id))
+
+    def make_widget_props_message(self, widget_props: typing.List[typing.Dict]):
+        return NetCommand(CMD_WIDGET_PROPS, 0, json.dumps(widget_props))
 
     def make_exit_message(self):
         return NetCommand(CMD_EXIT, 0, '')

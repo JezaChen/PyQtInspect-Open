@@ -5,9 +5,10 @@ from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath,
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
+    tab_name = "Create Stack"
+
     def __init__(self, parent):
         super().__init__(parent)
-        self.setObjectName("stacksListWidget")
         self.setMinimumHeight(200)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 

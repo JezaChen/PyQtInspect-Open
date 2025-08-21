@@ -127,6 +127,9 @@ CMD_CHILDREN_INFO = 1013
 # === CONTROL TREE INFO ===
 CMD_REQ_CONTROL_TREE = 1014
 CMD_CONTROL_TREE = 1015
+# === WIDGET PROPS ===
+CMD_REQ_WIDGET_PROPS = 1016
+CMD_WIDGET_PROPS = 1017
 
 ID_TO_MEANING = {
     '101': 'CMD_RUN',
@@ -224,9 +227,11 @@ ID_TO_MEANING = {
     '1013': 'CMD_CHILDREN_INFO',
     '1014': 'CMD_REQ_CONTROL_TREE',
     '1015': 'CMD_CONTROL_TREE',
+    '1016': 'CMD_REQ_WIDGET_PROPS',
+    '1017': 'CMD_WIDGET_PROPS',
 }
 
-
+# === Tree Views ===
 class TreeViewKeys:
     OBJ_ID_KEY = 'i'
     OBJ_NAME_KEY = 'n'
@@ -240,3 +245,9 @@ class TreeViewResultKeys:
 
 class TreeViewExtraKeys:
     CURRENT_WIDGET_ID = 'c'
+
+# === Widget Props ===
+class WidgetPropsKeys:
+    CLASSNAME_KEY = 'cn'
+    PROPS_KEY = 'p'
+    VALUE_KEY = 'v'

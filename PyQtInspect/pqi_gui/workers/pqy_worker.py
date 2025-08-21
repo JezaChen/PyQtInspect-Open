@@ -19,8 +19,8 @@ class PQYWorker(QtCore.QObject):
         super().__init__(parent)
         self.port = port
 
-        self.dispatchers = []
-        self.idToDispatcher = {}
+        self.dispatchers = []  # type: list[Dispatcher]
+        self.idToDispatcher = {}  # type: dict[int, Dispatcher]
 
         self._isServing = False
         self._socket = None
@@ -128,6 +128,11 @@ class PQYWorker(QtCore.QObject):
         dispatcher = self.idToDispatcher.get(dispatcherId)
         if dispatcher:
             dispatcher.sendRequestControlTreeInfoEvent(extra)
+
+    def sendRequestWidgetPropsEvent(self, dispatcherId: int, widgetId: int):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendRequestWidgetPropsEvent(widgetId)
 
     def _onDispatcherClosed(self, id: int):
         try:

@@ -1,6 +1,7 @@
 # PQI Tools for Qt
 import typing
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
 from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
     _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR, _PQI_STACK_WHEN_CREATED_ATTR,
@@ -48,11 +49,23 @@ def find_callable_var(obj, name):
 
 
 def find_method_by_name_and_call(obj, name, *args, **kwargs):
+    if __debug__ and obj is None:
+        raise ValueError('The object is None, cannot find method by name')
+    assert obj is not None, f'obj is None, cannot find method {name}'
+
     if callable(getattr(obj, name)):
         return getattr(obj, name)(*args, **kwargs)
     else:
         # Sometimes, ``obj`` has a variable with the same name as the method
         return find_callable_var(obj, name)(obj, *args, **kwargs)
+
+
+def find_method_by_name_and_safe_call(obj, name, default_val, *args, **kwargs):
+    try:
+        return find_method_by_name_and_call(obj, name, *args, **kwargs)
+    except Exception as e:
+        pqi_log.warning(f'Error calling method {name} on {obj}: {e}')
+        return default_val
 
 
 def get_widget_class_name(widget):
@@ -241,13 +254,18 @@ def import_Qt(qt_type: str):
     """
     if qt_type == 'pyqt5':
         import PyQt5 as QtLib
+        import PyQt5.QtCore, PyQt5.QtWidgets, PyQt5.QtGui
     elif qt_type == 'pyqt6':
         import PyQt6 as QtLib
+        import PyQt6.QtCore, PyQt6.QtWidgets, PyQt6.QtGui
     elif qt_type == 'pyside2':
         import PySide2 as QtLib
+        import PySide2.QtCore, PySide2.QtWidgets, PySide2.QtGui
     elif qt_type == 'pyside6':
         import PySide6 as QtLib
+        import PySide6.QtCore, PySide6.QtWidgets, PySide6.QtGui
     else:
+        pqi_log.warning(f'Unsupported Qt type: {qt_type}, maybe the function is called before the setup')
         raise ValueError(f'Unsupported Qt type: {qt_type}')
 
     return QtLib

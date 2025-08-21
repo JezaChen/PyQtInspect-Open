@@ -19,6 +19,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
     get_create_stack, get_control_tree
+from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
@@ -221,6 +222,8 @@ class PyDB:
         self._id_to_widget = {}
         self.global_event_filter = None
         self.global_native_event_filter = None
+
+        self._widget_props_getter = WidgetPropertiesGetter()
 
     def _try_reconnect(self):
         """
@@ -480,26 +483,28 @@ class PyDB:
     def register_widget(self, widget):
         self._id_to_widget[id(widget)] = widget
 
-    def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
+    def _safe_get_widget(self, widget_id):
         widget = self._id_to_widget.get(widget_id, None)
 
         if widget is None:
-            return
+            return None
 
         if not is_wrapped_pointer_valid(widget):
             del self._id_to_widget[widget_id]
+            return None
+
+        return widget
+
+    def set_widget_highlight_by_id(self, widget_id: int, is_highlight: bool):
+        widget = self._safe_get_widget(widget_id)
+        if widget is None:
             return
 
         set_widget_highlight(widget, is_highlight)
 
     def select_widget_by_id(self, widget_id):
-        widget = self._id_to_widget.get(widget_id, None)
-
+        widget = self._safe_get_widget(widget_id)
         if widget is None:
-            return
-
-        if not is_wrapped_pointer_valid(widget):
-            del self._id_to_widget[widget_id]
             return
 
         self.select_widget(widget)
@@ -529,13 +534,8 @@ class PyDB:
         self.send_widget_message(widget_info)
 
     def notify_widget_info(self, widget_id, extra):
-        widget = self._id_to_widget.get(widget_id, None)
-
+        widget = self._safe_get_widget(widget_id)
         if widget is None:
-            return
-
-        if not is_wrapped_pointer_valid(widget):
-            del self._id_to_widget[widget_id]
             return
 
         self.send_widget_info_to_server(widget, extra)
@@ -547,13 +547,8 @@ class PyDB:
         @param widget_id: The ID of the widget.
         @note: used for the bottom hierarchy view of the server GUI program.
         """
-        widget = self._id_to_widget.get(widget_id, None)
-
+        widget = self._safe_get_widget(widget_id)
         if widget is None:
-            return
-
-        if not is_wrapped_pointer_valid(widget):
-            del self._id_to_widget[widget_id]
             return
 
         children_info_list = list(get_children_info(widget))
@@ -574,6 +569,14 @@ class PyDB:
     def notify_control_tree(self, extra):
         control_tree = get_control_tree()
         cmd = self.cmd_factory.make_control_tree_message(control_tree, extra)
+        self.writer.add_command(cmd)
+
+    def notify_widget_props(self, widget_id):
+        widget = self._safe_get_widget(widget_id)
+        if widget is None:
+            return
+        widget_props = self._widget_props_getter.get_object_properties(widget)
+        cmd = self.cmd_factory.make_widget_props_message(widget_props)
         self.writer.add_command(cmd)
 
 

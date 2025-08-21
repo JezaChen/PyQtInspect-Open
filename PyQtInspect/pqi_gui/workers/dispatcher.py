@@ -104,5 +104,8 @@ class Dispatcher(QtCore.QThread):
     def sendRequestControlTreeInfoEvent(self, extra: OptionalDict = None):
         self.writer.add_command(self.net_command_factory.make_req_control_tree_message(extra))
 
+    def sendRequestWidgetPropsEvent(self, widgetId: int):
+        self.writer.add_command(self.net_command_factory.make_req_widget_props_message(widgetId))
+
     def notifyDelete(self):
         self.close()

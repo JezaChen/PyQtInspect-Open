@@ -470,6 +470,71 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         # === register widget === #
         _register_widget(obj)
 
+
+    def _needExtraPatchAfterInit(obj):
+        """ Check if the widget needs extra patch after __init__ """
+        for specialMethod in ['viewport', 'tabBar', 'header', 'lineEdit']:
+            try:
+                p = object.__getattribute__(obj, specialMethod)
+            except AttributeError:
+                continue
+            if callable(p) and isinstance(p(), QtWidgets.QWidget):
+                return True
+
+        # for some complex widgets like QCalendarWidget, there may be multiple child widgets that should be patched
+        if isinstance(obj, (
+                QtWidgets.QCalendarWidget,
+                QtWidgets.QToolBox,
+                QtWidgets.QToolBar,
+                QtWidgets.QAbstractSpinBox,
+                QtWidgets.QDialogButtonBox
+        )):
+            return True
+
+        return False
+
+    def _extraPatchAfterInit(obj):
+        # === SPECIAL PATCH WIDGETS CREATED BY C++ === #
+        if isdeleted(obj):
+            return
+
+        need_to_patch_children = False
+
+        for specialMethod in ['viewport', 'tabBar', 'header', 'lineEdit']:
+            # Bug fixed 20250302: Use a safer way to get the attribute
+            # For some widget class which override the `__getattr__` method, where the object may access its own attribute
+            #   but the attribute is not initialized yet (because the `__init__` method is not finished when patching),
+            #   the `__getattr__` method will recursively call itself infinitely.
+            # --> Spyder MainWindow
+            try:
+                p = object.__getattribute__(obj, specialMethod)
+            except AttributeError:
+                continue
+            if callable(p) and isinstance(p(), QtWidgets.QWidget):
+                need_to_patch_children = True
+                break
+
+        # for some complex widgets like QCalendarWidget, there may be multiple child widgets that should be patched
+        if isinstance(obj, (QtWidgets.QCalendarWidget, QtWidgets.QToolBox, QtWidgets.QToolBar)):
+            need_to_patch_children = True
+
+        if need_to_patch_children:
+            for child in obj.findChildren(QtWidgets.QWidget):
+                if not _isWidgetPatched(child):
+                    _patchWidget(child)
+
+        # for QAbstractSpinBox we should install event listener on its line edit
+        if isinstance(obj, (QtWidgets.QAbstractSpinBox,)):
+            line_edit = obj.lineEdit()
+            if line_edit and _isWidgetPatched(line_edit):  # lineEdit may be None
+                _patchWidget(obj.lineEdit())
+
+        # for QDialogButtonBox we should install event listener on its buttons (Issue #2)
+        if isinstance(obj, QtWidgets.QDialogButtonBox):
+            for button in obj.buttons():
+                _patchWidget(button)
+
+
     def _new_QWidget_init(self, *args, **kwargs):
         self._original_QWidget_init(*args, **kwargs)
         if not ispycreated(self):
@@ -486,31 +551,13 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         # Patch widget
         _patchWidget(self)
 
-        # === SPECIAL PATCH WIDGETS CREATED BY C++ === #
-        for specialMethod in ['viewport', 'tabBar', 'header']:
-            # Bug fixed 20250302: Use a safer way to get the attribute
-            # For some widget class which override the `__getattr__` method, where the object may access its own attribute
-            #   but the attribute is not initialized yet (because the `__init__` method is not finished when patching),
-            #   the `__getattr__` method will recursively call itself infinitely.
-            # --> Spyder MainWindow
-            try:
-                p = object.__getattribute__(self, specialMethod)
-            except AttributeError:
-                continue
-            if callable(p) and isinstance(p(), QtWidgets.QWidget):
-                for child in self.findChildren(QtWidgets.QWidget):
-                    if not _isWidgetPatched(child):
-                        _patchWidget(child)
-                break
-
-        # for QAbstractSpinBox we should install event listener on its line edit
-        if isinstance(self, QtWidgets.QAbstractSpinBox):
-            _patchWidget(self.lineEdit())
-
-        # for QDialogButtonBox we should install event listener on its buttons (Issue #2)
-        if isinstance(self, QtWidgets.QDialogButtonBox):
-            for button in self.buttons():
-                _patchWidget(button)
+        # Issue #20
+        # Patch the child widgets created by C++ layer after the __init__ method is finished
+        # Why? Some widgets create child widgets only after their C++ constructor is called.
+        # These child widgets cannot be captured in the current _new_QWidget_init method.
+        # We need to delay and capture these child widgets in the later loop.
+        if _needExtraPatchAfterInit(self):
+            QtCore.QTimer.singleShot(0, lambda: _extraPatchAfterInit(self))
 
     def _pqi_exec(self: QtWidgets.QWidget, code):
         debugger = get_global_debugger()

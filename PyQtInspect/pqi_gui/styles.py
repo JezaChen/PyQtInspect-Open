@@ -70,14 +70,13 @@ QLineEdit#codeStyleLineEdit {{
     font: 13px "Consolas";
 }}
 
-QListWidget#stacksListWidget {{
-    border: 1px solid #D1D5DA;
-    border-radius: 3px;
+CreateStacksListWidget {{
+    border: none;
     font: 13px "Consolas";
     color: #24292E;
 }}
 
-QListWidget#stacksListWidget::item {{
+CreateStacksListWidget::item {{
     padding: 2px 0px;
 }}
 
@@ -89,5 +88,9 @@ QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top left;
     padding: 0px 5px;
+}}
+
+WidgetPropsTreeWidget {{
+    border: none;
 }}
 """

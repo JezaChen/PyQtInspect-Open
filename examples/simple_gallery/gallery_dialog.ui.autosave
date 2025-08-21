@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>447</width>
-    <height>415</height>
+    <height>468</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>5</number>
+      <number>3</number>
      </property>
      <widget class="QWidget" name="tab_buttons">
       <attribute name="title">
@@ -194,7 +194,7 @@
             <x>0</x>
             <y>0</y>
             <width>419</width>
-            <height>46</height>
+            <height>49</height>
            </rect>
           </property>
           <attribute name="label">
@@ -228,7 +228,7 @@
           <enum>QTabWidget::Rounded</enum>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <property name="documentMode">
           <bool>false</bool>
@@ -317,6 +317,9 @@
         <layout class="QVBoxLayout" name="verticalLayout_7">
          <item>
           <widget class="QComboBox" name="comboBox">
+           <property name="editable">
+            <bool>true</bool>
+           </property>
            <property name="placeholderText">
             <string>Input...</string>
            </property>
@@ -386,14 +389,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QKeySequenceEdit" name="keySequenceEdit">
-           <property name="clearButtonEnabled">
-            <bool>false</bool>
-           </property>
-           <property name="maximumSequenceLength">
-            <longLong>2</longLong>
-           </property>
-          </widget>
+          <widget class="QKeySequenceEdit" name="keySequenceEdit"/>
          </item>
         </layout>
        </item>
