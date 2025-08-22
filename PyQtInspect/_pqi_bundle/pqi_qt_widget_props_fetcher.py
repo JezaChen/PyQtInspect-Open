@@ -33,6 +33,14 @@ class TypeRepr(abc.ABC):
     """
     _type_to_repr = {}
 
+    # This class variable is used to map type names to their corresponding representation classes.
+    # ---
+    # Update 20250822: This variable can be a sequence of type names for flag types.
+    #   Since the return type of some methods is different in PyQt5 and PyQt6,
+    #   for example:
+    #     PyQt6.QtWidgets.QGraphicsView.optimizationFlags will return a `QGraphicsView.OptimizationFlag` type,
+    #     while PyQt5.QtWidgets.QGraphicsView.optimizationFlags will return a `QGraphicsView.OptimizationFlags` type.
+    # ---
     __type__ = ''
 
     @staticmethod
@@ -47,7 +55,13 @@ class TypeRepr(abc.ABC):
         return TypeRepr  # fallback to the base class if not found
 
     def __init_subclass__(cls, **kwargs):
-        TypeRepr._type_to_repr[cls.__type__] = cls
+        if isinstance(cls.__type__, str):
+            TypeRepr._type_to_repr[cls.__type__] = cls
+        elif isinstance(cls.__type__, typing.Iterable):
+            for type_name in cls.__type__:
+                TypeRepr._type_to_repr[type_name] = cls
+        else:
+            raise TypeError(f'Invalid __type__ attribute in {cls.__name__}. It should be a string or an iterable of strings.')
 
     @classmethod
     @functools.lru_cache(maxsize=1)
@@ -237,7 +251,32 @@ class CustomFlagRepr(CustomEnumRepr, ABC):
     @property
     @abc.abstractmethod
     def flags_type(self):
+        """
+        ONLY FOR PyQt5/PySide2!!!
+        For PyQt6/PySide6, the flag types are removed, so accessing this property will raise an error.
+        ----------------------------------------------------
+        The python equivalent type of the `QFlags` type
+        For example:
+          - The `Qt.InputMethodHint` is the enum type, and
+          - the `Qt.InputMethodHints` is the flags type.
+        ----------------------------------------------------
+        But it is only valid for PyQt5/PySide2, in PyQt6/PySide6, the flag types are removed, replaced by the enum type.
+        For example, in PyQt6/PySide6, the `Qt.InputMethodHint` is used as both the enum type and the flags type.
+          And the `Qt.InputMethodHints` is not available anymore.
+        """
         ...
+
+    def _get_flag_type_in_current_qt_lib(self):
+        """
+        Get the flag type in the current Qt library.
+        :return: The flag type in the current Qt library.
+        """
+        try:
+            return self.flags_type
+        except AttributeError:
+            # If the flags_type is not defined, it means we are using PyQt6/PySide6
+            # In this case, we can use the enum_type as the flag type
+            return self.enum_type
 
     @property
     def zero_display(self) -> str:
@@ -250,8 +289,9 @@ class CustomFlagRepr(CustomEnumRepr, ABC):
         :param flag_val: The flag value to get the representation for.
         :return: A string representation of the flag value.
         """
-        if not isinstance(flag_val, self.flags_type):
-            raise TypeError(f'Expected {self.enum_type}, got {type(flag_val)}')
+        flag_type = self._get_flag_type_in_current_qt_lib()
+        if not isinstance(flag_val, flag_type):
+            raise TypeError(f'Expected {flag_type}, got {type(flag_val)}')
 
         if not flag_val:
             return self.zero_display
@@ -506,7 +546,7 @@ class QAbstractScrollAreaSizeAdjustPolicyRepr(CustomEnumRepr):
 
 
 class QtInputMethodHintRepr(CustomFlagRepr):
-    __type__ = 'Qt.InputMethodHints'
+    __type__ = ('Qt.InputMethodHint', 'Qt.InputMethodHints')
 
     @property
     def zero_display(self) -> str:
@@ -667,7 +707,7 @@ class QDateTimeRepr(TypeRepr):
 
 
 class QAbstractItemViewEditTriggersRepr(CustomFlagRepr):
-    __type__ = 'QAbstractItemView.EditTriggers'
+    __type__ = ('QAbstractItemView.EditTrigger', 'QAbstractItemView.EditTriggers')
 
     @property
     def zero_display(self) -> str:
@@ -858,7 +898,7 @@ class QListViewViewModeRepr(CustomEnumRepr):
 
 
 class QtAlignmentFlagRepr(CustomFlagRepr):
-    __type__ = 'Qt.Alignment'
+    __type__ = ('Qt.AlignmentFlag', 'Qt.Alignment')
 
     @property
     def enum_type(self):
@@ -978,7 +1018,7 @@ class QMdiAreaViewModeRepr(CustomEnumRepr):
 
 
 class QDockWidgetDockWidgetFeatureFlagRepr(CustomFlagRepr):
-    __type__ = 'QDockWidget.DockWidgetFeatures'
+    __type__ = ('QDockWidget.DockWidgetFeature', 'QDockWidget.DockWidgetFeatures')
 
     @property
     def zero_display(self) -> str:
@@ -1005,7 +1045,7 @@ class QDockWidgetDockWidgetFeatureFlagRepr(CustomFlagRepr):
 
 
 class QtDockWidgetAreasFlagRepr(CustomFlagRepr):
-    __type__ = 'Qt.DockWidgetAreas'
+    __type__ = ('Qt.DockWidgetArea', 'Qt.DockWidgetAreas')
 
     @property
     def zero_display(self) -> str:
@@ -1061,7 +1101,7 @@ class QComboBoxSizeAdjustPolicyRepr(CustomEnumRepr):
 
 
 class QFontComboBoxFontFiltersRepr(CustomFlagRepr):
-    __type__ = 'QFontComboBox.FontFilters'
+    __type__ = ('QFontComboBox.FontFilter', 'QFontComboBox.FontFilters')
 
     @property
     def zero_display(self) -> str:
@@ -1137,7 +1177,7 @@ class QtCursorMoveStyleRepr(CustomEnumRepr):
 
 
 class QTextEditAutoFormattingRepr(CustomFlagRepr):
-    __type__ = 'QTextEdit.AutoFormatting'
+    __type__ = ('QTextEdit.AutoFormattingFlag', 'QTextEdit.AutoFormatting')
 
     @property
     def zero_display(self) -> str:
@@ -1176,7 +1216,7 @@ class QTextEditLineWrapModeRepr(CustomEnumRepr):
 
 
 class QtTextInteractionFlagsRepr(CustomFlagRepr):
-    __type__ = 'Qt.TextInteractionFlags'
+    __type__ = ('Qt.TextInteractionFlag', 'Qt.TextInteractionFlags')
 
     @property
     def zero_display(self) -> str:
@@ -1262,7 +1302,7 @@ class QAbstractSpinBoxCorrectionModeRepr(CustomEnumRepr):
 
 
 class QDateTimeEditSectionRepr(CustomFlagRepr):
-    __type__ = 'QDateTimeEdit.Sections'
+    __type__ = ('QDateTimeEdit.Section', 'QDateTimeEdit.Sections')
 
     @property
     def zero_display(self) -> str:
@@ -1348,7 +1388,7 @@ class QtTextFormatRepr(CustomEnumRepr):
 
 
 class QPainterRenderHintsRepr(CustomFlagRepr):
-    __type__ = 'QPainter.RenderHints'
+    __type__ = ('QPainter.RenderHint', 'QPainter.RenderHints')
 
     @property
     def zero_display(self) -> str:
@@ -1388,7 +1428,7 @@ class QGraphicsViewDragModeRepr(CustomEnumRepr):
 
 
 class QGraphicsCacheModeRepr(CustomFlagRepr):
-    __type__ = 'QGraphicsView.CacheMode'
+    __type__ = ('QGraphicsView.CacheModeFlag', 'QGraphicsView.CacheMode')
 
     @property
     def zero_display(self) -> str:
@@ -1458,7 +1498,7 @@ class QtItemSelectionModeRepr(CustomEnumRepr):
 
 
 class QGraphicsViewOptimizationFlagsRepr(CustomFlagRepr):
-    __type__ = 'QGraphicsView.OptimizationFlags'
+    __type__ = ('QGraphicsView.OptimizationFlag', 'QGraphicsView.OptimizationFlags')
 
     @property
     def zero_display(self) -> str:
