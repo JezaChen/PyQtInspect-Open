@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_GalleryDialog(object):
     def setupUi(self, GalleryDialog):
         GalleryDialog.setObjectName("GalleryDialog")
-        GalleryDialog.resize(447, 415)
+        GalleryDialog.resize(447, 468)
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(GalleryDialog)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.tabWidget = QtWidgets.QTabWidget(GalleryDialog)
@@ -113,7 +113,7 @@ class Ui_GalleryDialog(object):
         self.toolBox = QtWidgets.QToolBox(self.tab_containers)
         self.toolBox.setObjectName("toolBox")
         self.pagehahh = QtWidgets.QWidget()
-        self.pagehahh.setGeometry(QtCore.QRect(0, 0, 419, 46))
+        self.pagehahh.setGeometry(QtCore.QRect(0, 0, 419, 49))
         self.pagehahh.setObjectName("pagehahh")
         self.toolBox.addItem(self.pagehahh, "")
         self.page_2 = QtWidgets.QWidget()
@@ -279,9 +279,9 @@ class Ui_GalleryDialog(object):
         self.verticalLayout_3.addWidget(self.tabWidget)
 
         self.retranslateUi(GalleryDialog)
-        self.tabWidget.setCurrentIndex(4)
+        self.tabWidget.setCurrentIndex(3)
         self.toolBox.setCurrentIndex(0)
-        self.tabWidget_2.setCurrentIndex(0)
+        self.tabWidget_2.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(GalleryDialog)
 
     def retranslateUi(self, GalleryDialog):
