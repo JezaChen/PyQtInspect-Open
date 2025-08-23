@@ -448,6 +448,7 @@ class PQIWindow(QtWidgets.QMainWindow):
                     {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
                 )
         elif cmdId == CMD_WIDGET_INFO:
+            # It also means the widget is selected
             self._currDispatcherIdForHoveredWidget = dispatcherId
             self.handleWidgetInfoMsg(json.loads(text))
         elif cmdId == CMD_INSPECT_FINISHED:
