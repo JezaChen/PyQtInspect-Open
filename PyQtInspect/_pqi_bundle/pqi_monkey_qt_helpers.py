@@ -601,7 +601,13 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
     classesToPatch = QtWidgetClasses if qt_support_mode.startswith('pyside') else ['QWidget']
 
     for widgetClsName in classesToPatch:
-        widgetCls = getattr(QtWidgets, widgetClsName)
+        widgetCls = getattr(QtWidgets, widgetClsName, None)
+        if widgetCls is None:
+            # For PySide6, some widget classes (e.g. QDesktopWidget) are deprecated and removed
+            # If the class is not found, skip the patching to avoid exception
+            # See: https://doc.qt.io/qt-6/widgets-changes-qt6.html
+            pqi_log.info(f"Cannot find class {widgetClsName} in QtWidgets, skip patching.")
+            continue
         widgetCls._original_QWidget_init = widgetCls.__init__
         widgetCls.__init__ = _new_QWidget_init
         widgetCls._pqi_exec = _pqi_exec
