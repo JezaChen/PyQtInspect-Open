@@ -283,7 +283,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._hierarchyBar.sigAncestorItemHovered.connect(self._highlightWidget)
         self._hierarchyBar.sigAncestorItemChanged.connect(self._onAncestorWidgetItemClicked)
         self._hierarchyBar.sigChildMenuItemHovered.connect(self._highlightWidget)
-        self._hierarchyBar.sigChildMenuItemClicked.connect(self._inspectWidget)
+        self._hierarchyBar.sigChildMenuItemClicked.connect(self._selectWidget)
         self._hierarchyBar.sigReqChildWidgetsInfo.connect(self._reqChildWidgetsInfo)
         self._hierarchyBar.sigMouseLeaveBarAndMenu.connect(self._unhighlightPrevWidget)
 
@@ -491,35 +491,19 @@ class PQIWindow(QtWidgets.QMainWindow):
             self._hierarchyBar.setData(classes, objNames, ids)
 
     def handleInspectFinishedMsg(self):
-        self._inspectButton.setChecked(False)
-        self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
-        self._sigInspectFinished.emit()
+        self._handleInspectFinishedFromClient()
 
     def onNewDispatcher(self, dispatcher):
         dispatcher.sigMsg.connect(self.onWidgetInfoRecv)
         dispatcher.registerMainUIReady()
 
-    def _enableInspect(self):
-        worker = self._getWorker()
-        if not worker:
-            return
-        worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
-        self._sigInspectBegin.emit()
-
-    def _disableInspect(self):
-        # we must set the highlight status of this widget to false, because it is hovered before
-        self._getWorker().sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId, False)
-        self._getWorker().sendDisableInspect()
-        self._currDispatcherIdForSelectedWidget = None
-        self._sigInspectDisabled.emit()
-
     def _onInspectButtonClicked(self, checked: bool):
         if not self._getWorker():
             return
         if checked:
-            self._enableInspect()
+            self._beginInspect()
         else:
-            self._disableInspect()
+            self._finishInspectProactively()
 
     def _onAncestorWidgetItemClicked(self, widgetId: int):
         worker = self._getWorker()
@@ -546,7 +530,14 @@ class PQIWindow(QtWidgets.QMainWindow):
         worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, widgetId, True)
         self._curHighlightedWidgetId = widgetId
 
-    def _inspectWidget(self, widgetId: int):
+    def _selectWidget(self, widgetId: int):
+        # ------
+        # Update 20250824
+        # Use more appropriate name: select instead of inspect
+        # "select" means select the widget and show its info in the main window
+        # "inspect" means the inspect mode, in which hovering a widget will highlight it
+        # ------
+
         worker = self._getWorker()
         if worker is None or self._currDispatcherIdForSelectedWidget is None:
             return
@@ -556,6 +547,53 @@ class PQIWindow(QtWidgets.QMainWindow):
         worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
         worker.sendRequestWidgetPropsEvent(self._currDispatcherIdForSelectedWidget, widgetId)
+
+    # region -- Inspect-related logic --
+    # ----------------------------------------------------------------------------------------
+    # Highlight Lifecycle:
+    #   * Begin Inspect
+    #   |
+    #   * Hover Widget and highlight it
+    #   |
+    #   * Click Widget -> Finish Inspect PASSIVELY (from client)
+    #     or
+    #   * Click Inspect Button Again / Press F8 -> Finish Inspect PROACTIVELY (from server)
+    #   |
+    #   * Close the server / Stop Serving -> Disable Inspect
+    # ----------------------------------------------------------------------------------------
+    def _beginInspect(self):
+        worker = self._getWorker()
+        if not worker:
+            return
+        worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
+        self._sigInspectBegin.emit()
+
+    def _handleInspectFinishedFromClient(self):
+        self._inspectButton.setChecked(False)
+        self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
+        self._sigInspectFinished.emit()
+
+    def _finishInspectProactively(self):
+        self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
+        _worker = self._getWorker()
+        # unhighlight the highlighted widget
+        _worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId, False)
+        # notify the client to finish inspect
+        _worker.sendDisableInspect()
+        # notify the client to select the widget (the widget is marked as inspected only before)
+        _worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)
+        # emit inspect finished signal
+        self._sigInspectFinished.emit()
+
+    def _disableInspect(self):
+        _worker = self._getWorker()
+        # we must set the highlight status of this widget to false, because it is hovered before
+        _worker.sendHighlightWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId, False)
+        _worker.sendDisableInspect()
+        self._currDispatcherIdForSelectedWidget = None
+        self._sigInspectDisabled.emit()
+
+    # endregion
 
     # region -- Setting window --
     def _openSettingWindow(self):
@@ -619,16 +657,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._finishInspectWhenKeyPress()
 
     def _finishInspectWhenKeyPress(self):
-        self._disableInspect()
-        # override self._currDispatcherIdForSelectedWidget
-        # todo 看看有没有更好的办法
-        self._currDispatcherIdForSelectedWidget = self._currDispatcherIdForHoveredWidget
-
-        _worker = self._getWorker()
-        # notify the client to select the widget (the widget is marked as inspected only before)
-        _worker.sendSelectWidgetEvent(self._currDispatcherIdForSelectedWidget, self._curWidgetId)
-        # emit inspect finished signal
-        self._sigInspectFinished.emit()
+        self._finishInspectProactively()
     # endregion
 
     def closeEvent(self, a0):
@@ -686,7 +715,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             )
             w.sigReqHighlightWidget.connect(self._highlightWidget)
             w.sigReqUnhighlightWidget.connect(self._unhighlightPrevWidget)
-            w.sigReqInspectWidget.connect(self._inspectWidget)
+            w.sigReqInspectWidget.connect(self._selectWidget)
         self._controlTreeViewWindow.show()
         self._controlTreeViewWindow.refresh()
 
