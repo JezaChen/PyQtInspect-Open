@@ -56,7 +56,11 @@ class WidgetPropsTreeWidget(QtWidgets.QTreeView):
             else:
                 propValue = str(value)
 
-            propValueItem = QtGui.QStandardItem(str(propValue))
+            # Replace newlines with spaces for better display
+            # For stylesheet text, it may contain multiple lines,
+            #   which makes the item height too large.
+            propValueToDisplay = propValue.replace('\r\n', ' ').replace('\n', ' ').strip()
+            propValueItem = QtGui.QStandardItem(propValueToDisplay)
             # Add tooltip
             propValueItem.setToolTip(str(propValue))
             parentItem.appendRow([propNameItem, propValueItem])
