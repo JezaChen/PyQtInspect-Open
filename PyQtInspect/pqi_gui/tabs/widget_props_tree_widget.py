@@ -2,18 +2,7 @@ import typing
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
-
-
-class WaitingForInspectFinishedOverlay(QtWidgets.QWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self._layout = QtWidgets.QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0)
-
-        self._label = QtWidgets.QLabel("Waiting for inspect to finish...", self)
-        self._label.setAlignment(QtCore.Qt.AlignCenter)
-        self._layout.addWidget(self._label)
+from PyQtInspect.pqi_gui.components.waiting_overlay import WaitingOverlay
 
 
 class WidgetPropsTreeWidget(QtWidgets.QTreeView):
@@ -80,7 +69,7 @@ class WidgetPropsTreeContainer(QtWidgets.QWidget):
         self._treeWidget = WidgetPropsTreeWidget(self)
         self._mainLayout.addWidget(self._treeWidget)
 
-        self._waitingOverlay = WaitingForInspectFinishedOverlay(self)
+        self._waitingOverlay = WaitingOverlay(self, "Waiting for inspect to finish...")
         self._waitingOverlay.setGeometry(self.rect())
         self._waitingOverlay.setVisible(False)
 
@@ -93,7 +82,3 @@ class WidgetPropsTreeContainer(QtWidgets.QWidget):
         self._waitingOverlay.setVisible(True)
         self._treeWidget.clear()
 
-    def resizeEvent(self, event: QtGui.QResizeEvent):
-        super().resizeEvent(event)
-        # Update the overlay size
-        self._waitingOverlay.setGeometry(self.rect())

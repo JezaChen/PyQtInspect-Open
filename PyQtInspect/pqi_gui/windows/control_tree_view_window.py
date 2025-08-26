@@ -3,6 +3,7 @@ import typing
 
 from PyQt5 import QtGui, QtWidgets, QtCore
 from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
+from PyQtInspect.pqi_gui.components.waiting_overlay import WaitingOverlay
 
 
 class _DefaultOptions:
@@ -15,14 +16,88 @@ class _CustomDataRole:
 
 class ControlTreeView(QtWidgets.QTreeView):
     sigMouseLeave = QtCore.pyqtSignal()
+    currentRowChanged = QtCore.pyqtSignal(QtCore.QModelIndex, QtCore.QModelIndex)  # newIndex, oldIndex
 
     def __init__(self, parent):
         super().__init__(parent)
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)  # Disable editing
 
+        self._model = QtGui.QStandardItemModel(self)
+        self.setModel(self._model)
+
+        self.selectionModel().currentRowChanged.connect(self.currentRowChanged)
+
+    def setInfo(self, controlTreeInfo: typing.List[typing.Dict]):
+        self._model.clear()
+        self._model.setHorizontalHeaderLabels(["Object", "Type", "Child Count"])
+        self.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        self.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self._addSubItems(self._model, controlTreeInfo)
+
+    def _addSubItems(self, parentItem, childrenInfoList):
+        """ Recursively add sub items to the tree view. """
+        for childInfo in childrenInfoList:
+            widgetObjNameItem = QtGui.QStandardItem(childInfo[TreeViewKeys.OBJ_NAME_KEY])
+            widgetObjNameItem.setData(childInfo[TreeViewKeys.OBJ_ID_KEY], _CustomDataRole.WidgetId)
+            widgetTypeItem = QtGui.QStandardItem(childInfo[TreeViewKeys.OBJ_CLS_NAME_KEY])
+            widgetChildCountItem = QtGui.QStandardItem(str(childInfo[TreeViewKeys.CHILD_CNT_KEY]))
+
+            parentItem.appendRow([widgetObjNameItem, widgetTypeItem, widgetChildCountItem])
+
+            self._addSubItems(widgetObjNameItem, childInfo[TreeViewKeys.CHILDREN_KEY])
+
+    def locateWidget(self, widgetId: int):
+        """ Locate the widget in the tree view. """
+        def _find_helper(cur_item: QtGui.QStandardItem) -> bool:
+            for i in range(cur_item.rowCount()):
+                res = _find_helper(cur_item.child(i))
+                if res:
+                    # expand
+                    self.setExpanded(cur_item.index(), True)
+                    return True
+
+            if cur_item.data(_CustomDataRole.WidgetId) == widgetId:
+                # select the row
+                self.setCurrentIndex(cur_item.index())
+                return True
+            return False
+
+        # Firstly, clear the index
+        self.selectionModel().clearCurrentIndex()
+        _find_helper(self._model.invisibleRootItem())
+
+    def getCurrentSelectedWidgetId(self) -> typing.Optional[int]:
+        index = self.currentIndex()
+        if index.isValid():
+            first_col_sibling = index.siblingAtColumn(0)
+            wgtId = first_col_sibling.data(_CustomDataRole.WidgetId)
+            return wgtId
+        return None
+
+    def clear(self):
+        self._model.clear()
+
     def leaveEvent(self, ev):
         self.sigMouseLeave.emit()
         return super().leaveEvent(ev)
+
+
+
+class ControlTreeViewWithWaitingOverlay(ControlTreeView):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._waitingOverlay = WaitingOverlay(self, "Loading...")
+        self._waitingOverlay.hide()
+
+    def resizeEvent(self, ev):
+        self._waitingOverlay.setGeometry(self.rect())
+        return super().resizeEvent(ev)
+
+    def showWaitingOverlay(self):
+        self._waitingOverlay.show()
+
+    def hideWaitingOverlay(self):
+        self._waitingOverlay.hide()
 
 
 class ControlTreeWindow(QtWidgets.QWidget):
@@ -60,16 +135,14 @@ class ControlTreeWindow(QtWidgets.QWidget):
         self._inspectButton.clicked.connect(self._inspectCurrentRow)
         self._buttonLayout.addWidget(self._inspectButton)
 
-        self._treeWidget = ControlTreeView(self)
+        self._treeWidget = ControlTreeViewWithWaitingOverlay(self)
+        self._treeWidget.showWaitingOverlay()
 
         self._mainLayout.addWidget(self._treeWidget)
-
-        self._model = QtGui.QStandardItemModel(self._treeWidget)
-        self._treeWidget.setModel(self._model)
         self._treeWidget.setMouseTracking(_DefaultOptions.HighlightWhenHover)
         self._treeWidget.entered.connect(self._onTreeViewEntered)
         self._treeWidget.sigMouseLeave.connect(self._onMouseLeave)
-        self._treeWidget.selectionModel().currentRowChanged.connect(self._onCurrentRowChanged)
+        self._treeWidget.currentRowChanged.connect(self._onCurrentRowChanged)
 
         self._highlightWhenHoverOption = QtWidgets.QCheckBox(self)
         self._highlightWhenHoverOption.setText("When hovering a row, highlight the corresponding widget")
@@ -79,47 +152,17 @@ class ControlTreeWindow(QtWidgets.QWidget):
         self._mainLayout.addWidget(self._highlightWhenHoverOption)
 
     def notifyControlTreeInfo(self, controlTreeInfo: typing.List[typing.Dict]):
-        self._model.clear()
-        self._model.setHorizontalHeaderLabels(["Object", "Type", "Child Count"])
-        self._treeWidget.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-        self._treeWidget.header().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
-        self._addSubItems(self._model, controlTreeInfo)
+        self._treeWidget.setInfo(controlTreeInfo)
+        self._treeWidget.hideWaitingOverlay()
 
     def notifyLocateWidget(self, widgetId: int):
         """ Locate the widget in the tree view. """
-
-        def _find_helper(cur_item: QtGui.QStandardItem) -> bool:
-            for i in range(cur_item.rowCount()):
-                res = _find_helper(cur_item.child(i))
-                if res:
-                    # expand
-                    self._treeWidget.setExpanded(cur_item.index(), True)
-                    return True
-
-            if cur_item.data(_CustomDataRole.WidgetId) == widgetId:
-                # select the row
-                self._treeWidget.setCurrentIndex(cur_item.index())
-                return True
-            return False
-        # Firstly, clear the index
-        self._treeWidget.selectionModel().clearCurrentIndex()
-        _find_helper(self._model.invisibleRootItem())
+        self._treeWidget.locateWidget(widgetId)
 
     def refresh(self):
-        self._model.clear()
+        self._treeWidget.clear()
+        self._treeWidget.showWaitingOverlay()
         self.sigReqControlTree.emit(True)
-
-    def _addSubItems(self, parentItem, childrenInfoList):
-        """ Recursively add sub items to the tree view. """
-        for childInfo in childrenInfoList:
-            widgetObjNameItem = QtGui.QStandardItem(childInfo[TreeViewKeys.OBJ_NAME_KEY])
-            widgetObjNameItem.setData(childInfo[TreeViewKeys.OBJ_ID_KEY], _CustomDataRole.WidgetId)
-            widgetTypeItem = QtGui.QStandardItem(childInfo[TreeViewKeys.OBJ_CLS_NAME_KEY])
-            widgetChildCountItem = QtGui.QStandardItem(str(childInfo[TreeViewKeys.CHILD_CNT_KEY]))
-
-            parentItem.appendRow([widgetObjNameItem, widgetTypeItem, widgetChildCountItem])
-
-            self._addSubItems(widgetObjNameItem, childInfo[TreeViewKeys.CHILDREN_KEY])
 
     # region Event handlers
     def _onRefreshButtonClicked(self):
@@ -129,11 +172,9 @@ class ControlTreeWindow(QtWidgets.QWidget):
         self.sigReqCurrentSelectedWidgetId.emit()
 
     def _inspectCurrentRow(self):
-        index = self._treeWidget.currentIndex()
-        if index.isValid():
-            first_col_sibling = index.siblingAtColumn(0)
-            wgtId = first_col_sibling.data(_CustomDataRole.WidgetId)
-            self.sigReqInspectWidget.emit(wgtId)
+        widgetId = self._treeWidget.getCurrentSelectedWidgetId()
+        if widgetId is not None:
+            self.sigReqInspectWidget.emit(widgetId)
 
     def _reqHighlightWidgetByIndex(self, index: QtCore.QModelIndex):
         first_col_sibling = index.siblingAtColumn(0)
