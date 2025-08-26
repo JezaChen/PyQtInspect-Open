@@ -187,7 +187,6 @@ class QDateRepr(TypeRepr):
         :return: A string representation of the date.
         """
         QtCore = self._get_qt_lib().QtCore
-        pqi_log.info(f'date.toString() = {date.toString(QtCore.Qt.DateFormat.ISODate)}')
         return date.toString(QtCore.Qt.DateFormat.ISODate)
 
 
