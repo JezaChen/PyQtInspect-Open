@@ -2,6 +2,13 @@ import sys
 
 loaded = False
 
+if len(sys.argv) != 2 or sys.argv[1] not in ('pyqt5', 'pyqt6', 'pyside2', 'pyside6'):
+    print("Usage: python run_dialog.py [pyqt5|pyqt6|pyside2|pyside6]")
+    print("Example: python run_dialog.py pyqt5")
+    print("Note: You need to install the corresponding PyQt or PySide package.")
+    sys.exit(1)
+
+
 if sys.argv[1] == 'pyqt5':
     from gallery_dialog_pyqt5 import Ui_GalleryDialog, QtWidgets
     loaded = True
