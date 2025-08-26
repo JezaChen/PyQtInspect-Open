@@ -3,3 +3,4 @@ dst/**
 build/**
 *.egg-info/**
 PyQtInspect/settings.ini
+/.idea/**
