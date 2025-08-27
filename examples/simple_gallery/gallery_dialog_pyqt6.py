@@ -322,16 +322,6 @@ class Ui_GalleryDialog(object):
 "<h1 style=\" margin-top:18px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:xx-large; font-weight:700;\">Hello, world!</span> </h1>\n"
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">This is an example!!! </p></body></html>"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_display_widgets), _translate("GalleryDialog", "Display Widgets"))
-from PyQt6 import QAxContainer
+# from PyQt6 import QAxContainer
 from PyQt6 import QtOpenGLWidgets
 from PyQt6 import QtQuickWidgets
-
-if __name__ == "__main__":
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-    GalleryDialog = QtWidgets.QDialog()
-    ui = Ui_GalleryDialog()
-    ui.setupUi(GalleryDialog)
-    GalleryDialog.show()
-    sys.exit(app.exec())
