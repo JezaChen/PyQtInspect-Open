@@ -33,6 +33,7 @@ setup(
         "psutil",
         "PyQt5",
         "wingrab; platform_system=='Windows'",  # Only available on Windows
+        "pyobjc-framework-Cocoa; platform_system=='Darwin'",  # Only available on macOS
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",

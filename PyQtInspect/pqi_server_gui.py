@@ -56,10 +56,9 @@ def _setup():
     else:
         SetupHolder.setup = setup_dict
 
-    # ==== Set App ID For Windows ====
-    if sys.platform == "win32":
-        myappid = 'jeza.tools.pyqt_inspect.0.0.1alpha2'
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    # === Platform-specific setup ===
+    from PyQtInspect.pqi_gui.platform_specific import setup_platform
+    setup_platform()
 
 
 _setup()
@@ -338,7 +337,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         try:
             port = int(self._portLineEdit.text())
         except ValueError:
-            QtWidgets.QMessageBox.warning(self, "PyQtInspect", "Port must be a number")
+            QtWidgets.QMessageBox.warning(self, version.PQI_NAME, "Port must be a number")
             self._serveButton.setChecked(False)
             return
 
@@ -411,7 +410,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         """ Ask the user for confirmation to stop the server. """
         self._serveButton.setChecked(True)  # hold the button checked before user's choice
 
-        reply = QtWidgets.QMessageBox.question(self, "PyQtInspect", "Are you sure to stop serving?",
+        reply = QtWidgets.QMessageBox.question(self, version.PQI_NAME, "Are you sure to stop serving?",
                                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                                                QtWidgets.QMessageBox.No)
         if reply == QtWidgets.QMessageBox.Yes:
@@ -694,13 +693,13 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     # region About & Title
     def _openAboutWindow(self):
-        QtWidgets.QMessageBox.about(self, "About PyQtInspect",
-                                    f"PyQtInspect {version.PQI_VERSION}\n"
+        QtWidgets.QMessageBox.about(self, f"About {version.PQI_NAME}",
+                                    f"{version.PQI_NAME} {version.PQI_VERSION}\n"
                                     "© 2025 Jeza Chen (陈建彰)\n\n"
-                                    "PyQtInspect is a tool for developers to inspect the native elements in the running PyQt/PySide applications.")
+                                    f"{version.PQI_NAME} is a tool for developers to inspect the native elements in the running PyQt/PySide applications.")
 
     def _getWindowTitle(self) -> str:
-        return f"PyQtInspect {version.PQI_VERSION}"
+        return f"{version.PQI_NAME} {version.PQI_VERSION}"
     # endregion
 
     # region Control tree
@@ -864,6 +863,10 @@ def main():
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps)
 
     app = QtWidgets.QApplication(sys.argv)
+    app.setApplicationName(version.PQI_NAME)
+    app.setApplicationVersion(version.PQI_VERSION)
+    # For macOS, set the icon of main window is not enough, we must set the icon of the app.
+    app.setWindowIcon(get_icon())
 
     # Use the fusion palette for macOS
     if sys.platform == "darwin":
