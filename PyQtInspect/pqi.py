@@ -583,6 +583,7 @@ class PyDB:
 def set_debug(setup):
     import logging
 
+    setup[SetupHolder.KEY_IS_DEBUG_MODE] = True
     setup[SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS] = True
     setup[SetupHolder.KEY_LOG_TO_FILE_LEVEL] = logging.DEBUG
     setup[SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL] = logging.DEBUG
@@ -732,8 +733,12 @@ def main():
         # Run server first
         try:
             # Run with detached mode
+            args = ['pqi-server', '--port', str(port), '--direct']
+            if setup.get(SetupHolder.KEY_IS_DEBUG_MODE, False):
+                args.append('--debug')
+            pqi_log.debug(f'Starting pqi-server with args: {args}')
             subprocess.Popen(
-                ['pqi-server', '--port', str(port), '--direct'],
+                args,
                 close_fds=True, stdin=None, stdout=None, stderr=None,
             )
         except Exception as e:

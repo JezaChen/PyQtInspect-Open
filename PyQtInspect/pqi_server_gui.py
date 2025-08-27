@@ -808,9 +808,11 @@ def _set_debug():
 
     # SetupHolder.setup
     SetupHolder.setup.update({
+        SetupHolder.KEY_IS_DEBUG_MODE: True,
         SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS: True,
         SetupHolder.KEY_LOG_TO_FILE_LEVEL: logging.DEBUG,
-        SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL: logging.DEBUG
+        SetupHolder.KEY_LOG_TO_CONSOLE_LEVEL: logging.DEBUG,
+        SetupHolder.KEY_SHOW_CONNECTION_ERRORS: True,
     })
     # DebugInfoHolder (for logging)
     DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = SetupHolder.setup.get(
