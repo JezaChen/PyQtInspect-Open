@@ -213,12 +213,12 @@ class QToolButtonPopupModeRepr(CustomEnumRepr):
 
 
 class QToolButtonToolButtonStyleRepr(CustomEnumRepr):
-    __type__ = 'QToolButton.ToolButtonStyle'
+    __type__ = 'Qt.ToolButtonStyle'
 
     @property
     def enum_type(self):
-        QtWidgets = self._get_qt_lib().QtWidgets
-        return QtWidgets.QToolButton.ToolButtonStyle
+        QtCore = self._get_qt_lib().QtCore
+        return QtCore.Qt.ToolButtonStyle
 
     @property
     def enum_names(self) -> typing.Sequence[str]:
@@ -229,12 +229,12 @@ class QToolButtonToolButtonStyleRepr(CustomEnumRepr):
 
 
 class QToolButtonArrowTypeRepr(CustomEnumRepr):
-    __type__ = 'QToolButton.ArrowType'
+    __type__ = 'Qt.ArrowType'
 
     @property
     def enum_type(self):
-        QtWidgets = self._get_qt_lib().QtWidgets
-        return QtWidgets.QToolButton.ArrowType
+        QtCore = self._get_qt_lib().QtCore
+        return QtCore.Qt.ArrowType
 
     @property
     def enum_names(self) -> typing.Sequence[str]:
