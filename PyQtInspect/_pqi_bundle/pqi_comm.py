@@ -460,8 +460,11 @@ class NetCommandFactory:
     def make_dict(self, **kwargs):
         return kwargs
 
+    def _dump_json(self, obj):
+        return json.dumps(obj, indent=None, separators=(',', ':'))
+
     def make_json(self, **kwargs):
-        return json.dumps(kwargs)
+        return self._dump_json(kwargs)
 
     def make_widget_info_message(self,
                                  widget_info: QWidgetInfo):
@@ -485,7 +488,7 @@ class NetCommandFactory:
     def make_enable_inspect_message(self, extra: OptionalDict = None):
         if extra is None:
             extra = {}
-        return NetCommand(CMD_ENABLE_INSPECT, 0, json.dumps(extra))
+        return NetCommand(CMD_ENABLE_INSPECT, 0, self._dump_json(extra))
 
     def make_disable_inspect_message(self):
         return NetCommand(CMD_DISABLE_INSPECT, 0, '')
@@ -521,10 +524,10 @@ class NetCommandFactory:
     def make_req_control_tree_message(self, extra: OptionalDict = None):
         if extra is None:
             extra = {}
-        return NetCommand(CMD_REQ_CONTROL_TREE, 0, json.dumps(extra))
+        return NetCommand(CMD_REQ_CONTROL_TREE, 0, self._dump_json(extra))
 
     def make_control_tree_message(self, control_tree: typing.List[typing.Dict], extra: typing.Dict):
-        return NetCommand(CMD_CONTROL_TREE, 0, json.dumps({
+        return NetCommand(CMD_CONTROL_TREE, 0, self._dump_json({
             TreeViewResultKeys.TREE_INFO_KEY: control_tree,
             TreeViewResultKeys.EXTRA_KEY: extra,
         }))
@@ -533,7 +536,7 @@ class NetCommandFactory:
         return NetCommand(CMD_REQ_WIDGET_PROPS, 0, str(widget_id))
 
     def make_widget_props_message(self, widget_props: typing.List[typing.Dict]):
-        return NetCommand(CMD_WIDGET_PROPS, 0, json.dumps(widget_props))
+        return NetCommand(CMD_WIDGET_PROPS, 0, self._dump_json(widget_props))
 
     def make_exit_message(self):
         return NetCommand(CMD_EXIT, 0, '')
