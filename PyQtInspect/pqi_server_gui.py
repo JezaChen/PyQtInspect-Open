@@ -9,7 +9,6 @@ import sys
 import typing
 import argparse
 import json
-import ctypes
 
 # ↑ DO NOT import PyQtInspect-specific modules before inserting the module path into sys.path.
 
