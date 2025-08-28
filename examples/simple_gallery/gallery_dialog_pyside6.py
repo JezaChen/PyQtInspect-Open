@@ -8,7 +8,9 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtAxContainer import QAxWidget
+import sys
+if sys.platform == "win32":
+    from PySide6.QtAxContainer import QAxWidget
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
@@ -236,10 +238,11 @@ class Ui_GalleryDialog(object):
 
         self.verticalLayout_5.addWidget(self.dockWidget)
 
-        self.axWidget = QAxWidget(self.tab_containers)
-        self.axWidget.setObjectName(u"axWidget")
+        if sys.platform == "win32":
+            self.axWidget = QAxWidget(self.tab_containers)
+            self.axWidget.setObjectName(u"axWidget")
 
-        self.verticalLayout_5.addWidget(self.axWidget)
+            self.verticalLayout_5.addWidget(self.axWidget)
 
         self.tabWidget.addTab(self.tab_containers, "")
         self.tab_input_widgets = QWidget()
