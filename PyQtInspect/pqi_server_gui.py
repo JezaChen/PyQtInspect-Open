@@ -117,7 +117,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._keyboardHookHandler = KeyboardHookHandler(self)
 
         self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Inspect")
+        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Selecting")
         self._pressF8ToDisableInspectAction.setCheckable(True)
         self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
         self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
@@ -134,7 +134,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
-        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left")
+        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left When Selecting Elements")
         self._isMockLeftButtonDownAction.setCheckable(True)
         self._isMockLeftButtonDownAction.setChecked(True)  # default
         self._moreMenu.addAction(self._isMockLeftButtonDownAction)
@@ -222,20 +222,22 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._serveButton = QtWidgets.QPushButton(self)
         self._serveButton.setText("Serve")
+        self._serveButton.setToolTip('Start/Stop the server.')
         self._serveButton.setFixedHeight(30)
         self._serveButton.setCheckable(True)
         self._serveButton.clicked.connect(self._onServeButtonToggled)
 
         self._topLayout.addWidget(self._serveButton)
 
-        self._inspectButton = QtWidgets.QPushButton(self)
-        self._inspectButton.setText("Inspect")
-        self._inspectButton.setFixedHeight(30)
-        self._inspectButton.setCheckable(True)
-        self._inspectButton.clicked.connect(self._onInspectButtonClicked)
-        self._inspectButton.setEnabled(False)
+        self._selectButton = QtWidgets.QPushButton(self)
+        self._selectButton.setText("Select")
+        self._selectButton.setToolTip('Select an element in the target application to view its details.')
+        self._selectButton.setFixedHeight(30)
+        self._selectButton.setCheckable(True)
+        self._selectButton.clicked.connect(self._onInspectButtonClicked)
+        self._selectButton.setEnabled(False)
 
-        self._topLayout.addWidget(self._inspectButton)
+        self._topLayout.addWidget(self._selectButton)
 
         self._mainLayout.addWidget(self._topContainer)
 
@@ -356,7 +358,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._portLineEdit.setEnabled(False)
         # self._serveButton.setEnabled(False)
-        self._inspectButton.setEnabled(True)
+        self._selectButton.setEnabled(True)
         self._attachAction.setEnabled(True)
 
         self._worker = PQYWorker(None, port)  # The parent of worker must be None!
@@ -391,7 +393,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         # set buttons status to default
         self._portLineEdit.setEnabled(True)
-        self._inspectButton.setEnabled(False)
+        self._selectButton.setEnabled(False)
 
         # set action status to default
         self._attachAction.setEnabled(False)
@@ -441,7 +443,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             pqi_log.info(f"PyQtInspect: Qt patched successfully, pid: {pid}")
 
             # If inspection is enabled, enable it for the new process.
-            if self._inspectButton.isChecked():
+            if self._selectButton.isChecked():
                 self._getWorker().sendEnableInspectToDispatcher(
                     dispatcherId,
                     {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
@@ -569,7 +571,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._sigInspectBegin.emit()
 
     def _handleInspectFinishedFromClient(self):
-        self._inspectButton.setChecked(False)
+        self._selectButton.setChecked(False)
         self._getWorker().sendDisableInspect()  # disable inspect for all dispatchers
         self._sigInspectFinished.emit()
 
@@ -653,7 +655,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     # region Inspect hotkey
     def _onInspectKeyPressed(self):
         """ 当停止inspect热键按下后, 停止inspect """
-        self._inspectButton.setChecked(False)
+        self._selectButton.setChecked(False)
         self._finishInspectWhenKeyPress()
 
     def _finishInspectWhenKeyPress(self):
