@@ -2,7 +2,6 @@
 import collections
 import sys
 from contextlib import redirect_stdout
-from ctypes import wintypes
 from io import StringIO
 import os
 
@@ -362,6 +361,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     # If inspect is disabled, do not filter native events
                     return False, 0
 
+                from ctypes import wintypes
                 msg = wintypes.MSG.from_address(int(message))
                 if msg.message == self.WM_NCHITTEST:
                     return True, self.HTCLIENT
