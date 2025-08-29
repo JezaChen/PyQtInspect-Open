@@ -34,7 +34,7 @@ def getStackFrame(useGetFrame=True) -> typing.List[FrameInfo]:
                 line_no=frame.f_lineno,
                 func_name=frame.f_code.co_name
             )
-        ]  # 需要在创建期间获取stack就捕获行号, 否则后续的f_lineno会走到最后一行去
+        ]  # Need to capture line number when getting stack during creation, otherwise later f_lineno will go to the last line
 
         while frame.f_back is not None:
             frames.append(

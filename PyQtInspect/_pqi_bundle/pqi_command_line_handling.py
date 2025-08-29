@@ -36,7 +36,7 @@ class ArgHandlerWithParam:
         del argv[i]
 
 
-# to_argv输出带等号的,"--arg_name=arg_value"
+# to_argv outputs with equal sign, "--arg_name=arg_value"
 class ArgHandlerWithParamAndEqualSign(ArgHandlerWithParam):
     def to_argv(self, lst, setup):
         v = setup.get(self.arg_name)
@@ -77,7 +77,7 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
     ArgHandlerBool('show-pqi-stack'),
-    ArgHandlerWithParamAndEqualSign('qt-support', default_val='pyqt5'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
+    ArgHandlerWithParamAndEqualSign('qt-support', default_val='pyqt5'),  # Original pydevd doesn't support qt parameters for subprocesses, adding it here
 ]
 
 ARGV_REP_TO_HANDLER = {}

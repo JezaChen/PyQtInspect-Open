@@ -31,7 +31,7 @@ def _filter_trace_stack(traceStacks):
 
 
 # ==== TODO ====
-# 这个最好写个单元测试代码
+# This would be better with unit test code
 def find_name_in_mro(cls, name, default):
     """ Emulate _PyType_Lookup() in Objects/typeobject.c """
     for base in cls.__mro__:
