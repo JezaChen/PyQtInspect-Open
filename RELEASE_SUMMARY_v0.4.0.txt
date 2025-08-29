@@ -1,0 +1,23 @@
+# Release Summary for v0.4.0
+
+## Tag Information
+- **Tag**: v0.4.0
+- **Commit**: b881f9b747f7404a0e328f8526d3ab01ecc6d4e3
+- **Date**: August 29, 2025
+
+## Key Features
+- Added the "Properties" tab for comprehensive widget property inspection
+- Added toolbar entries to open/clear logs
+- Fixed Python 3.8 + PySide compatibility issues
+- Fixed a series of other issues for improved stability
+
+## Files Changed
+- 193 files changed, 69,926 insertions(+)
+- Major additions include property fetcher system, enhanced GUI components, and cross-platform support
+
+## Installation
+```bash
+pip install PyQtInspect==0.4.0
+```
+
+This release represents a significant milestone with the addition of the Properties tab, making PyQtInspect even more powerful for debugging PyQt/PySide applications.
