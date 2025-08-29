@@ -62,7 +62,7 @@ class WindowsKeyboardHookHandler(KeyboardHookHandler):
             kb_hook.grab(0x77, flag, lambda: self.sigDisableInspectKeyPressed.emit())
 
         thread = QtCore.QThread(self)
-        flag = GrabFlag()  # 可指示内部grab线程停止的标志, 用于解决GUI程序退出后grab线程仍无法退出的问题
+        flag = GrabFlag()  # Flag to indicate the internal grab thread to stop, used to solve the issue where grab thread still cannot exit after GUI program exits
         thread.started.connect(_inSubThread)
         thread.stop_flag = flag
         return thread
@@ -77,7 +77,7 @@ class WindowsKeyboardHookHandler(KeyboardHookHandler):
 
     def _startKeyboardHookThread(self):
         # start keyboard hook thread if user wants to disable inspect by pressing F8
-        # TODO: 1) 自定义热键; 2) 当用户打开开关时, 且处于inspect, 立即运行线程
+        # TODO: 1) Custom hotkeys; 2) When user turns on the switch and is in inspect mode, immediately run the thread
         self._keyboardHookThread.stop_flag.clear_flag()
         self._keyboardHookThread.start()
 

@@ -296,7 +296,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         # region -- Data --
         self._worker = None
         self._currDispatcherIdForSelectedWidget = None
-        self._currDispatcherIdForHoveredWidget = None  # todo 可能会有多个进程都有选中的情况?
+        self._currDispatcherIdForHoveredWidget = None  # todo may have situations where multiple processes have selections?
 
         self._curWidgetId = -1
         self._curHighlightedWidgetId = -1
@@ -485,7 +485,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         # set hierarchy
         if info.get("extra", {}).get("from",
-                                     "") != "ancestor":  # 如果为"ancestor", 则意味着用户是通过bar来点击回溯获取祖先控件的信息, 此时无需覆盖祖先控件信息
+                                     "") != "ancestor":  # If it's "ancestor", it means the user clicked back through the bar to get ancestor widget info, so no need to overwrite ancestor widget info
             classes = [*reversed(info["parent_classes"]), info["class_name"]]
             objNames = [*reversed(info["parent_object_names"]), info["object_name"]]
             ids = [*reversed(info["parent_ids"]), info["id"]]
@@ -515,8 +515,8 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._unhighlightPrevWidget()
         self._worker.sendRequestWidgetInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId, {
             "from": "ancestor"
-        })  # 通过bar来点击回溯获取祖先控件的信息, 带上from字段, 避免覆盖祖先控件信息(即点击导航条前面的类后, 该类后面的类全都无了, 因为此时显示的是该类的祖先控件信息)
-        self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo 会不会有时序问题
+        })  # Click back through the bar to get ancestor widget info, add 'from' field to avoid overwriting ancestor widget info (i.e., after clicking a class in the navigation bar, all classes after that class disappear because what's displayed is ancestor widget info of that class)
+        self._worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)  # todo might there be timing issues?
         self._worker.sendRequestWidgetPropsEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _highlightWidget(self, widgetId: int):
@@ -630,7 +630,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             worker.sendRequestChildrenInfoEvent(self._currDispatcherIdForSelectedWidget, widgetId)
 
     def _unhighlightPrevWidget(self):
-        # todo 貌似不用这样了现在, pqi可以保证只有一个widget能高亮
+        # todo it seems this is no longer needed now, pqi can ensure only one widget can be highlighted
         worker = self._getWorker()
         conditions_met = (
             bool(worker),
@@ -653,7 +653,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     # region Inspect hotkey
     def _onInspectKeyPressed(self):
-        """ 当停止inspect热键按下后, 停止inspect """
+        """ When the stop inspect hotkey is pressed, stop inspection """
         self._selectButton.setChecked(False)
         self._finishInspectWhenKeyPress()
 
@@ -696,7 +696,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _openAboutWindow(self):
         QtWidgets.QMessageBox.about(self, f"About {version.PQI_NAME}",
                                     f"{version.PQI_NAME} {version.PQI_VERSION}\n"
-                                    "© 2025 Jeza Chen (陈建彰)\n\n"
+                                    "© 2025 Jeza Chen (Jianzhang Chen)\n\n"
                                     f"{version.PQI_NAME} is a tool for developers to inspect the native elements in the running PyQt/PySide applications.")
 
     def _getWindowTitle(self) -> str:
