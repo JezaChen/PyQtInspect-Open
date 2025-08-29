@@ -22,7 +22,7 @@ setup(
     url="https://jeza-chen.com/PyqtInspect",
     author="Jianzhang Chen",
     author_email="jezachen@163.com",
-    license="GPLv3",
+    license="EPL-2.0",
     description="To inspect PyQt/PySide program elements like Chrome's element inspector",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
@@ -44,7 +44,7 @@ setup(
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
         "Development Status :: 4 - Beta",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)",
     ],
     entry_points={
         "gui_scripts": [
