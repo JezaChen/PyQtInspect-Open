@@ -24,7 +24,7 @@ class ChildrenMenuWidget(QWidget):
         super().__init__(parent)
 
         self.setObjectName("MenuWidget")
-        self._menu = menu  # 需要保存menu, 用于设置数据时调整menu的大小
+        self._menu = menu  # Need to save menu for adjusting menu size when setting data
         # self.resize(217, 289)
 
         self.verticalLayout = QtWidgets.QVBoxLayout(self)
@@ -95,13 +95,13 @@ class ChildrenMenuWidget(QWidget):
     def onListViewClicked(self, index):
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
-            widgetId = -1  # loading项的id为-1, 由外部处理点击事件(需要隐藏的)
+            widgetId = -1  # loading item id is -1, click event handled externally (needs to be hidden)
         self.sigClickChild.emit(widgetId)
 
     def onListViewEntered(self, index):
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
-            widgetId = -1  # loading项的id为-1, 由外部处理点击事件(需要隐藏的)
+            widgetId = -1  # loading item id is -1, click event handled externally (needs to be hidden)
         self.sigHoverChild.emit(widgetId)
 
     def leaveEvent(self, event):

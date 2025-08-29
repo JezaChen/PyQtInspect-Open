@@ -123,7 +123,7 @@ class HierarchyItem(QPushButton):
     def enterEvent(self, event):
         self._moveFlag = True
         self.update()
-        self._barWidget.notifyItemHovered(self)  # 向上层通知鼠标进入
+        self._barWidget.notifyItemHovered(self)  # Notify upper layer of mouse enter
 
     def leaveEvent(self, event):
         self._moveFlag = False
@@ -288,7 +288,7 @@ class HierarchyBar(QtWidgets.QWidget):
 
         if self._buttonGroup.buttons():  # not empty, set last item checked by default
             lastItem = self._buttonGroup.buttons()[-1]
-            # 之所以在这里设置, 是因为避免数据变更后emit sigAncestorItemChanged信号
+            # The reason for setting it here is to avoid emitting sigAncestorItemChanged signal after data changes
             # 导致重复获取数据
             self._curCheckedItem = lastItem
             lastItem.setChecked(True)
