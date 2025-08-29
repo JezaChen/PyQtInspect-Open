@@ -127,8 +127,7 @@ def patch_qt(qt_support_mode, is_attach=False):
                                 return
 
     if qt_support_mode == 'pyside6':
-        if IS_PY38:
-            return
+        # PY-50959 (if python == 3.8 && pyside) may not influence PyQtInspect
         try:
             import PySide6.QtCore  # @UnresolvedImport
             import PySide6.QtWidgets  # @UnresolvedImport
@@ -139,11 +138,7 @@ def patch_qt(qt_support_mode, is_attach=False):
         except:
             return
     elif qt_support_mode == 'pyside2':
-        # PY-50959
-        # We can get here only if PyQt compatible = PySide2, in this case we should return
-        # See comment above about PY-50959
-        if IS_PY38:
-            return
+        # PY-50959 (if python == 3.8 && pyside) may not influence PyQtInspect
         try:
             import PySide2.QtCore  # @UnresolvedImport
             import PySide2.QtWidgets  # @UnresolvedImport
