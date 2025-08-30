@@ -90,7 +90,7 @@ class HierarchyItem(QPushButton):
             painter.setFont(self.m_font)
             painter.drawText(QRect(0, 0, self._textWidth, ITEM_HEIGHT), Qt.AlignCenter, self._text)
 
-        # 绘制箭头
+        # Draw arrow
         if self._menuShowed:
             painter.drawPixmap(QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT), self.m_checkedIcon,
                                self.m_checkedIcon.rect())
@@ -123,7 +123,7 @@ class HierarchyItem(QPushButton):
     def enterEvent(self, event):
         self._moveFlag = True
         self.update()
-        self._barWidget.notifyItemHovered(self)  # 向上层通知鼠标进入
+        self._barWidget.notifyItemHovered(self)  # Notify upper layer of mouse enter
 
     def leaveEvent(self, event):
         self._moveFlag = False
@@ -160,7 +160,7 @@ class HierarchyBarScrollArea(QtWidgets.QScrollArea):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def wheelEvent(self, event):
-        # 响应鼠标滚轮事件, 倒置事件的坐标系, 使得横向滚动条也能滚动
+        # Respond to mouse wheel events, invert the event coordinate system so that horizontal scroll bar can also scroll
         newEvent = QtGui.QWheelEvent(event.pos(), event.globalPos(),
                                      QtCore.QPoint(event.pixelDelta().y(), event.pixelDelta().x()),
                                      QtCore.QPoint(event.angleDelta().y(), event.angleDelta().x()),
@@ -184,7 +184,7 @@ class HierarchyBar(QtWidgets.QWidget):
 
         self._buttonGroup = QtWidgets.QButtonGroup(self)
         self._buttonGroup.setExclusive(True)
-        self._buttonGroup.buttonToggled.connect(self._onButtonToggled)  # 不能用clicked, 因为鼠标事件被拦截
+        self._buttonGroup.buttonToggled.connect(self._onButtonToggled)  # Cannot use clicked because mouse events are intercepted
 
         self._mainLayout = QtWidgets.QHBoxLayout(self)
         self._mainLayout.setContentsMargins(0, 0, 0, 0)
@@ -288,8 +288,8 @@ class HierarchyBar(QtWidgets.QWidget):
 
         if self._buttonGroup.buttons():  # not empty, set last item checked by default
             lastItem = self._buttonGroup.buttons()[-1]
-            # 之所以在这里设置, 是因为避免数据变更后emit sigAncestorItemChanged信号
-            # 导致重复获取数据
+            # The reason for setting it here is to avoid emitting sigAncestorItemChanged signal after data changes
+            # causing duplicate data retrieval
             self._curCheckedItem = lastItem
             lastItem.setChecked(True)
 
@@ -303,7 +303,7 @@ class HierarchyBar(QtWidgets.QWidget):
 
         self._menu.move(posX, posY)
         if self._widgetIdOfCurrMenu != itemWidget.getWidgetId():
-            # 脏数据
+            # Stale data
             self._menuWidget.setLoading()
             self.sigReqChildWidgetsInfo.emit(itemWidget.getWidgetId())
         self._menu.show()
@@ -331,7 +331,7 @@ class HierarchyBar(QtWidgets.QWidget):
                     childObjNameList: typing.List[str],
                     childWidgetIdList: typing.List[int]):
         if self._curItemWithMenuShowed is None or widgetId != self._curItemWithMenuShowed.getWidgetId():
-            # 脏数据
+            # Stale data
             return
 
         self._widgetIdOfCurrMenu = widgetId

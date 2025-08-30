@@ -2,31 +2,31 @@ import sys
 import multiprocessing
 
 StyleSheet = """
-/*这里是通用设置，所有按钮都有效，不过后面的可以覆盖这个*/
+/*This is the general setting, effective for all buttons, but can be overridden later*/
 QPushButton {
-    border: none; /*去掉边框*/
+    border: none; /*Remove border*/
 }
 
 /*
 QPushButton#xxx
-或者
+or
 #xx
-都表示通过设置的objectName来指定
+Both represent specifying by the set objectName
 */
 QPushButton#RedButton {
-    background-color: #f44336; /*背景颜色*/
+    background-color: #f44336; /*Background color*/
 }
 #RedButton:hover {
-    background-color: #e57373; /*鼠标悬停时背景颜色*/
+    background-color: #e57373; /*Background color on mouse hover*/
 }
-/*注意pressed一定要放在hover的后面，否则没有效果*/
+/*Note that pressed must be placed after hover, otherwise it has no effect*/
 #RedButton:pressed {
-    background-color: #ffcdd2; /*鼠标按下不放时背景颜色*/
+    background-color: #ffcdd2; /*Background color when mouse is pressed and held*/
 }
 
 #GreenButton {
     background-color: #4caf50;
-    border-radius: 5px; /*圆角*/
+    border-radius: 5px; /*Rounded corners*/
 }
 #GreenButton:hover {
     background-color: #81c784;
@@ -37,12 +37,12 @@ QPushButton#RedButton {
 
 #BlueButton {
     background-color: #2196f3;
-    /*限制最小最大尺寸*/
+    /*Limit minimum and maximum size*/
     min-width: 96px;
     max-width: 96px;
     min-height: 96px;
     max-height: 96px;
-    border-radius: 48px; /*圆形*/
+    border-radius: 48px; /*Circular*/
 }
 #BlueButton:hover {
     background-color: #64b5f6;
@@ -53,8 +53,8 @@ QPushButton#RedButton {
 
 #OrangeButton {
     max-height: 48px;
-    border-top-right-radius: 20px; /*右上角圆角*/
-    border-bottom-left-radius: 20px; /*左下角圆角*/
+    border-top-right-radius: 20px; /*Top-right rounded corner*/
+    border-bottom-left-radius: 20px; /*Bottom-left rounded corner*/
     background-color: #ff9800;
 }
 #OrangeButton:hover {
@@ -64,9 +64,9 @@ QPushButton#RedButton {
     background-color: #ffe0b2;
 }
 
-/*根据文字内容来区分按钮,同理还可以根据其它属性来区分*/
+/*Distinguish buttons by text content, similarly can distinguish by other attributes*/
 QPushButton[text="purple button"] {
-    color: white; /*文字颜色*/
+    color: white; /*Text color*/
     background-color: #9c27b0;
 }
 """

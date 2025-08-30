@@ -195,7 +195,7 @@ class AttachWindow(QtWidgets.QWidget):
         try:
             self._tryAttachToProcess(int(self._pidLine.getValue()))
         except ValueError:
-            # todo 如果pid不存在呢??
+            # todo what if pid doesn't exist??
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid Pid!")
             return
 
@@ -203,7 +203,7 @@ class AttachWindow(QtWidgets.QWidget):
         try:
             self._tryAttachToAllPySubprocess(int(self._pidLine.getValue()))
         except ValueError:
-            # todo 如果pid不存在呢??
+            # todo what if pid doesn't exist??
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid Pid!")
             return
 
@@ -215,7 +215,7 @@ class AttachWindow(QtWidgets.QWidget):
         self._thread.finished.connect(lambda: self._pidLine.setEnabled(True))
 
     def _tryAttachToProcess(self, pid: int):
-        """ Attach放在这个控件实现吧 """
+        """ Implement Attach in this widget """
         if self._thread is not None and self._thread.isRunning():  # guard
             QtWidgets.QMessageBox.information(self, "Info", "Already Attaching")
             return

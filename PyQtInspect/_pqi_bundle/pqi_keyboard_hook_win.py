@@ -29,7 +29,7 @@ WM_KEYUP = 0x0101
 WM_SYSKEYDOWN = 0x0104
 WM_SYSKEYUP = 0x0105
 
-VK_F8 = 0x77  # 目前只使用F8键
+VK_F8 = 0x77  # Currently only use F8 key
 
 
 WM_TO_TEXT = {
