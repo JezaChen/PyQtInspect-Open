@@ -35,9 +35,58 @@ import traceback
 threadingCurrentThread = threading.current_thread
 
 
-def enable_qt_support(qt_support_mode):
+def auto_patch_qt(is_attach: bool):
+    global SetupHolder
     import PyQtInspect._pqi_bundle.pqi_monkey_qt as monkey_qt
-    monkey_qt.patch_qt(qt_support_mode)
+    import ihook
+
+    def clear_ihook():
+        ihook.clear_hooks()
+        ihook.unpatch_meta_path()
+
+    pyqt5_mod_lower_name = 'pyqt5'
+    @ihook.on_import(pyqt5_mod_lower_name, case_sensitive=False)
+    def _():
+        pqi_log.info("Auto patching PyQt5...")
+        clear_ihook()
+        SetupHolder.setup['qt-support'] = pyqt5_mod_lower_name
+        monkey_qt.patch_qt(pyqt5_mod_lower_name, is_attach)
+
+    pyqt6_mod_lower_name = 'pyqt6'
+    @ihook.on_import(pyqt6_mod_lower_name, case_sensitive=False)
+    def _():
+        pqi_log.info("Auto patching PyQt6...")
+        clear_ihook()
+        SetupHolder.setup['qt-support'] = pyqt6_mod_lower_name
+        monkey_qt.patch_qt(pyqt6_mod_lower_name, is_attach)
+
+    pyside2_mod_lower_name = 'pyside2'
+    @ihook.on_import(pyside2_mod_lower_name, case_sensitive=False)
+    def _():
+        pqi_log.info("Auto patching PySide2...")
+        clear_ihook()
+        SetupHolder.setup['qt-support'] = pyside2_mod_lower_name
+        monkey_qt.patch_qt(pyside2_mod_lower_name, is_attach)
+
+    pyside6_mod_lower_name = 'pyside6'
+    @ihook.on_import(pyside6_mod_lower_name, case_sensitive=False)
+    def _():
+        pqi_log.info("Auto patching PySide6...")
+        clear_ihook()
+        SetupHolder.setup['qt-support'] = pyside6_mod_lower_name
+        monkey_qt.patch_qt(pyside6_mod_lower_name, is_attach)
+
+
+def enable_qt_support(qt_support_mode, is_attach: bool = False):
+    global SetupHolder
+    import PyQtInspect._pqi_bundle.pqi_monkey_qt as monkey_qt
+
+    if qt_support_mode == 'auto':
+        if is_attach:
+            raise RuntimeError("Qt lib auto detection is not supported in attach mode.")
+        auto_patch_qt(is_attach)
+        return
+    monkey_qt.patch_qt(qt_support_mode, is_attach)
 
 
 def get_fullname(mod_name):
@@ -682,7 +731,7 @@ def _locked_settrace(
     except:
         pass
     else:
-        PyQtInspect._pqi_bundle.pqi_monkey_qt.patch_qt(qt_support, is_attach=is_attach)
+        enable_qt_support(qt_support, is_attach)
 
 
 # =======================================================================================================================
@@ -692,7 +741,7 @@ def usage(do_exit=True, exit_code=0):
     sys.stdout.write('Usage:\n')
     sys.stdout.write(
         '\tpqi.py [--port N --client hostname | --direct] [--multiprocess] [--show-pqi-stack] '
-        '--qt-support=[pyqt5|pyqt6|pyside2|pyside6] '
+        '--qt-support=[auto|pyqt5|pyqt6|pyside2|pyside6] '
         '--file executable [file_options]\n'
     )
     if do_exit:

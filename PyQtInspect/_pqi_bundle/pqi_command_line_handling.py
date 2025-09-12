@@ -77,7 +77,9 @@ ACCEPTED_ARG_HANDLERS = [
     ArgHandlerBool('module'),
     ArgHandlerBool('help'),
     ArgHandlerBool('show-pqi-stack'),
-    ArgHandlerWithParamAndEqualSign('qt-support', default_val='pyqt5'),  # 原来的pydevd不支持子进程带qt参数, 这里加一下
+    # The original pydevd does not support subprocesses with qt parameters, add it here
+    # Update since v0.4.1: Default value is changed to 'auto' instead of 'pyqt5'
+    ArgHandlerWithParamAndEqualSign('qt-support', default_val='auto'),
 ]
 
 ARGV_REP_TO_HANDLER = {}
@@ -140,19 +142,18 @@ def process_command_line(argv):
             # The --qt-support is special because we want to keep backward compatibility:
             # Previously, just passing '--qt-support' meant that we should use the auto-discovery mode
             # whereas now, if --qt-support is passed, it should be passed as --qt-support=<mode>, where
-            # mode can be one of 'auto', 'none', 'pyqt5', 'pyqt4', 'pyside', 'pyside2'.
+            # mode can be one of 'auto', 'pyqt5', 'pyqt6', 'pyside2', 'pyside6'.
             if argv[i] == '--qt-support':
                 setup[SetupHolder.KEY_QT_SUPPORT] = 'auto'
 
             elif argv[i].startswith('--qt-support='):
                 qt_support = argv[i][len('--qt-support='):]
                 qt_support = qt_support.lower()
-                valid_modes = ('pyqt5', 'pyqt6', 'pyside2', 'pyside6')  # TODO ONLY SUPPORTS PYQT5/6 AND PYSIDE2/6
+                # ONLY SUPPORTS PYQT5/6 AND PYSIDE2/6
+                # `auto` means that PyQtInspect will detect the Qt bindings automatically.
+                valid_modes = ('auto', 'pyqt5', 'pyqt6', 'pyside2', 'pyside6')
                 if qt_support not in valid_modes:
                     raise ValueError("qt-support mode invalid: " + qt_support)
-                if qt_support == 'none':
-                    # On none, actually set an empty string to evaluate to False.
-                    setup[SetupHolder.KEY_QT_SUPPORT] = ''
                 else:
                     setup[SetupHolder.KEY_QT_SUPPORT] = qt_support
             else:
