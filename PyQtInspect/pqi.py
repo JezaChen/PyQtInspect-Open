@@ -44,12 +44,26 @@ def auto_patch_qt(is_attach: bool):
         ihook.clear_hooks()
         ihook.unpatch_meta_path()
 
+    # Mark that we're in auto-detect mode
+    # Used so that when patching child processes we can generate the parameter `qt-support=auto`
+    #   instead of a specific Qt library name.
+    #
+    # Why not use a specific library name? (like `qt-support=pyqt5`)
+    #   there may be a scenario where a PyQt5 program starts a PyQt6 program;
+    #   in that case the PyQt6 program would not be patched correctly.
+    SetupHolder.setup[SetupHolder.KEY_IS_AUTO_DISCOVER_QT_LIB] = True
+
+    # Why not merge them into a single loop + helper function?
+    # Because Python closures capture variables by reference (late binding), causing all hooks to see only the last value.
+
     pyqt5_mod_lower_name = 'pyqt5'
     @ihook.on_import(pyqt5_mod_lower_name, case_sensitive=False)
     def _():
         pqi_log.info("Auto patching PyQt5...")
         clear_ihook()
-        SetupHolder.setup['qt-support'] = pyqt5_mod_lower_name
+        # We need to set the value in setup to the exact library name because subsequent Qt patching needs it;
+        # 'auto' is only a placeholder and has no meaning later.
+        SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT] = pyqt5_mod_lower_name
         monkey_qt.patch_qt(pyqt5_mod_lower_name, is_attach)
 
     pyqt6_mod_lower_name = 'pyqt6'
@@ -57,7 +71,7 @@ def auto_patch_qt(is_attach: bool):
     def _():
         pqi_log.info("Auto patching PyQt6...")
         clear_ihook()
-        SetupHolder.setup['qt-support'] = pyqt6_mod_lower_name
+        SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT] = pyqt6_mod_lower_name
         monkey_qt.patch_qt(pyqt6_mod_lower_name, is_attach)
 
     pyside2_mod_lower_name = 'pyside2'
@@ -65,7 +79,7 @@ def auto_patch_qt(is_attach: bool):
     def _():
         pqi_log.info("Auto patching PySide2...")
         clear_ihook()
-        SetupHolder.setup['qt-support'] = pyside2_mod_lower_name
+        SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT] = pyside2_mod_lower_name
         monkey_qt.patch_qt(pyside2_mod_lower_name, is_attach)
 
     pyside6_mod_lower_name = 'pyside6'
@@ -73,7 +87,7 @@ def auto_patch_qt(is_attach: bool):
     def _():
         pqi_log.info("Auto patching PySide6...")
         clear_ihook()
-        SetupHolder.setup['qt-support'] = pyside6_mod_lower_name
+        SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT] = pyside6_mod_lower_name
         monkey_qt.patch_qt(pyside6_mod_lower_name, is_attach)
 
 
@@ -758,8 +772,12 @@ def main():
         traceback.print_exc()
         return usage(exit_code=1)
 
+    # Handle `--help`: show usage and exit
+    if setup.get(SetupHolder.KEY_HELP):
+        return usage()
+
     # for debug
-    if SHOW_DEBUG_INFO_ENV:
+    if SHOW_DEBUG_INFO_ENV or setup.get(SetupHolder.KEY_IS_DEBUG_MODE):
         set_debug(setup)
 
     DebugInfoHolder.DEBUG_RECORD_SOCKET_READS = setup.get(SetupHolder.KEY_DEBUG_RECORD_SOCKET_READS,
@@ -780,11 +798,13 @@ def main():
         host = setup[SetupHolder.KEY_CLIENT] = '127.0.0.1'
         port = setup[SetupHolder.KEY_PORT] = random_port()
         # Run server first
+        server_args = ['--port', str(port), '--direct']
+        if setup.get(SetupHolder.KEY_IS_DEBUG_MODE, False):
+            server_args.append('--debug')
+
         try:
             # Run with detached mode
-            args = ['pqi-server', '--port', str(port), '--direct']
-            if setup.get(SetupHolder.KEY_IS_DEBUG_MODE, False):
-                args.append('--debug')
+            args = ['pqi-server', *server_args]
             pqi_log.debug(f'Starting pqi-server with args: {args}')
             subprocess.Popen(
                 args,
@@ -797,9 +817,8 @@ def main():
             try:
                 gui_entry = find_pqi_server_gui_entry()
                 subprocess.Popen(
-                    [sys.executable, gui_entry, '--port', str(port), '--direct'],
+                    [sys.executable, gui_entry, *server_args],
                     close_fds=True, stdin=None, stdout=None, stderr=None,
-                    creationflags=subprocess.DETACHED_PROCESS if IS_WINDOWS else 0,
                 )
             except:
                 # OK, we tried our best, let's give up...

@@ -7,15 +7,13 @@
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
 
-class ArgHandlerWithParam:
-    '''
-    Handler for some arguments which needs a value
-    '''
-
-    def __init__(self, arg_name, convert_val=None, default_val=None):
+class ArgOutputterWithParam:
+    """
+    Tool class for arguments which have a parameter and needs to be outputted
+    """
+    def __init__(self, arg_name, default_val=None):
         self.arg_name = arg_name
         self.arg_v_rep = '--%s' % (arg_name,)
-        self.convert_val = convert_val
         self.default_val = default_val
 
     def to_argv(self, lst, setup):
@@ -23,6 +21,65 @@ class ArgHandlerWithParam:
         if v is not None and v != self.default_val:
             lst.append(self.arg_v_rep)
             lst.append('%s' % (v,))
+
+
+class ArgOutputterBool:
+    """
+    Outputter for boolean flags.
+    If the value is True, output the flag.
+    """
+
+    def __init__(self, arg_name, default_val=False):
+        self.arg_name = arg_name
+        self.arg_v_rep = '--%s' % (arg_name,)
+        self.default_val = default_val
+
+    def to_argv(self, lst, setup):
+        v = setup.get(self.arg_name)
+        if v:
+            lst.append(self.arg_v_rep)
+
+
+class ArgOutputterWithEqualSign(ArgOutputterWithParam):
+    """ Outputter which needs to be outputted with '=' sign in `to_argv` (e.g.: --qt-support=auto)
+    """
+    def to_argv(self, lst, setup):
+        v = self.get_val(setup)
+        if v is not None and v != self.default_val:
+            lst.append('%s=%s' % (self.arg_v_rep, v))
+
+    def get_val(self, setup):
+        return setup.get(self.arg_name)
+
+
+class QtSupportArgOutputter(ArgOutputterWithEqualSign):
+    """
+    Special outputter for `qt-support` argument
+
+    Since PyQtInspect supports automatic detection of the Qt library,
+      once detection succeeds it sets the value of `qt-support` to the specific library name.
+    To allow spawning child processes that use a different Qt library
+      (e.g., launching a PyQt6 program from a PyQt5 program),
+      this argument needs special handling when being passed to the child process:
+      if in automatic detection mode (the flag `is-auto-discover-qt-lib` is set),
+      pass `--qt-support=auto`; otherwise pass the concrete library name.
+    """
+    def get_val(self, setup):
+        if setup.get(SetupHolder.KEY_IS_AUTO_DISCOVER_QT_LIB):
+            return 'auto'  # auto-discovery mode
+        return setup.get(self.arg_name)
+
+
+class ArgHandlerWithParam(ArgOutputterWithParam):
+    """
+    Handler for arguments which have a parameter and needs to be outputted/parsed from command line
+    (e.g.: --port 19394)
+    Handler = Outputter + Parser
+    """
+
+    def __init__(self, arg_name, convert_val=None, default_val=None):
+        super().__init__(arg_name, default_val)
+        self.convert_val = convert_val
 
     def handle_argv(self, argv, i, setup):
         assert argv[i] == self.arg_v_rep
@@ -34,14 +91,6 @@ class ArgHandlerWithParam:
 
         setup[self.arg_name] = val
         del argv[i]
-
-
-# to_argv输出带等号的,"--arg_name=arg_value"
-class ArgHandlerWithParamAndEqualSign(ArgHandlerWithParam):
-    def to_argv(self, lst, setup):
-        v = setup.get(self.arg_name)
-        if v is not None and v != self.default_val:
-            lst.append('%s=%s' % (self.arg_v_rep, v))
 
 
 class ArgHandlerBool:
@@ -66,25 +115,34 @@ class ArgHandlerBool:
 
 
 ACCEPTED_ARG_HANDLERS = [
-    ArgHandlerWithParam('port', int, 19394),
-    ArgHandlerWithParam('client', default_val='127.0.0.1'),
-    ArgHandlerWithParam('stack-max-depth', int, 0),
+    ArgHandlerWithParam(SetupHolder.KEY_PORT, int, 19394),  # --port <client port=19394>
+    ArgHandlerWithParam(SetupHolder.KEY_CLIENT, default_val='127.0.0.1'),  # --client <client ip=127.0.0.1>
+    ArgHandlerWithParam(SetupHolder.KEY_STACK_MAX_DEPTH, int, 0),  # --stack-max-depth <depth=0>
 
-    ArgHandlerBool('server'),
-    ArgHandlerBool('direct'),
-    ArgHandlerBool('DEBUG_RECORD_SOCKET_READS'),
-    ArgHandlerBool('multiprocess'),  # Used by PyDev (creates new connection to ide)
-    ArgHandlerBool('module'),
-    ArgHandlerBool('help'),
-    ArgHandlerBool('show-pqi-stack'),
-    # The original pydevd does not support subprocesses with qt parameters, add it here
-    # Update since v0.4.1: Default value is changed to 'auto' instead of 'pyqt5'
-    ArgHandlerWithParamAndEqualSign('qt-support', default_val='auto'),
+    ArgHandlerBool(SetupHolder.KEY_DIRECT),  # --direct
+    ArgHandlerBool(SetupHolder.KEY_MULTIPROCESS),  # --multiprocess
+    ArgHandlerBool(SetupHolder.KEY_MODULE),  # --module
+    ArgHandlerBool(SetupHolder.KEY_HELP),  # --help, print help and exit
+    ArgHandlerBool(SetupHolder.KEY_SHOW_PQI_STACK),  # --show-pqi-stack
+    ArgHandlerBool(SetupHolder.KEY_IS_DEBUG_MODE),  # --DEBUG
 ]
 
 ARGV_REP_TO_HANDLER = {}
 for handler in ACCEPTED_ARG_HANDLERS:
     ARGV_REP_TO_HANDLER[handler.arg_v_rep] = handler
+
+
+ARG_OUTPUTTERS = [
+    # The accepted arg handlers also act as outputters
+    *ACCEPTED_ARG_HANDLERS,
+
+    # === EXTRA OUTPUTTERS (not handled in command line parsing) ===
+    # The original pydevd does not support subprocesses with qt parameters, add it here
+    # Update since v0.4.1: Default value is changed to 'auto' instead of 'pyqt5'
+    # It does not handle argument parsing; only used to patch arguments for child processes
+    # The actual parsing for `qt-support` is done in `process_command_line`
+    QtSupportArgOutputter(SetupHolder.KEY_QT_SUPPORT, default_val='auto'),  # --qt-support=<mode>
+]
 
 
 def get_pydevd_file(executable_path):
@@ -116,9 +174,9 @@ def setup_to_argv(executable_path, setup):
 
     ret = [get_pydevd_file(executable_path)]
 
-    for handler in ACCEPTED_ARG_HANDLERS:
-        if handler.arg_name in setup and handler.arg_name not in filtered:
-            handler.to_argv(ret, setup)
+    for outputter in ARG_OUTPUTTERS:
+        if outputter.arg_name in setup and outputter.arg_name not in filtered:
+            outputter.to_argv(ret, setup)
     return ret
 
 
@@ -130,6 +188,7 @@ def process_command_line(argv):
         setup[handler.arg_name] = handler.default_val
     setup[SetupHolder.KEY_FILE] = ''
     setup[SetupHolder.KEY_SHOW_PQI_STACK] = False
+    setup[SetupHolder.KEY_QT_SUPPORT] = 'auto'  # Changed since v0.4.1, previously was 'pyqt5'
 
     i = 0
     del argv[0]
@@ -144,6 +203,7 @@ def process_command_line(argv):
             # whereas now, if --qt-support is passed, it should be passed as --qt-support=<mode>, where
             # mode can be one of 'auto', 'pyqt5', 'pyqt6', 'pyside2', 'pyside6'.
             if argv[i] == '--qt-support':
+                # If just `--qt-support` is passed, it means auto-discovery mode
                 setup[SetupHolder.KEY_QT_SUPPORT] = 'auto'
 
             elif argv[i].startswith('--qt-support='):
@@ -166,11 +226,6 @@ def process_command_line(argv):
             del argv[i]
             setup[SetupHolder.KEY_FILE] = argv[i]
             i = len(argv)  # pop out, file is our last argument
-
-        elif argv[i] == '--DEBUG':
-            from PyQtInspect.pqi import set_debug
-            del argv[i]
-            set_debug(setup)
 
         else:
             raise ValueError("Unexpected option: " + argv[i])
