@@ -9,6 +9,7 @@
 ################################################################################
 
 import sys
+import subprocess
 if sys.platform == "win32":
     from PySide6.QtAxContainer import QAxWidget
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
@@ -50,6 +51,10 @@ class Ui_GalleryDialog(object):
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.pushButton = QPushButton(self.tab_buttons)
         self.pushButton.setObjectName(u"pushButton")
+        self.pushButton.clicked.connect(lambda: subprocess.Popen(
+            ["python", "run_dialog.py", 'pyqt5'],
+            close_fds=True, stdin=None, stdout=None, stderr=None,
+        ))
         font = QFont()
         font.setBold(False)
         font.setItalic(False)
@@ -419,7 +424,7 @@ class Ui_GalleryDialog(object):
 
     def retranslateUi(self, GalleryDialog):
         GalleryDialog.setWindowTitle(QCoreApplication.translate("GalleryDialog", u"Dialog", None))
-        self.pushButton.setText(QCoreApplication.translate("GalleryDialog", u"PushButton", None))
+        self.pushButton.setText(QCoreApplication.translate("GalleryDialog", u"Launch another dialog with PyQt5", None))
 #if QT_CONFIG(shortcut)
         self.pushButton.setShortcut(QCoreApplication.translate("GalleryDialog", u"Ctrl+H, Ctrl+G, Ctrl+D", None))
 #endif // QT_CONFIG(shortcut)
