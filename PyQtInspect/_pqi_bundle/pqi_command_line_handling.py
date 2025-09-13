@@ -32,11 +32,12 @@ class ArgOutputterBool:
     def __init__(self, arg_name, default_val=False):
         self.arg_name = arg_name
         self.arg_v_rep = '--%s' % (arg_name,)
+        # I think the default value is usually False...
         self.default_val = default_val
 
     def to_argv(self, lst, setup):
         v = setup.get(self.arg_name)
-        if v:
+        if v or self.default_val:
             lst.append(self.arg_v_rep)
 
 
@@ -93,20 +94,10 @@ class ArgHandlerWithParam(ArgOutputterWithParam):
         del argv[i]
 
 
-class ArgHandlerBool:
-    '''
+class ArgHandlerBool(ArgOutputterBool):
+    """
     If a given flag is received, mark it as 'True' in setup.
-    '''
-
-    def __init__(self, arg_name, default_val=False):
-        self.arg_name = arg_name
-        self.arg_v_rep = '--%s' % (arg_name,)
-        self.default_val = default_val
-
-    def to_argv(self, lst, setup):
-        v = setup.get(self.arg_name)
-        if v:
-            lst.append(self.arg_v_rep)
+    """
 
     def handle_argv(self, argv, i, setup):
         assert argv[i] == self.arg_v_rep
