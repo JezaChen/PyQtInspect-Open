@@ -14,7 +14,7 @@ from PyQtInspect._pqi_bundle.pqi_contants import (
     IS_PY311_OR_GREATER
 )
 
-PYTHON_NAMES = ['python', 'jython', 'pypy']
+PYTHON_NAMES = ['python', 'jython', 'pypy', 'python3']
 
 # ===============================================================================
 # Things that are dependent on having the pydevd debugger
