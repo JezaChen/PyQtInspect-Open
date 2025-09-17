@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Created on 2018年1月29日
+Created on January 29, 2018
 @author: Irony
 @site: https://pyqt.site , https://github.com/PyQt5
 @email: 892768447@qq.com

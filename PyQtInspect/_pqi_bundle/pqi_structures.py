@@ -25,8 +25,8 @@ class QWidgetInfo:
     pos: tuple
 
     # === PARENTS ===
-    # 之所以拆分成两个列表, 是为了减少传输的JSON数据量
-    # TODO: 评估下, 使用嵌套dataclass? namedtuple?
+    # Split into two lists to reduce the size of the JSON payload.
+    # TODO: Evaluate using nested dataclasses or namedtuples.
     # The parent classes of the QWidget.
     parent_classes: list
 

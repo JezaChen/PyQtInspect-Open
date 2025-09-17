@@ -189,11 +189,11 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
                 self.run = self._pqi_exec_run
             else:
                 # MUST ADD PREFIX '_pqi_' to the method name, otherwise it will cause infinite recursion
-                # 如果使用和pydevd相同的变量名
-                # 则根据继承关系 QThead的子类 -> QThreadWrapper in pqi -> QThreadWrapper in pydevd -> QThread
-                # pqi中的self._pqi_original_run会指向pydevd中的self.run,
-                # 而此时self.run已经被pqi中的self._pqi_new_run(in pqi!!! pqi层的QThreadWrapper同名方法覆盖了pydevd层的方法)替换
-                # 因此会无限递归pqi层面的QThreadWrapper的self._pqi_new_run方法
+                # If we use the same variable names as pydevd,
+                # the inheritance chain becomes: QThread subclass -> QThreadWrapper in PyQtInspect -> QThreadWrapper in pydevd -> QThread.
+                # In that case, self._pqi_original_run in PyQtInspect would point to pydevd's self.run,
+                # but self.run has already been replaced by PyQtInspect's self._pqi_new_run (the PyQtInspect-level QThreadWrapper overrides the method in pydevd),
+                # leading the PyQtInspect QThreadWrapper to recurse infinitely into self._pqi_new_run.
                 self._pqi_original_run = self.run
                 self.run = self._pqi_new_run
             self._original_started = self.started
@@ -274,13 +274,14 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
             if self._pqi_original_program is None or self._pqi_original_arguments is None:
                 # If the QProcess instance is reused, we need to restore the original program and arguments
                 # todo
-                # 如果复用, 则必须调用start、startDetached、open方法, 这种时候self._pqi_original_arguments都不会为None
-                # 且 self._pqi_original_program 和 self._pqi_original_arguments 可保证是原始的参数
-                # (都拦截到了, 且method3的调用前需要setProgram和setArguments方法)
+                # If the QProcess instance is reused, it must have invoked start, startDetached, or open,
+                # so self._pqi_original_arguments will never be None.
+                # In that scenario, self._pqi_original_program and self._pqi_original_arguments are guaranteed to hold the original parameters
+                # because we intercept them, and method3 requires setProgram and setArguments to be called beforehand.
                 #
-                # 没有复用，method3的调用有两个前提情况
-                # 前面调用过setProgram、setArguments方法: self._pqi_original_program和self._pqi_original_arguments都不为None
-                # 没有调用: 则self._pqi_original_program和self._pqi_original_arguments都为None, 这里会调用原始的program和arguments方法
+                # Without reuse, method3 has two prerequisite situations:
+                # - If setProgram and setArguments were called earlier, both self._pqi_original_program and self._pqi_original_arguments are not None.
+                # - If they were not called, both attributes remain None, and we fall back to the original program and arguments methods here.
                 self._pqi_original_program = self._pqi_original_program_method()
                 self._pqi_original_arguments = self._pqi_original_arguments_method()
             arguments = [self._pqi_original_program] + self._pqi_original_arguments

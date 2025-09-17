@@ -42,9 +42,9 @@ class Dispatcher(QtCore.QThread):
         self.reader = None
         self.writer = None
 
-        # 由于dispatcher刚创建的时候, 主界面还来不及处理立即到来的信息(PQYWorker未发出新dispatcher创建的信号)
-        # 所以需要在主界面准备好之后再处理
-        # 此前的消息都缓存起来
+        # When the dispatcher is just created, the main UI may not yet be ready to process the incoming messages
+        # (PQYWorker has not emitted the signal that a new dispatcher is available).
+        # Buffer messages until the main UI is ready.
         self._mainUIReady = False
         self._msg_buffer = []
 
