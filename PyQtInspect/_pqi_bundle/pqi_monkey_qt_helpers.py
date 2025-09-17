@@ -70,11 +70,11 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             debugger.register_widget(widget)
 
     def _createHighlightFg(parent: QtWidgets.QWidget):
-        # 先new再调用之前的__init__
+        # Instantiate with __new__ first, then invoke the original __init__.
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
         QtWidgets.QWidget._original_QWidget_init(widget, parent)
         widget.setFixedSize(*get_widget_size(parent))
-        # 不要响应鼠标事件
+        # Prevent it from responding to mouse events.
         widget.setAttribute(WidgetAttributeEnum.WA_TransparentForMouseEvents)
         widget.setObjectName(_PQI_HIGHLIGHT_FG_NAME)
         widget.setStyleSheet("background-color: rgba(255, 0, 0, 0.2);")
@@ -192,17 +192,17 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 return
 
             if _entered_widget_stack:
-                # 如果栈顶有元素, 则取消掉栈顶元素的选择状态
-                # 否则QTabWidget会表现异常
-                # todo 看看能不能集成在栈上, 毕竟两者强关联
+                # If the stack has elements, clear the selected state of the widget on top.
+                # Otherwise QTabWidget behaves abnormally.
+                # TODO: Investigate whether this logic can be integrated into the stack, as they are tightly coupled.
                 _clear_obj_inspected_mark(_entered_widget_stack[-1])
             _entered_widget_stack.push(obj)
             _inspect_top(_entered_widget_stack)
 
         def _handleLeaveEvent(self, obj, event):
-            # 注意这个不对称
-            # 因为leaveEvent是在鼠标离开时触发的, 但是鼠标离开时, 有可能鼠标已经进入了下一个widget
-            # 所以不能直接pop
+            # Note the asymmetry:
+            # leaveEvent is triggered when the cursor leaves, but at that moment it may already have entered the next widget,
+            # so we cannot simply pop.
             if not _is_inspect_enabled():
                 return
 
@@ -217,7 +217,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             _inspect_top(_entered_widget_stack)
 
         def _handleMouseReleaseEvent(self, obj, event) -> bool:
-            """ 处理鼠标点击事件, 这里需要返回一个bool值, 表示是否拦截事件 """
+            """Handle mouse click events and return whether to intercept them."""
             if not _is_inspect_enabled():
                 return False
 
@@ -225,8 +225,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             if not _is_obj_inspected(obj):
                 return False
 
-            # 自己通过postEvent发出的事件, 不处理
-            # 不使用event.spontaneous()判断, 因为对于QTextBrowser的点击事件, spontaneous()返回False
+            # Ignore events posted by ourselves.
+            # Do not rely on event.spontaneous(), because for QTextBrowser click events it returns False.
             if getattr(event, _PQI_MOCKED_EVENT_ATTR, False):
                 return False
 
@@ -238,13 +238,14 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     # First, send a mouse press event
                     pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(),
                                                      MouseButtonEnum.LeftButton)
-                    # 使用postEvent传播事件, 而不是直接调用obj.mousePressEvent, 以便其他的eventFilter能够接收到这个事件
+                    # Propagate the event with postEvent instead of calling obj.mousePressEvent directly,
+                    # so that other event filters can receive it.
                     QtCore.QCoreApplication.postEvent(obj, pressEvent)
 
                     # Then, change the original event and send it again
                     event = _create_mouse_event(EventEnum.MouseButtonRelease, event.pos(), MouseButtonEnum.LeftButton)
                     setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
-                    # Similarly, to allow subsequent eventFilters to receive the mouse event, we use postEvent to propagate the event again
+                    # Similarly, propagate the event again via postEvent so that subsequent event filters can process it.
                     QtCore.QCoreApplication.postEvent(obj, event)
                     # stop event propagation
                     return True
@@ -282,8 +283,9 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             if not _is_obj_inspected(obj):
                 return False
             # obj.mousePressEvent(event)
-            # 对于当前被检查的控件, 阻止MousePress事件传播
-            # 防止点击后某些eventFilter在处理MousePress事件时使得inspect的控件改变, 导致后续的MouseRelease事件处理不正常
+            # For the widget currently under inspection, block MousePress propagation.
+            # This prevents other event filters from changing the inspected widget during MousePress handling,
+            # which would disrupt the subsequent MouseRelease processing.
             return True
 
         def _handleCustomEvent(self, obj, event):
@@ -596,8 +598,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
             widgetsToPatch.extend(widget.findChildren(QtWidgets.QWidget))
 
-    # 对于PyQt, 仅需patch基类QWidget即可
-    # 但对于PySide, 则需要给所有的QWidget子类都打上补丁
+    # For PyQt, patching the base QWidget class is sufficient.
+    # For PySide, every QWidget subclass needs to be patched.
     classesToPatch = QtWidgetClasses if qt_support_mode.startswith('pyside') else ['QWidget']
 
     for widgetClsName in classesToPatch:
