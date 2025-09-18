@@ -55,16 +55,19 @@ PyQtInspect also supports [running in IDEs like PyCharm](#341-run-pyqtinspect-in
 
 This **recommended** one-step method launches both the PyQtInspect server and client together. It requires full access to the Python source code of the debugged program.
 
-If you normally run your **PyQt5** app via `python xxx.py param1 param2`, simply insert `-m PyQtInspect --direct --file` between `python` and `xxx.py`, i.e.:
+If you normally run your app via `python xxx.py param1 param2`, simply insert `-m PyQtInspect --direct --file` between `python` and `xxx.py`, i.e.:
 `python -m PyQtInspect --direct --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
-If the app uses **PySide2/PyQt6/PySide6**, you **must also add the `--qt-support` option** to specify the Qt framework. For example, for PySide2 you should use:
+**✨ New in v0.4.1: Automatic Qt Framework Detection**  
+PyQtInspect now **automatically detects** which Qt framework your application uses (PyQt5, PyQt6, PySide2, or PySide6). You no longer need to specify `--qt-support` in most cases! The tool will detect and patch the appropriate framework when your app imports it.
+
+If you need to override the auto-detection, you can still manually specify the framework:
 `python -m PyQtInspect --direct --qt-support=pyside2 --file xxx.py param1 param2`.
 
 For Direct Mode, the full command is:
 
 ```powershell
-python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
+python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[auto|pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
 ```
 
 Parameter meanings:
@@ -72,13 +75,14 @@ Parameter meanings:
 * `--direct`: Use **Direct Mode**
 * `--multiprocess`: Enable **multi-process debugging** (off by default)
 * `--show-pqi-stack`: Show call stacks related to PyQtInspect (hidden by default)
-* `--qt-support`: Qt framework used by the target app, default `pyqt5`; choose from `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
+* `--qt-support`: Qt framework used by the target app, default `auto` (auto-detection); choose from `auto`, `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the debuggee
 
-For example, to debug the PySide2 version of [`PyQt-Fluent-Widgets`][1], whose demo runs via
-`python examples/gallery/demo.py`, you can use:
-`python -m PyQtInspect --direct --qt-support=pyside2 --file examples/gallery/demo.py` to launch PyQtInspect in Direct Mode.
+For example, to debug [`PyQt-Fluent-Widgets`][1], whose demo runs via
+`python examples/gallery/demo.py`, you can now simply use:
+`python -m PyQtInspect --direct --file examples/gallery/demo.py` to launch PyQtInspect in Direct Mode.
+**The Qt framework will be automatically detected** whether it's PyQt5, PyQt6, PySide2, or PySide6!
 
 > Note: When using PyCharm or other IDEs that rely on the pydevd debugger, **ensure the IDE’s [‘PyQt compatible’ option][4] matches the Qt framework used by your project**, otherwise PyQtInspect may not work correctly or could crash the program.
 
@@ -96,16 +100,16 @@ Run `pqi-server` in a terminal to launch the server GUI. After launch, set the l
 
 Prerequisite: You must have the target program’s Python source.
 
-Similar to Direct Mode, if you run a **PyQt5** app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py`, i.e.:
+Similar to Direct Mode, if you run your app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py`, i.e.:
 `python -m PyQtInspect --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
-Likewise, for **PySide2/PyQt6/Pyside6**, **also add `--qt-support`** to specify the framework. For example, for PySide2:
+**✨ Auto-Detection**: Just like in Direct Mode, PyQtInspect will **automatically detect** your Qt framework. You can still override with `--qt-support` if needed:
 `python -m PyQtInspect --qt-support=pyside2 --file xxx.py param1 param2`.
 
 For Detached Mode, the full command is:
 
 ```powershell
-python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
+python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[auto|pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
 ```
 
 Parameter meanings:
@@ -114,12 +118,12 @@ Parameter meanings:
 * `--client`: Server address (default `127.0.0.1`)
 * `--multiprocess`: Enable **multi-process debugging** (off by default)
 * `--show-pqi-stack`: Show call stacks related to PyQtInspect (hidden by default)
-* `--qt-support`: Qt framework used by the target app, default `pyqt5`; choose from `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
+* `--qt-support`: Qt framework used by the target app, default `auto` (auto-detection); choose from `auto`, `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the target app
 
-Again using the PySide2 version of [`PyQt-Fluent-Widgets`][1] as an example: if the GUI debugger is already running locally (address `127.0.0.1`) on the default port `19394`, you can start the client with
-`python -m PyQtInspect --qt-support=pyside2 --file examples/gallery/demo.py`.
+Again using [`PyQt-Fluent-Widgets`][1] as an example: if the GUI debugger is already running locally (address `127.0.0.1`) on the default port `19394`, you can start the client with
+`python -m PyQtInspect --file examples/gallery/demo.py`.
 (Here the server address and port are defaults, so you don’t need to pass `--client` or `--port`.)
 
 > Note: When using PyCharm or other IDEs that rely on the pydevd debugger, make sure the IDE’s [‘PyQt compatible’ option][4] matches your project’s framework, otherwise PyQtInspect may not work correctly or could crash the program.
@@ -142,7 +146,7 @@ If you **don’t have the target app’s source**, you can **try** enabling insp
 
 Click **More → Attach To Process** to open the attach window, choose the target process, then click **Attach**.
 
-**Note:** For most controls, you **cannot retrieve their creation call stacks** unless they were created **after** you attached.
+**Note:** For most controls, you **cannot retrieve their creation call stacks** unless they were created **after** you attached. Also, **auto-detection of Qt frameworks is not supported in attach mode** - you must specify the framework manually if it's not PyQt5.
 
 ![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/attach_process.gif?raw=true)
 
@@ -219,6 +223,13 @@ Click (or hover) a row in the tree to highlight the corresponding control.
     which may cause crash when accessing the `propertyName` method.
 
 ## 6. Changelog
+
+### 0.4.1
+
+* **🎉 Auto-Detection Support**: PyQtInspect now automatically detects which Qt framework (PyQt5, PyQt6, PySide2, PySide6) your application uses
+* The `--qt-support` parameter now defaults to `auto` instead of `pyqt5`
+* Simplified command line usage - no need to specify `--qt-support` for most applications
+* Improved cross-framework compatibility for applications that spawn child processes with different Qt frameworks
 
 ### 0.4.0
 
