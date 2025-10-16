@@ -5,24 +5,71 @@
 # Description: 
 # ==============================================
 import sys
+import typing
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-settingsFile = "settings.ini"
-
-setting = QtCore.QSettings(settingsFile, QtCore.QSettings.IniFormat)
-setting.setIniCodec("UTF-8")
-
 _PYCHARM_EXECUTABLE_NAMES = ["pycharm64.exe", "pycharm.exe", "pycharm"]
 
-
-def getPyCharmPath():
-    return setting.value("PyCharmPath", "")
+T = typing.TypeVar("T")
 
 
-def setPyCharmPath(path: str):
-    setting.setValue("PyCharmPath", path)
-    setting.sync()
+class SettingField:
+    def __init__(self, key: str, type_: typing.Type[T], default: T):
+        self.key = key  # type: str
+        self.type_ = type_  # type: typing.Type[T]
+        self.default = default  # type: T
+
+    def __get__(self, instance: 'SettingsController', owner) -> T:
+        if instance is None:
+            return self  # type: ignore
+        return instance._getValue(self.key, self.type_, self.default)
+
+    def __set__(self, instance: 'SettingsController', value: T):
+        instance._setValue(self.key, value)
+
+    def __delete__(self, instance: 'SettingsController'):
+        instance._removeValue(self.key)
+
+
+class SettingsController:
+    _filePath = "settings.ini"
+
+    class SettingsKeys:
+        PyCharmPath = "PyCharmPath"
+        AlwaysOnTop = "AlwaysOnTop"
+        PressF8ToFinishSelecting = "PressF8ToFinishSelecting"
+        MockRightClickAsLeftClick = "MockRightClickAsLeftClick"
+
+    __slots__ = ('_setting',)
+
+    _instance = None
+
+    @classmethod
+    def instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        self._setting = QtCore.QSettings(self._filePath, QtCore.QSettings.IniFormat)
+        self._setting.setIniCodec("UTF-8")
+
+    def _getValue(self, key: str, type_: typing.Type[T], default: T):
+        return self._setting.value(key, default, type_)
+
+    def _setValue(self, key: str, value):
+        self._setting.setValue(key, value)
+        self._setting.sync()
+
+    def _removeValue(self, key: str):
+        self._setting.remove(key)
+        self._setting.sync()
+
+    pyCharmPath = SettingField(SettingsKeys.PyCharmPath, str, "")
+    alwaysOnTop = SettingField(SettingsKeys.AlwaysOnTop, bool, False)
+    pressF8ToFinishSelecting = SettingField(SettingsKeys.PressF8ToFinishSelecting, bool, True)
+    mockRightClickAsLeftClick = SettingField(SettingsKeys.MockRightClickAsLeftClick, bool, True)
 
 
 def findDefaultPycharmPath():

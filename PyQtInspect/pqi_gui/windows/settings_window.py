@@ -6,12 +6,12 @@
 # ==============================================
 import os
 
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
 
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
+from PyQtInspect.pqi_gui.settings import findDefaultPycharmPath, SettingsController
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 
 
@@ -84,7 +84,7 @@ class SettingWindow(QtWidgets.QDialog):
         self._mainLayout.addSpacing(4)
 
         self._pycharmPathLine = PycharmPathSettingLineEdit(self)
-        pycharmPathInSettings = getPyCharmPath()
+        pycharmPathInSettings = SettingsController.instance().pyCharmPath
         if not pycharmPathInSettings:
             pycharmPathInSettings = findDefaultPycharmPath()
         self._pycharmPathLine.setValue(pycharmPathInSettings)
@@ -114,9 +114,10 @@ class SettingWindow(QtWidgets.QDialog):
 
     def saveSettings(self):
         if self._pycharmPathLine.isValueValid():
-            setPyCharmPath(self._pycharmPathLine.getValue())
+            SettingsController.instance().pyCharmPath = self._pycharmPathLine.getValue()
         else:
             QtWidgets.QMessageBox.critical(self, "Error", "Invalid PyCharm Path")
+            self._pycharmPathLine.clearValue()
             return
 
         self.close()

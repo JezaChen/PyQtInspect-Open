@@ -1,7 +1,7 @@
 import os
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQtInspect.pqi_gui.settings import getPyCharmPath, findDefaultPycharmPath, setPyCharmPath
+from PyQtInspect.pqi_gui.settings import findDefaultPycharmPath, SettingsController
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -45,11 +45,11 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
                     ...
 
     def findPycharm(self):
-        pycharmPath = getPyCharmPath()
+        pycharmPath = SettingsController.instance().pyCharmPath
         if not pycharmPath:
             pycharmPath = findDefaultPycharmPath()
             if pycharmPath:
-                setPyCharmPath(pycharmPath)
+                SettingsController.instance().pyCharmPath = pycharmPath
         return pycharmPath
 
     def openFile(self, fileName: str, lineNo: int):

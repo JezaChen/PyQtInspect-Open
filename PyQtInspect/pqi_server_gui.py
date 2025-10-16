@@ -10,6 +10,8 @@ import typing
 import argparse
 import json
 
+from PyQtInspect.pqi_gui.settings import SettingsController
+
 # ↑ DO NOT import PyQtInspect-specific modules before inserting the module path into sys.path.
 
 # Ensure the ``PyQtInspect`` module is in the sys.path
@@ -106,36 +108,44 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._alwaysOnTopAction = QtWidgets.QAction(self)
         self._alwaysOnTopAction.setText("Always on Top")
         self._alwaysOnTopAction.setCheckable(True)
-        self._alwaysOnTopAction.setChecked(False)  # default
+        self._alwaysOnTopAction.setChecked(SettingsController.instance().alwaysOnTop)  # default
+        # Don't need to write the setting when initializing, because the initial value is loaded from the setting
+        self._setAlwaysOnTop(self._alwaysOnTopAction.isChecked())
         # Use trigger instead of toggled
         # because the toggled signal will be emitted when the `setChecked` method in the code is called
-        self._alwaysOnTopAction.triggered.connect(self._onAlwaysOnTopActionToggled)
+        self._alwaysOnTopAction.toggled.connect(self._onAlwaysOnTopActionToggled)
         self._moreMenu.addAction(self._alwaysOnTopAction)
 
         # Press F8 to Disable Inspect Action
         self._keyboardHookHandler = KeyboardHookHandler(self)
 
-        self._pressF8ToDisableInspectAction = QtWidgets.QAction(self)
-        self._pressF8ToDisableInspectAction.setText("Press F8 to Finish Selecting")
-        self._pressF8ToDisableInspectAction.setCheckable(True)
-        self._pressF8ToDisableInspectAction.setEnabled(self._keyboardHookHandler.isValid())
-        self._pressF8ToDisableInspectAction.setChecked(self._keyboardHookHandler.isValid())  # default
+        self._pressF8ToFinishSelectingAction = QtWidgets.QAction(self)
+        self._pressF8ToFinishSelectingAction.setText("Press F8 to Finish Selecting")
+        self._pressF8ToFinishSelectingAction.setCheckable(True)
+        self._pressF8ToFinishSelectingAction.setEnabled(self._keyboardHookHandler.isValid())
+        self._pressF8ToFinishSelectingAction.setChecked(
+            self._keyboardHookHandler.isValid() and SettingsController.instance().pressF8ToFinishSelecting
+        )  # default
+        # Init the enabled status of keyboard hook handler
+        self._keyboardHookHandler.setEnable(self._pressF8ToFinishSelectingAction.isChecked())
+
         # --- Connect Signals ---
         # main gui -> keyboard hook handler
         self._sigInspectBegin.connect(self._keyboardHookHandler.onInspectBegin)
         self._sigInspectFinished.connect(self._keyboardHookHandler.onInspectFinished)
         self._sigInspectDisabled.connect(self._keyboardHookHandler.onInspectDisabled)
-        self._pressF8ToDisableInspectAction.toggled.connect(self._keyboardHookHandler.setEnable)
+        self._pressF8ToFinishSelectingAction.toggled.connect(self._onPressF8ToFinishSelectingToggled)
         # keyboard hook handler -> main gui
         self._keyboardHookHandler.sigDisableInspectKeyPressed.connect(self._onInspectKeyPressed)
 
-        self._moreMenu.addAction(self._pressF8ToDisableInspectAction)
+        self._moreMenu.addAction(self._pressF8ToFinishSelectingAction)
 
         # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
         self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left When Selecting Elements")
         self._isMockLeftButtonDownAction.setCheckable(True)
-        self._isMockLeftButtonDownAction.setChecked(True)  # default
+        self._isMockLeftButtonDownAction.setChecked(SettingsController.instance().mockRightClickAsLeftClick)  # default
+        self._isMockLeftButtonDownAction.toggled.connect(self._onMockLeftButtonDownToggled)
         self._moreMenu.addAction(self._isMockLeftButtonDownAction)
 
         # Attach Action
@@ -325,6 +335,9 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _onAlwaysOnTopActionToggled(self, checked: bool):
         self._setAlwaysOnTop(checked)
+
+        # save the setting
+        SettingsController.instance().alwaysOnTop = checked
     # endregion
 
     # region -- For Serve Button --
@@ -656,6 +669,11 @@ class PQIWindow(QtWidgets.QMainWindow):
     # endregion
 
     # region Inspect hotkey
+    def _onPressF8ToFinishSelectingToggled(self, checked: bool):
+        self._keyboardHookHandler.setEnable(checked)
+        # save the setting
+        SettingsController.instance().pressF8ToFinishSelecting = checked
+
     def _onInspectKeyPressed(self):
         """Stop inspection when the stop-inspect hotkey is pressed."""
         self._selectButton.setChecked(False)
@@ -663,6 +681,12 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _finishInspectWhenKeyPress(self):
         self._finishInspectProactively()
+    # endregion
+
+    # region Mock right button clicked as left
+    def _onMockLeftButtonDownToggled(self, checked: bool):
+        # save the setting
+        SettingsController.instance().mockRightClickAsLeftClick = checked
     # endregion
 
     def closeEvent(self, a0):
