@@ -111,8 +111,6 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._alwaysOnTopAction.setChecked(SettingsController.instance().alwaysOnTop)  # default
         # Don't need to write the setting when initializing, because the initial value is loaded from the setting
         self._setAlwaysOnTop(self._alwaysOnTopAction.isChecked())
-        # Use trigger instead of toggled
-        # because the toggled signal will be emitted when the `setChecked` method in the code is called
         self._alwaysOnTopAction.toggled.connect(self._onAlwaysOnTopActionToggled)
         self._moreMenu.addAction(self._alwaysOnTopAction)
 
