@@ -7,7 +7,7 @@
 import os
 import typing
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 from PyQtInspect.pqi_gui._pqi_res import get_icon
@@ -58,15 +58,17 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         self._idePathLineEdit.setFixedHeight(32)
         self._idePathLayout.addWidget(self._idePathLineEdit)
 
-        self._idePathButton = QtWidgets.QPushButton("Browse...", self)
-        self._idePathButton.setFixedHeight(30)
-        self._idePathButton.clicked.connect(self._selectIDEPath)
-        self._idePathLayout.addWidget(self._idePathButton)
+        self._browseActionIcon = QtGui.QIcon(":/icons/open_file.svg")
+        self._browseAction = QtWidgets.QAction(self._browseActionIcon, "Browse...", self)
+        self._browseAction.setToolTip("Browse...")
+        self._browseAction.triggered.connect(self._selectIDEPath)
+        self._idePathLineEdit.addAction(self._browseAction, QtWidgets.QLineEdit.TrailingPosition)
 
-        self._autoDetectButton = QtWidgets.QPushButton("Auto Detect", self)
-        self._autoDetectButton.setFixedHeight(30)
-        self._autoDetectButton.clicked.connect(self._autoDetectIDEPath)
-        self._idePathLayout.addWidget(self._autoDetectButton)
+        self._autoDetectActionIcon = QtGui.QIcon(":/icons/detect.svg")
+        self._autoDetectAction = QtWidgets.QAction(self._autoDetectActionIcon, "Auto Detect", self)
+        self._autoDetectAction.setToolTip("Auto Detect the IDE Path")
+        self._autoDetectAction.triggered.connect(self._autoDetectIDEPath)
+        self._idePathLineEdit.addAction(self._autoDetectAction, QtWidgets.QLineEdit.TrailingPosition)
 
         self._mainLayout.addWidget(self._idePathWidget)
 
@@ -91,7 +93,7 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         """ Update visibility of IDE path controls based on selected IDE type """
         ideType = self.getIDEType()
         self._idePathWidget.setVisible(ideType != SupportedIDE.NoneType)
-        self._autoDetectButton.setVisible(ideType not in (SupportedIDE.NoneType, SupportedIDE.Custom))
+        self._autoDetectAction.setVisible(ideType not in (SupportedIDE.NoneType, SupportedIDE.Custom))
 
     def _updateCustomCommandParametersControlsVisibility(self):
         """ Update visibility of custom command input based on selected IDE type """
