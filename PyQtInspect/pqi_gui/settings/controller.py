@@ -35,7 +35,6 @@ class SettingsController:
     _filePath = "settings.ini"
 
     class SettingsKeys:
-        PyCharmPath = "PyCharmPath"
         AlwaysOnTop = "AlwaysOnTop"
         PressF8ToFinishSelecting = "PressF8ToFinishSelecting"
         MockRightClickAsLeftClick = "MockRightClickAsLeftClick"
@@ -70,7 +69,6 @@ class SettingsController:
         self._setting.remove(key)
         self._setting.sync()
 
-    pyCharmPath = SettingField(SettingsKeys.PyCharmPath, str, "")
     alwaysOnTop = SettingField(SettingsKeys.AlwaysOnTop, bool, False)
     pressF8ToFinishSelecting = SettingField(SettingsKeys.PressF8ToFinishSelecting, bool, True)
     mockRightClickAsLeftClick = SettingField(SettingsKeys.MockRightClickAsLeftClick, bool, True)
