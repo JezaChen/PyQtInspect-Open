@@ -31,3 +31,6 @@ class SimpleSettingLineEdit(QtWidgets.QWidget):
 
     def getValue(self) -> str:
         return self._valueLineEdit.text()
+
+    def clearValue(self):
+        self._valueLineEdit.clear()
