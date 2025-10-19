@@ -109,7 +109,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._alwaysOnTopAction.setText("Always on Top")
         self._alwaysOnTopAction.setCheckable(True)
         self._alwaysOnTopAction.setChecked(SettingsController.instance().alwaysOnTop)  # default
-        # Don't need to write the setting when initializing, because the initial value is loaded from the setting
+        # Initial value is loaded from settings, so no write is needed during initialization
         self._setAlwaysOnTop(self._alwaysOnTopAction.isChecked())
         self._alwaysOnTopAction.toggled.connect(self._onAlwaysOnTopActionToggled)
         self._moreMenu.addAction(self._alwaysOnTopAction)

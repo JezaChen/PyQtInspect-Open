@@ -113,7 +113,7 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         if not currentPath:
             currentPath = ""
 
-        if IS_WINDOWS:  # Windows
+        if IS_WINDOWS:
             fileFilter = "Executable Files (*.exe, *.cmd);;All Files (*.*)"
         else:
             fileFilter = "All Files (*)"
