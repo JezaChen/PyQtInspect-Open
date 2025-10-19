@@ -3,9 +3,11 @@ import os
 import typing
 import subprocess
 import sys
+import shlex
 
 from PyQtInspect.pqi_gui.settings import SettingsController
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
 
 __all__ = [
     'SupportedIDE',
@@ -158,7 +160,7 @@ def _find_default_ide_path_helper(
     return ''
 
 
-def _construct_ide_jump_command(file: str, line: int) -> str:
+def _construct_ide_jump_command(file: str, line: int) -> typing.List[str]:
     # Get the IDE info from settings
     ide_type = SupportedIDE(SettingsController.instance().ideType)
 
@@ -166,15 +168,20 @@ def _construct_ide_jump_command(file: str, line: int) -> str:
         raise RuntimeError('You have not configured an IDE for jumping.')
 
     if ide_type == SupportedIDE.Custom:
-        args = SettingsController.instance().ideParameters  # type: str
-        args = args.replace('{file}', file).replace('{line}', str(line))
-        return f'"{SettingsController.instance().idePath}" {args}'
+        parameters_template = SettingsController.instance().ideParameters  # type: str
+        split_parameters = shlex.split(
+            parameters_template,
+            posix=os.name != 'nt'
+        )
+        command_parameters = [
+            parameter.replace('{file}', file).replace('{line}', str(line))
+            for parameter in split_parameters
+        ]
+        return [SettingsController.instance().idePath, *command_parameters]
 
     helper = IDEJumpHelper.get_jump_helper(ide_type)
     # use pre-defined parameters
-    cmd_parts = [f'"{SettingsController.instance().idePath}"']
-    cmd_parts.extend(helper.get_command_parameters(file, line))
-    return ' '.join(cmd_parts)
+    return [SettingsController.instance().idePath, *helper.get_command_parameters(file, line)]
 
 
 # region Public APIs
@@ -188,10 +195,17 @@ def jump_to_ide(file: str, line: int):
 
     jump_command = _construct_ide_jump_command(file, line)
     try:
-        subprocess.Popen(jump_command, shell=True)
+        subprocess.Popen(jump_command)
     except Exception as e:
         # raise an error if the jump fails
-        raise RuntimeError(f'Failed to jump to IDE with command: {jump_command}') from e
+        if IS_WINDOWS:
+            # The subprocess.list2cmdline is Windows-specific
+            command_display = subprocess.list2cmdline(jump_command)
+        else:
+            command_display = ' '.join(shlex.quote(part) for part in jump_command)
+        raise RuntimeError(
+            f'Failed to jump to IDE with command: {command_display}'
+        ) from e
 
 
 def find_default_ide_path(ide_type: SupportedIDE) -> str:
