@@ -27,7 +27,35 @@ similar to Chrome's element inspector.
 
 ## 2. Installation
 
+### 2.1 Install from PyPI
+
 Install with `pip install PyQtInspect`.
+
+### 2.2 Install from Source
+
+If you want to experience the latest features introduced in the master branch as soon as possible,
+you can install from git or download the source ZIP package and install after extraction:
+
+**Install from Git:**
+```bash
+pip install git+https://github.com/JezaChen/PyQtInspect-Open.git
+```
+
+> ⚠️ **Note:** Installing directly from the default branch is not reproducible. For deterministic installs, pin to a specific tag or commit.
+> ```
+> # pin to a specific tag
+> pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@v0.4.0
+> # or pin to a specific commit
+> pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@<commit-sha>
+> ```
+
+**Install from Source ZIP:**
+1. Download [the source ZIP package](https://github.com/JezaChen/PyQtInspect-Open/archive/refs/heads/master.zip)
+2. Extract the ZIP package to a local directory
+3. Navigate to the extracted directory and run:
+```bash
+pip install .
+```
 
 ## 3. How to start
 
