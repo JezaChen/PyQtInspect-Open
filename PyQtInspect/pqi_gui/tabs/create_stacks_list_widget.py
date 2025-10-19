@@ -1,7 +1,7 @@
 import os
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQtInspect.pqi_gui.settings import findDefaultPycharmPath, SettingsController
+from PyQtInspect.pqi_gui.settings.ide_jumpers import jump_to_ide
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
@@ -44,24 +44,11 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
                     # todo add a dialog to ask user to map the file
                     ...
 
-    def findPycharm(self):
-        pycharmPath = SettingsController.instance().pyCharmPath
-        if not pycharmPath:
-            pycharmPath = findDefaultPycharmPath()
-            if pycharmPath:
-                SettingsController.instance().pyCharmPath = pycharmPath
-        return pycharmPath
-
     def openFile(self, fileName: str, lineNo: int):
-        # open in Pycharm
-        import subprocess
-        pycharm = self.findPycharm()
-        if pycharm:
-            try:
-                subprocess.Popen(f'"{pycharm}" --line {lineNo} "{fileName}"', shell=True)
-            except Exception as e:
-                # message box
-                QtWidgets.QMessageBox.critical(self, "Error", f"Error occurred when opening file: {e}")
-        else:
-            QtWidgets.QMessageBox.critical(self, "Error", "Pycharm not found")
-        # subprocess.Popen(f"pycharm64.exe --line {lineNo} {fileName}")
+        # open in IDE
+        try:
+            jump_to_ide(fileName, lineNo)
+        except Exception as e:
+            # message box
+            QtWidgets.QMessageBox.critical(self, "Error", f"{e}")
+
