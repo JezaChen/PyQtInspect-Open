@@ -9,7 +9,7 @@ import typing
 
 from PyQt5 import QtWidgets, QtCore
 
-from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 
 from PyQtInspect.pqi_gui.settings import SettingsController
@@ -191,7 +191,10 @@ class SettingWindow(QtWidgets.QDialog):
         self.setMinimumWidth(600)
 
         self._mainLayout = QtWidgets.QVBoxLayout(self)
-        self._mainLayout.setContentsMargins(5, 10, 5, 0)
+        top_margin = 10
+        if IS_MACOS:
+            top_margin = 30
+        self._mainLayout.setContentsMargins(5, top_margin, 5, 0)
         self._mainLayout.setSpacing(5)
         self._mainLayout.addSpacing(4)
 

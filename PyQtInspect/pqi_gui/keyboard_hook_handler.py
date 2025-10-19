@@ -108,7 +108,7 @@ class WindowsKeyboardHookHandler(KeyboardHookHandler):
 
 class DummyKeyboardHookHandler(KeyboardHookHandler):
     """  For non-windows platform, do nothing. """
-    def _dummy(self): ...
+    def _dummy(self, *_1, **_2): ...
 
     onInspectFinished = onInspectBegin = onInspectDisabled = setEnable = _dummy
 
