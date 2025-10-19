@@ -22,9 +22,9 @@ class IDEJumpHelper(abc.ABC):
     __ide_type_to_helper__: typing.ClassVar[typing.Dict[SupportedIDE, typing.Type['IDEJumpHelper']]] = {}
 
     def __init_subclass__(cls, **kwargs):
-        if not hasattr(cls, '__ide_type__') or cls.__ide_type__ in (SupportedIDE.NoneType, SupportedIDE.Custom):
+        if cls.__ide_type__ in (SupportedIDE.NoneType, SupportedIDE.Custom):
             raise NotImplementedError(
-                'Subclasses of IDEJumpHelper must define __ide_type__ attribute with a valid SupportedIDE value.'
+                'Subclasses of IDEJumpHelper must override __ide_type__ attribute with a valid SupportedIDE value.'
             )
 
         IDEJumpHelper.__ide_type_to_helper__[cls.__ide_type__] = cls

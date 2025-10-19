@@ -19,9 +19,9 @@ class SettingField:
         self.type_ = type_  # type: typing.Type[T]
         self.default = default  # type: T
 
-    def __get__(self, instance: 'SettingsController', owner) -> T:
+    def __get__(self, instance: 'SettingsController', owner):
         if instance is None:
-            return self  # type: ignore
+            return self
         return instance._getValue(self.key, self.type_, self.default)
 
     def __set__(self, instance: 'SettingsController', value: T):
