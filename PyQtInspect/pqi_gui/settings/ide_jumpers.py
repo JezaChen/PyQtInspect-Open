@@ -5,6 +5,7 @@ import subprocess
 import sys
 import shlex
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect.pqi_gui.settings import SettingsController
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
@@ -145,10 +146,12 @@ def _find_default_ide_path_helper(
     if sys.platform == 'win32':
         defaultPath = _find_for_windows()
         if defaultPath:
+            pqi_log.info(f'Found IDE path for {command_name} on Windows: {defaultPath}')
             return defaultPath
     else:
         defaultPath = _find_for_linux()
         if defaultPath:
+            pqi_log.info(f'Found IDE path for {command_name} on Unix-like system: {defaultPath}')
             return defaultPath
 
     # If the above method fails, we can try to find the path from the environment variables
@@ -156,7 +159,9 @@ def _find_default_ide_path_helper(
         for exe_name in executable_names:
             exe_path = os.path.join(path_dir, exe_name)
             if os.path.isfile(exe_path):
+                pqi_log.info(f'Found IDE path for {command_name} from PATH: {exe_path}')
                 return exe_path
+    pqi_log.info(f'Could not find default IDE path for {command_name}.')
     return ''
 
 
@@ -194,7 +199,11 @@ def jump_to_ide(file: str, line: int):
         raise ValueError(f'Invalid line number: {line}')
 
     jump_command = _construct_ide_jump_command(file, line)
+    pqi_log.info(f'Jumping to IDE with command: {jump_command}')
     try:
+        # Use `subprocess.Popen` to launch the IDE asynchronously
+        # We don't wait for the process to complete (`subprocess.run` would wait),
+        #  so we cannot catch errors from the IDE itself.
         subprocess.Popen(jump_command)
     except Exception as e:
         # raise an error if the jump fails

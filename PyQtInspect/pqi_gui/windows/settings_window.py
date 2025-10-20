@@ -7,8 +7,9 @@
 import os
 import typing
 
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 
@@ -58,15 +59,17 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         self._idePathLineEdit.setFixedHeight(32)
         self._idePathLayout.addWidget(self._idePathLineEdit)
 
-        self._idePathButton = QtWidgets.QPushButton("Browse...", self)
-        self._idePathButton.setFixedHeight(30)
-        self._idePathButton.clicked.connect(self._selectIDEPath)
-        self._idePathLayout.addWidget(self._idePathButton)
+        self._browseActionIcon = QtGui.QIcon(":/icons/open_file.svg")
+        self._browseAction = QtWidgets.QAction(self._browseActionIcon, "Browse...", self)
+        self._browseAction.setToolTip("Browse...")
+        self._browseAction.triggered.connect(self._selectIDEPath)
+        self._idePathLineEdit.addAction(self._browseAction, QtWidgets.QLineEdit.TrailingPosition)
 
-        self._autoDetectButton = QtWidgets.QPushButton("Auto Detect", self)
-        self._autoDetectButton.setFixedHeight(30)
-        self._autoDetectButton.clicked.connect(self._autoDetectIDEPath)
-        self._idePathLayout.addWidget(self._autoDetectButton)
+        self._autoDetectActionIcon = QtGui.QIcon(":/icons/detect.svg")
+        self._autoDetectAction = QtWidgets.QAction(self._autoDetectActionIcon, "Auto Detect", self)
+        self._autoDetectAction.setToolTip("Auto Detect the IDE Path")
+        self._autoDetectAction.triggered.connect(self._autoDetectIDEPath)
+        self._idePathLineEdit.addAction(self._autoDetectAction, QtWidgets.QLineEdit.TrailingPosition)
 
         self._mainLayout.addWidget(self._idePathWidget)
 
@@ -91,7 +94,7 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         """ Update visibility of IDE path controls based on selected IDE type """
         ideType = self.getIDEType()
         self._idePathWidget.setVisible(ideType != SupportedIDE.NoneType)
-        self._autoDetectButton.setVisible(ideType not in (SupportedIDE.NoneType, SupportedIDE.Custom))
+        self._autoDetectAction.setVisible(ideType not in (SupportedIDE.NoneType, SupportedIDE.Custom))
 
     def _updateCustomCommandParametersControlsVisibility(self):
         """ Update visibility of custom command input based on selected IDE type """
@@ -228,22 +231,36 @@ class SettingWindow(QtWidgets.QDialog):
 
     def loadSettings(self):
         settingsCtrl = SettingsController.instance()
-        self._ideSettingsGroup.setIDEType(SupportedIDE(settingsCtrl.ideType))
-        self._ideSettingsGroup.setIDEPath(settingsCtrl.idePath)
-        self._ideSettingsGroup.setCustomCommandParameters(settingsCtrl.ideParameters)
+
+        ideType = SupportedIDE(settingsCtrl.ideType)  # type: SupportedIDE
+        idePath = settingsCtrl.idePath  # type: str
+        ideParameters = settingsCtrl.ideParameters  # type: str
+
+        self._ideSettingsGroup.setIDEType(ideType)
+        self._ideSettingsGroup.setIDEPath(idePath)
+        self._ideSettingsGroup.setCustomCommandParameters(ideParameters)
+
+        pqi_log.info(f"Settings loaded: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
 
     def saveSettings(self):
         # Validate IDE settings
         isValid, errorMessage = self._ideSettingsGroup.isValid()
         if not isValid:
+            pqi_log.info(f"IDE settings validation failed: {errorMessage}")
             QtWidgets.QMessageBox.critical(self, "Error", errorMessage)
             return
 
         # Save IDE settings
         settingsCtrl = SettingsController.instance()
-        settingsCtrl.ideType = self._ideSettingsGroup.getIDEType().value
-        settingsCtrl.idePath = self._ideSettingsGroup.getIDEPath()
-        settingsCtrl.ideParameters = self._ideSettingsGroup.getCustomCommandParameters()
+        ideType = self._ideSettingsGroup.getIDEType().value  # type: str
+        idePath = self._ideSettingsGroup.getIDEPath()  # type: str
+        ideParameters = self._ideSettingsGroup.getCustomCommandParameters()  # type: str
+
+        settingsCtrl.ideType = ideType
+        settingsCtrl.idePath = idePath
+        settingsCtrl.ideParameters = ideParameters
+
+        pqi_log.info(f"Settings saved: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
 
         self.close()
 
