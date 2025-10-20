@@ -1,6 +1,8 @@
 import os
 
 from PyQt5 import QtWidgets, QtCore, QtGui
+
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect.pqi_gui.settings.ide_jumpers import jump_to_ide
 
 
@@ -47,8 +49,10 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
     def openFile(self, fileName: str, lineNo: int):
         # open in IDE
         try:
+            pqi_log.info(f'Opening file: {fileName} at line {lineNo}...')
             jump_to_ide(fileName, lineNo)
         except Exception as e:
+            pqi_log.error(f"Failed to jump to IDE: {e}")
             # message box
             QtWidgets.QMessageBox.critical(self, "Error", f"{e}")
 

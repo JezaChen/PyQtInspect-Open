@@ -9,6 +9,7 @@ import typing
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
+from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 
@@ -230,22 +231,36 @@ class SettingWindow(QtWidgets.QDialog):
 
     def loadSettings(self):
         settingsCtrl = SettingsController.instance()
-        self._ideSettingsGroup.setIDEType(SupportedIDE(settingsCtrl.ideType))
-        self._ideSettingsGroup.setIDEPath(settingsCtrl.idePath)
-        self._ideSettingsGroup.setCustomCommandParameters(settingsCtrl.ideParameters)
+
+        ideType = SupportedIDE(settingsCtrl.ideType)  # type: SupportedIDE
+        idePath = settingsCtrl.idePath  # type: str
+        ideParameters = settingsCtrl.ideParameters  # type: str
+
+        self._ideSettingsGroup.setIDEType(ideType)
+        self._ideSettingsGroup.setIDEPath(idePath)
+        self._ideSettingsGroup.setCustomCommandParameters(ideParameters)
+
+        pqi_log.info(f"Settings loaded: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
 
     def saveSettings(self):
         # Validate IDE settings
         isValid, errorMessage = self._ideSettingsGroup.isValid()
         if not isValid:
+            pqi_log.info(f"IDE settings validation failed: {errorMessage}")
             QtWidgets.QMessageBox.critical(self, "Error", errorMessage)
             return
 
         # Save IDE settings
         settingsCtrl = SettingsController.instance()
-        settingsCtrl.ideType = self._ideSettingsGroup.getIDEType().value
-        settingsCtrl.idePath = self._ideSettingsGroup.getIDEPath()
-        settingsCtrl.ideParameters = self._ideSettingsGroup.getCustomCommandParameters()
+        ideType = self._ideSettingsGroup.getIDEType().value  # type: str
+        idePath = self._ideSettingsGroup.getIDEPath()  # type: str
+        ideParameters = self._ideSettingsGroup.getCustomCommandParameters()  # type: str
+
+        settingsCtrl.ideType = ideType
+        settingsCtrl.idePath = idePath
+        settingsCtrl.ideParameters = ideParameters
+
+        pqi_log.info(f"Settings saved: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
 
         self.close()
 
