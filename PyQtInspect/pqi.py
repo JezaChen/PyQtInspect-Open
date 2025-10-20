@@ -34,6 +34,10 @@ import traceback
 
 threadingCurrentThread = threading.current_thread
 
+_QT_AUTO_DETECT_NOTIFICATION = (
+    "\n\033[1;33m📢📢📢 Tips:\033[1;32m PyQtInspect now automatically detects which Qt framework your application uses (PyQt5, PyQt6, PySide2, or PySide6). "
+    "You no longer need to specify `--qt-support` in most cases!\033[0m\n"
+)
 
 def auto_patch_qt(is_attach: bool):
     global SetupHolder
@@ -100,6 +104,14 @@ def enable_qt_support(qt_support_mode, is_attach: bool = False):
             raise RuntimeError("Qt lib auto detection is not supported in attach mode.")
         auto_patch_qt(is_attach)
         return
+
+    # Old Logic
+    # Show message to indicate that auto-detect feature is available
+    try:
+        print(_QT_AUTO_DETECT_NOTIFICATION)
+    except UnicodeEncodeError:
+        print(_QT_AUTO_DETECT_NOTIFICATION.replace("📢", ""))
+
     monkey_qt.patch_qt(qt_support_mode, is_attach)
 
 
