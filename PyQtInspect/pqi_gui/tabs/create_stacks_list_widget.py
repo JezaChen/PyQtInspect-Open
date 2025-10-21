@@ -3,6 +3,7 @@ import os
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle import pqi_log
+from PyQtInspect.pqi_gui.common_operators import CommonOperators
 from PyQtInspect.pqi_gui.settings.ide_jumpers import jump_to_ide
 
 
@@ -13,6 +14,14 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
         super().__init__(parent)
         self.setMinimumHeight(200)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+        # Message box
+        self._messageBox = QtWidgets.QMessageBox(self)
+        self._messageBox.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+        self._messageBox.setWindowTitle('Error')
+
+        self._messageBoxConfigureBtn = self._messageBox.addButton('Configure IDE', QtWidgets.QMessageBox.ButtonRole.ActionRole)
+        self._messageBoxOkBtn = self._messageBox.addButton('OK', QtWidgets.QMessageBox.ButtonRole.ActionRole)
 
     def setStacks(self, stacks: list):
         self.clear()
@@ -53,6 +62,9 @@ class CreateStacksListWidget(QtWidgets.QListWidget):
             jump_to_ide(fileName, lineNo)
         except Exception as e:
             pqi_log.error(f"Failed to jump to IDE: {e}")
-            # message box
-            QtWidgets.QMessageBox.critical(self, "Error", f"{e}")
+            # show message box
+            self._messageBox.setText(f"{e}")
+            self._messageBox.exec()
+            if self._messageBox.clickedButton() == self._messageBoxConfigureBtn:
+                CommonOperators.instance().openSettings()
 
