@@ -10,6 +10,7 @@ import typing
 import argparse
 import json
 
+from PyQtInspect.pqi_gui.common_operators import CommonOperators
 from PyQtInspect.pqi_gui.settings import SettingsController
 
 # ↑ DO NOT import PyQtInspect-specific modules before inserting the module path into sys.path.
@@ -310,7 +311,16 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._curHighlightedWidgetId = -1
         # endregion
 
+        self._initCommonOperators()
+
         self.setStyleSheet(GLOBAL_STYLESHEET)
+
+    # region -- Common Operators --
+    def _initCommonOperators(self):
+        inst = CommonOperators.initInstance(self)
+        inst.sigOpenSettings.connect(self._openSettingWindow)
+
+    # endregion
 
     # region -- For always on top action --
     def _setAlwaysOnTop(self, on_top: bool):
