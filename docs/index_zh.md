@@ -203,7 +203,7 @@ _(默认打开, 需要关闭请前往 More->Press F8 to Finish Selecting 取消)
 ### 4.8 控件树查看
 
 点击菜单上的 `View->Control Tree`, 可以查看当前所选控件所在进程的控件树结构.
-单击(或者hove)树中的行可以高亮对应的控件.
+单击(或者hover)树中的行可以高亮对应的控件.
 
 ![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/control_tree.gif?raw=true)
 
