@@ -1,0 +1,14 @@
+site_name: PyQtInspect
+site_description: A powerful inspection tool for PyQt/PySide applications, similar to Chrome DevTools.
+nav:
+  - Home: index.md
+  - 中文文档: index_zh.md
+repo_url: https://github.com/JezaChen/PyQtInspect-Open/
+markdown_extensions:
+  - attr_list
+  - toc:
+      permalink: true  # Adds a permalink icon next to each heading
+      toc_depth: 3     # Includes headings up to level 3 in the TOC
+theme:
+  name: mkdocs
+  navigation_depth: 3
