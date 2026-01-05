@@ -447,11 +447,11 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _onDispatcherExited(self, dispatcherId: int):
         """ Only log the info when a dispatcher exited. """
-        pqi_log.info(f"PyQtInspect: Dispatcher {dispatcherId} exited.")
+        pqi_log.info(f"Dispatcher {dispatcherId} exited.")
 
     def _onAllDispatchersExited(self):
         """ Only log the info when all dispatchers exited. """
-        pqi_log.info("PyQtInspect: All dispatchers exited.")
+        pqi_log.info("All dispatchers exited.")
 
     # endregion
 
@@ -460,7 +460,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         text = info.get("text", "")
         if cmdId == CMD_QT_PATCH_SUCCESS:
             pid = int(text)
-            pqi_log.info(f"PyQtInspect: Qt patched successfully, pid: {pid}")
+            pqi_log.info(f"Qt patched successfully, pid: {pid}")
 
             # If inspection is enabled, enable it for the new process.
             if self._selectButton.isChecked():
@@ -497,7 +497,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             propsInfo = json.loads(text)
             self._notifyWidgetPropsInfoToPropsTreeWidget(propsInfo)
         elif cmdId == CMD_EXIT:  # the client has exited elegantly
-            pqi_log.info(f"PyQtInspect: Dispatcher {dispatcherId} exited elegantly.")
+            pqi_log.info(f"Dispatcher {dispatcherId} exited elegantly.")
 
     def handleWidgetInfoMsg(self, info):
         self._curWidgetId = info["id"]
