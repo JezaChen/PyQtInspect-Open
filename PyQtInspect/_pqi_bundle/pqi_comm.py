@@ -171,7 +171,7 @@ class ReaderThread(PyDBDaemonThread):
 
                 read_buffer += r
                 if DebugInfoHolder.DEBUG_RECORD_SOCKET_READS:
-                    pqi_log.debug('PyQtInspect: received >>%s<<' % (read_buffer,))
+                    pqi_log.debug('Received >>%s<<' % (read_buffer,))
 
                 if len(read_buffer) == 0:
                     self.handle_except()
