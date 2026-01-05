@@ -49,6 +49,8 @@ def _use_custom_logger_class(new_logger_class):
 
 # _srcfile in logging module, renamed to `_logging_module_init_srcfile`
 _logging_module_init_srcfile = os.path.normcase(logging.addLevelName.__code__.co_filename)
+# Additionally, we add pqi_log module path to be skipped
+_pqi_log_module_path = os.path.normcase(str(pathlib.Path(getLogDirPath.__code__.co_filename).parent.resolve()))
 
 # Copied verbatim
 if hasattr(sys, "_getframe"):
@@ -68,7 +70,7 @@ def _is_internal_frame(frame):
     """
     filename = os.path.normcase(frame.f_code.co_filename)
     return filename == _logging_module_init_srcfile or (
-            'pqi_log' in filename  # Newly added to also skip pqi_log internal frames, not just logging module ones
+            filename.startswith(_pqi_log_module_path)  # Newly added to also skip pqi_log internal frames, not just logging module ones
     ) or (
             "importlib" in filename and "_bootstrap" in filename
     )
