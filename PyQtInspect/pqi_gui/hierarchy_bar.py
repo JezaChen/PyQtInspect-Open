@@ -304,7 +304,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menu.move(posX, posY)
         if self._widgetIdOfCurrMenu != itemWidget.getWidgetId():
             # Stale data.
-            self._menuWidget.setLoading()
+            self._menuWidget.showLoading()
             self.sigReqChildWidgetsInfo.emit(itemWidget.getWidgetId())
         self._menu.show()
 

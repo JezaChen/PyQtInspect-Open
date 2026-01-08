@@ -108,8 +108,14 @@ def get_stylesheet(widget):
 
 
 def get_children_info(widget):
+    from PyQtInspect.pqi import SetupHolder
+    need_to_include_fg = SetupHolder.setup[SetupHolder.KEY_IS_DEBUG_MODE]
+
     children = find_method_by_name_and_call(widget, 'children')
     for child in children:
+        obj_name = get_widget_object_name(child)
+        if obj_name == _PQI_HIGHLIGHT_FG_NAME and not need_to_include_fg:
+            continue
         yield get_widget_class_name(child), id(child), get_widget_object_name(child)
 
 
