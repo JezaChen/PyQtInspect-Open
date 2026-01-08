@@ -349,7 +349,7 @@ class HierarchyBar(QtWidgets.QWidget):
 
     def _handleChildMenuItemClicked(self, widgetId: int):
         self._menu.hide()
-        if widgetId != "-1":
+        if widgetId != -1:
             self.sigChildMenuItemClicked.emit(widgetId)
 
     def leaveEvent(self, event):
