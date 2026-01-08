@@ -338,7 +338,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menuWidget.setMenuData(childClsNameList, childObjNameList, childWidgetIdList)
 
     def _handleChildMenuItemHovered(self, widgetId: int):
-        if widgetId == "-1":
+        if widgetId == -1:
             return
 
         if self._lastHoveredChildItemWidgetId == widgetId:
@@ -353,7 +353,7 @@ class HierarchyBar(QtWidgets.QWidget):
             self.sigChildMenuItemClicked.emit(widgetId)
 
     def leaveEvent(self, event):
-        super().enterEvent(event)
+        super().leaveEvent(event)
         self._checkMouseLeave()
 
     def _checkMouseLeave(self):

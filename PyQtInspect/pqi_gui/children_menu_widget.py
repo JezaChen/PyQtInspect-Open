@@ -44,6 +44,10 @@ class ChildrenMenuWidget(QWidget):
             border: none;
             font-size: 12px;
         }
+
+        QListView::item:disabled {
+            background-color: transparent;
+        }
         """)
         self.listView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.listView.setObjectName("listView")
@@ -64,6 +68,7 @@ class ChildrenMenuWidget(QWidget):
     def setLoading(self):
         self._model.clear()
         item = QStandardItem("Loading...")
+        item.setFlags(QtCore.Qt.NoItemFlags)
         item.setData("Loading...", Qt.ToolTipRole)
         self._model.appendRow(item)
 
@@ -93,6 +98,10 @@ class ChildrenMenuWidget(QWidget):
         self._menu.setFixedSize(targetWidth + 25, targetHeight + 10)
 
     def onListViewClicked(self, index):
+        item = self._model.itemFromIndex(index)
+        if not (item.flags() & QtCore.Qt.ItemIsEnabled):
+            return  # Disabled item, do nothing.
+
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
             widgetId = -1  # The loading item uses id -1; the caller handles the click and should hide it.
