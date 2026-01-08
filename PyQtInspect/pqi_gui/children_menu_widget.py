@@ -9,8 +9,11 @@ import typing
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQt5.QtWidgets import QWidget, QListView
-from PyQt5.QtCore import Qt, QFileInfo
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
+
+_MENU_WIDTH_EXTRA = 20
+_MENU_HEIGHT_EXTRA = 5
 
 
 class ChildrenMenuWidget(QWidget):
@@ -44,6 +47,10 @@ class ChildrenMenuWidget(QWidget):
             border: none;
             font-size: 12px;
         }
+
+        QListView::item:disabled {
+            background-color: transparent;
+        }
         """)
         self.listView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.listView.setObjectName("listView")
@@ -61,19 +68,33 @@ class ChildrenMenuWidget(QWidget):
         self.listView.clicked.connect(self.onListViewClicked)
         self.listView.entered.connect(self.onListViewEntered)
 
-    def setLoading(self):
+    def _showStatusMessage(self, text):
         self._model.clear()
-        item = QStandardItem("Loading...")
-        item.setData("Loading...", Qt.ToolTipRole)
+        item = QStandardItem(text)
+        item.setFlags(QtCore.Qt.NoItemFlags)
+        item.setData(text, Qt.ToolTipRole)
         self._model.appendRow(item)
 
-        self.setFixedSize(100, 25)
-        self._menu.setFixedSize(100, 25)
+        width = QtGui.QFontMetrics(self.listView.font()).width(text) + _MENU_WIDTH_EXTRA
+        height = self.listView.sizeHintForRow(self._model.rowCount() - 1)
+
+        self.setFixedSize(width, height + _MENU_HEIGHT_EXTRA)
+        self._menu.setFixedSize(width, height + _MENU_HEIGHT_EXTRA)
+
+    def showLoading(self):
+        self._showStatusMessage("Loading...")
+
+    def showEmpty(self):
+        self._showStatusMessage("No child widgets")
 
     def setMenuData(self,
                     childClsNameList: typing.List[str],
                     childObjNameList: typing.List[str],
                     childWidgetIdList: typing.List[int]):
+        if not childClsNameList:  # Empty list
+            self.showEmpty()
+            return
+
         self._model.clear()
 
         maxWidth = 0
@@ -89,10 +110,14 @@ class ChildrenMenuWidget(QWidget):
             maxWidth = max(maxWidth, QtGui.QFontMetrics(self.listView.font()).width(item.text()))
 
         targetWidth, targetHeight = maxWidth, min(totalHeight, 300)
-        self.setFixedSize(targetWidth + 20, targetHeight + 5)
-        self._menu.setFixedSize(targetWidth + 25, targetHeight + 10)
+        self.setFixedSize(targetWidth + _MENU_WIDTH_EXTRA, targetHeight + _MENU_HEIGHT_EXTRA)
+        self._menu.setFixedSize(targetWidth + _MENU_WIDTH_EXTRA, targetHeight + _MENU_HEIGHT_EXTRA)
 
     def onListViewClicked(self, index):
+        item = self._model.itemFromIndex(index)
+        if not (item.flags() & QtCore.Qt.ItemIsEnabled):
+            return  # Disabled item, do nothing.
+
         widgetId = index.data(Qt.UserRole + 1)
         if widgetId is None:
             widgetId = -1  # The loading item uses id -1; the caller handles the click and should hide it.

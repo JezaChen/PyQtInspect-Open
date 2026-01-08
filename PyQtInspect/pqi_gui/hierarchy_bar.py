@@ -304,7 +304,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menu.move(posX, posY)
         if self._widgetIdOfCurrMenu != itemWidget.getWidgetId():
             # Stale data.
-            self._menuWidget.setLoading()
+            self._menuWidget.showLoading()
             self.sigReqChildWidgetsInfo.emit(itemWidget.getWidgetId())
         self._menu.show()
 
@@ -338,7 +338,7 @@ class HierarchyBar(QtWidgets.QWidget):
         self._menuWidget.setMenuData(childClsNameList, childObjNameList, childWidgetIdList)
 
     def _handleChildMenuItemHovered(self, widgetId: int):
-        if widgetId == "-1":
+        if widgetId == -1:
             return
 
         if self._lastHoveredChildItemWidgetId == widgetId:
@@ -349,11 +349,11 @@ class HierarchyBar(QtWidgets.QWidget):
 
     def _handleChildMenuItemClicked(self, widgetId: int):
         self._menu.hide()
-        if widgetId != "-1":
+        if widgetId != -1:
             self.sigChildMenuItemClicked.emit(widgetId)
 
     def leaveEvent(self, event):
-        super().enterEvent(event)
+        super().leaveEvent(event)
         self._checkMouseLeave()
 
     def _checkMouseLeave(self):
