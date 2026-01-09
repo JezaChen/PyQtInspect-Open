@@ -13,9 +13,16 @@ from PyQt5.QtCore import Qt, QRect, pyqtSignal, QPoint
 
 from PyQtInspect.pqi_gui.children_menu_widget import ChildrenMenuWidget
 
-ARROW_WIDTH = 17
-SPACE_WIDTH = 8
-ITEM_HEIGHT = 20
+_ARROW_REGION_WIDTH = 17
+_SPACE_WIDTH = 8
+_ITEM_HEIGHT = 20
+
+_ARROW_SVG_WIDTH = 6
+_ARROW_SVG_HEIGHT = 6
+_ARROW_SVG_RECT = QRect(
+    (_ARROW_REGION_WIDTH - _ARROW_SVG_WIDTH) // 2, (_ITEM_HEIGHT - _ARROW_SVG_HEIGHT) // 2,
+    _ARROW_SVG_WIDTH, _ARROW_SVG_HEIGHT
+)
 
 
 def clearLayout(layout):
@@ -48,14 +55,16 @@ class HierarchyItem(QPushButton):
         self.m_font = parent.font()
         if self._text == "":
             self._textWidth = 0
-            self.setFixedSize(ARROW_WIDTH, 21)
+            self.setFixedSize(_ARROW_REGION_WIDTH, 21)
         else:
             fm = QFontMetrics(self.m_font)
-            self._textWidth = fm.width(self._text) + SPACE_WIDTH
-            self.setFixedSize(self._textWidth + ARROW_WIDTH, 21)
+            self._textWidth = fm.width(self._text) + _SPACE_WIDTH
+            self.setFixedSize(self._textWidth + _ARROW_REGION_WIDTH, 21)
 
-        self.m_normalIcon = QPixmap(":/icons/arrow_right.png")
-        self.m_checkedIcon = QPixmap(":/icons/arrow_down.png")
+        self.m_normalIcon = QPixmap(":/icons/arrow_right.svg")
+        self.m_checkedIcon = QPixmap(":/icons/arrow_down.svg")
+        # The rect to paint the arrow pixmap
+        self._arrow_pixmap_paint_rect = _ARROW_SVG_RECT.adjusted(self._textWidth, 0, self._textWidth, 0)
 
         self.setMouseTracking(True)
         self.setCheckable(True)
@@ -68,43 +77,44 @@ class HierarchyItem(QPushButton):
 
     def paintEvent(self, event):
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
 
         if self._moveFlag:
             painter.setPen(QColor(205, 232, 254))
-            painter.fillRect(QRect(0, 0, self._textWidth + ARROW_WIDTH, ITEM_HEIGHT), QBrush(QColor(229, 243, 254)))
-            painter.drawRect(QRect(0, 0, self._textWidth, ITEM_HEIGHT))
-            painter.drawRect(QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT))
+            painter.fillRect(QRect(0, 0, self._textWidth + _ARROW_REGION_WIDTH, _ITEM_HEIGHT), QBrush(QColor(229, 243, 254)))
+            painter.drawRect(QRect(0, 0, self._textWidth, _ITEM_HEIGHT))
+            painter.drawRect(QRect(self._textWidth, 0, _ARROW_REGION_WIDTH, _ITEM_HEIGHT))
 
         if self._pressed or self.isChecked():
             painter.setPen(QColor(153, 209, 255))
-            painter.fillRect(QRect(0, 0, self._textWidth + ARROW_WIDTH, ITEM_HEIGHT), QBrush(QColor(204, 232, 255)))
-            painter.drawRect(QRect(0, 0, self._textWidth, ITEM_HEIGHT))
-            painter.drawRect(QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT))
+            painter.fillRect(QRect(0, 0, self._textWidth + _ARROW_REGION_WIDTH, _ITEM_HEIGHT), QBrush(QColor(204, 232, 255)))
+            painter.drawRect(QRect(0, 0, self._textWidth, _ITEM_HEIGHT))
+            painter.drawRect(QRect(self._textWidth, 0, _ARROW_REGION_WIDTH, _ITEM_HEIGHT))
 
             painter.setPen(QColor(0, 0, 0))
             painter.setFont(self.m_font)
-            painter.drawText(QRect(1, 1, self._textWidth, ITEM_HEIGHT), Qt.AlignCenter, self._text)
+            painter.drawText(QRect(1, 1, self._textWidth, _ITEM_HEIGHT), Qt.AlignCenter, self._text)
 
         else:
             painter.setPen(QColor(0, 0, 0))
             painter.setFont(self.m_font)
-            painter.drawText(QRect(0, 0, self._textWidth, ITEM_HEIGHT), Qt.AlignCenter, self._text)
+            painter.drawText(QRect(0, 0, self._textWidth, _ITEM_HEIGHT), Qt.AlignCenter, self._text)
 
         # Draw the arrow.
         if self._menuShowed:
-            painter.drawPixmap(QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT), self.m_checkedIcon,
+            painter.drawPixmap(self._arrow_pixmap_paint_rect, self.m_checkedIcon,
                                self.m_checkedIcon.rect())
         else:
-            painter.drawPixmap(QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT), self.m_normalIcon,
+            painter.drawPixmap(self._arrow_pixmap_paint_rect, self.m_normalIcon,
                                self.m_normalIcon.rect())
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.hitButton(event.pos()):
             self._pressed = True
-            if QRect(0, 0, self._textWidth, ITEM_HEIGHT).contains(event.pos()):
+            if QRect(0, 0, self._textWidth, _ITEM_HEIGHT).contains(event.pos()):
                 self._pressedText = True
                 self._lastPressedText = True
-            elif QRect(self._textWidth, 0, ARROW_WIDTH, ITEM_HEIGHT).contains(event.pos()):
+            elif QRect(self._textWidth, 0, _ARROW_REGION_WIDTH, _ITEM_HEIGHT).contains(event.pos()):
                 self._lastPressedText = False
                 self.update()
 
@@ -138,8 +148,8 @@ class HierarchyItem(QPushButton):
     def _onArrowClicked(self):
         self.update()
         globalPoint = self.mapToGlobal(QPoint(0, 0))
-        globalPoint.setX(globalPoint.x() + ARROW_WIDTH + self._textWidth - 30)
-        globalPoint.setY(globalPoint.y() + ITEM_HEIGHT)
+        globalPoint.setX(globalPoint.x() + _ARROW_REGION_WIDTH + self._textWidth - 30)
+        globalPoint.setY(globalPoint.y() + _ITEM_HEIGHT)
         self._menuShowed = True
         self._barWidget.notifyShowMenu(self, globalPoint.x(), globalPoint.y())
 
