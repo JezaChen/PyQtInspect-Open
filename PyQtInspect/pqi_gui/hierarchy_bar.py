@@ -64,7 +64,7 @@ class HierarchyItem(QPushButton):
         self.m_normalIcon = QPixmap(":/icons/arrow_right.svg")
         self.m_checkedIcon = QPixmap(":/icons/arrow_down.svg")
         # The rect to paint the arrow pixmap
-        self._arrow_pixmap_paint_rect = _ARROW_SVG_RECT.adjusted(self._textWidth, 0, 0, 0)
+        self._arrow_pixmap_paint_rect = _ARROW_SVG_RECT.adjusted(self._textWidth, 0, self._textWidth, 0)
 
         self.setMouseTracking(True)
         self.setCheckable(True)
