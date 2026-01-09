@@ -4,14 +4,30 @@
 
 Run the gallery:
 
+For Windows:
+
 ```pwsh
 py run_dialog.py [pyqt5|pyqt6|pyside2|pyside6]
 ```
 
+For Linux/Mac:
+
+```bash
+python3 run_dialog.py [pyqt5|pyqt6|pyside2|pyside6]
+```
+
 Run with PyQtInspect (direct mode):
+
+For Windows:
 
 ```pwsh
 py -m PyQtInspect --direct --multiprocess --file run_dialog.py [pyqt5|pyqt6|pyside2|pyside6]
+```
+
+For Linux/Mac:
+
+```bash
+python3 -m PyQtInspect --direct --multiprocess --file run_dialog.py [pyqt5|pyqt6|pyside2|pyside6]
 ```
 
 ## Testing multiprocess support
