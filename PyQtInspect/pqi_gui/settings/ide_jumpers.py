@@ -14,7 +14,7 @@ __all__ = [
     'SupportedIDE',
 
     'jump_to_ide',
-    'find_default_ide_path',
+    'auto_detect_ide_path',
 ]
 
 
@@ -146,12 +146,12 @@ def _find_default_ide_path_helper(
     if sys.platform == 'win32':
         defaultPath = _find_for_windows()
         if defaultPath:
-            pqi_log.info(f'Found IDE path for {command_name} on Windows: {defaultPath}')
+            pqi_log.info(f'Found IDE path for {command_name} from commands on Windows: {defaultPath}')
             return defaultPath
     else:
         defaultPath = _find_for_linux()
         if defaultPath:
-            pqi_log.info(f'Found IDE path for {command_name} on Unix-like system: {defaultPath}')
+            pqi_log.info(f'Found IDE path for {command_name} from commands on Unix-like system: {defaultPath}')
             return defaultPath
 
     # If the above method fails, we can try to find the path from the environment variables
@@ -162,6 +162,30 @@ def _find_default_ide_path_helper(
                 pqi_log.info(f'Found IDE path for {command_name} from PATH: {exe_path}')
                 return exe_path
     pqi_log.info(f'Could not find default IDE path for {command_name}.')
+    return ''
+
+
+def _find_ide_path_from_running_processes_helper(
+        executable_names: typing.List[str]
+) -> str:
+    """ Try to find the IDE path from running processes. """
+    try:
+        import psutil
+    except ImportError:
+        pqi_log.warning('psutil module is not installed, cannot find IDE path from running processes.')
+        return ''
+
+    executable_names = set(executable_names)
+
+    for proc in psutil.process_iter(['exe']):
+        try:
+            exe_path = proc.info['exe']
+            if exe_path and os.path.basename(exe_path) in executable_names:
+                pqi_log.info(f'Found IDE path from running process: {exe_path}')
+                return exe_path
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    pqi_log.info('Could not find IDE path from running processes.')
     return ''
 
 
@@ -227,5 +251,25 @@ def find_default_ide_path(ide_type: SupportedIDE) -> str:
         helper.get_command_name(),
         helper.get_executable_name_candidates()
     )
+
+
+def find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
+    """ Try to find the IDE path from running processes. """
+    if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
+        raise ValueError('Cannot find IDE path for Custom or NoneType IDE.')
+
+    helper = IDEJumpHelper.get_jump_helper(ide_type)
+    return _find_ide_path_from_running_processes_helper(
+        helper.get_executable_name_candidates()
+    )
+
+def auto_detect_ide_path(ide_type: SupportedIDE) -> str:
+    """ Auto-detect the IDE path by first checking running processes, then default installation paths. """
+    ide_path = find_ide_path_from_running_processes(ide_type)
+    if ide_path:
+        return ide_path
+
+    ide_path = find_default_ide_path(ide_type)
+    return ide_path
 
 # endregion
