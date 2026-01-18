@@ -170,9 +170,12 @@ class CursorJumpHelper(IDEJumpHelper):
 
 
 def _find_default_ide_path_helper(
-        command_name: str,
-        executable_names: typing.Iterable[str]
+        ide_jump_helper: typing.Type['IDEJumpHelper'],
 ) -> str:
+    """ Find the default path of the specified IDE by its command name and executable name candidates. """
+    command_name = ide_jump_helper.get_command_name()
+    executable_names = ide_jump_helper.get_executable_name_candidates()
+
     def _find_for_windows() -> str:
         """ For Windows, we can use powershell command to find the path """
         output = subprocess.run(
@@ -270,10 +273,7 @@ def _find_default_ide_path(ide_type: SupportedIDE) -> str:
         raise ValueError('Cannot find default path for Custom or NoneType IDE.')
 
     helper = IDEJumpHelper.get_jump_helper(ide_type)
-    return _find_default_ide_path_helper(
-        helper.get_command_name(),
-        helper.get_executable_name_candidates()
-    )
+    return _find_default_ide_path_helper(helper)
 
 
 def _find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
