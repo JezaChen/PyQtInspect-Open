@@ -80,7 +80,7 @@ class IDEJumpHelper(abc.ABC):
     @classmethod
     def match_executable_name(cls, exe_path: str) -> bool:
         """ Check if the given executable path matches any of the known executable names for the IDE. """
-        return exe_path in cls.get_executable_name_candidates()
+        return os.path.basename(exe_path) in cls.get_executable_name_candidates()
     # endregion
 
 
@@ -264,6 +264,27 @@ def _construct_ide_jump_command(file: str, line: int) -> typing.List[str]:
     return [SettingsController.instance().idePath, *helper.get_command_parameters(file, line)]
 
 
+def _find_default_ide_path(ide_type: SupportedIDE) -> str:
+    """ Find the default path of the specified IDE type. """
+    if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
+        raise ValueError('Cannot find default path for Custom or NoneType IDE.')
+
+    helper = IDEJumpHelper.get_jump_helper(ide_type)
+    return _find_default_ide_path_helper(
+        helper.get_command_name(),
+        helper.get_executable_name_candidates()
+    )
+
+
+def _find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
+    """ Try to find the IDE path from running processes. """
+    if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
+        raise ValueError('Cannot find IDE path for Custom or NoneType IDE.')
+
+    helper = IDEJumpHelper.get_jump_helper(ide_type)
+    return _find_ide_path_from_running_processes_helper(helper)
+
+
 # region Public APIs
 def jump_to_ide(file: str, line: int):
     """ Jump to the specified file and line in the configured IDE. """
@@ -292,33 +313,13 @@ def jump_to_ide(file: str, line: int):
         ) from e
 
 
-def find_default_ide_path(ide_type: SupportedIDE) -> str:
-    """ Find the default path of the specified IDE type. """
-    if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
-        raise ValueError('Cannot find default path for Custom or NoneType IDE.')
-
-    helper = IDEJumpHelper.get_jump_helper(ide_type)
-    return _find_default_ide_path_helper(
-        helper.get_command_name(),
-        helper.get_executable_name_candidates()
-    )
-
-
-def find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
-    """ Try to find the IDE path from running processes. """
-    if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
-        raise ValueError('Cannot find IDE path for Custom or NoneType IDE.')
-
-    helper = IDEJumpHelper.get_jump_helper(ide_type)
-    return _find_ide_path_from_running_processes_helper(helper)
-
 def auto_detect_ide_path(ide_type: SupportedIDE) -> str:
     """ Auto-detect the IDE path by first checking running processes, then default installation paths. """
-    ide_path = find_ide_path_from_running_processes(ide_type)
+    ide_path = _find_ide_path_from_running_processes(ide_type)
     if ide_path:
         return ide_path
 
-    ide_path = find_default_ide_path(ide_type)
+    ide_path = _find_default_ide_path(ide_type)
     return ide_path
 
 # endregion
