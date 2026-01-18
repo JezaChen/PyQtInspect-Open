@@ -1,14 +1,15 @@
 import abc
 import os
+import pathlib
 import typing
 import subprocess
 import sys
 import shlex
 
-from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect.pqi_gui.settings import SettingsController
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE
-from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
+from PyQtInspect._pqi_bundle import pqi_log
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 
 __all__ = [
     'SupportedIDE',
@@ -17,14 +18,27 @@ __all__ = [
     'auto_detect_ide_path',
 ]
 
+def _path_endswith(a: pathlib.Path, b: pathlib.Path) -> bool:
+    """ Check if path `a` ends with path `b`. """
+    a_parts = a.parts
+    b_parts = b.parts
+    return len(a_parts) >= len(b_parts) and a_parts[-len(b_parts):] == b_parts
+
 
 class IDEJumpHelper(abc.ABC):
     """ Abstract base class for IDE jump helpers. """
+
+    def __new__(cls, *args, **kwargs):
+        # Forbid instantiation
+        raise TypeError(f'{cls.__name__} cannot be instantiated.')
 
     __ide_type__: typing.ClassVar[SupportedIDE] = SupportedIDE.NoneType
     __ide_type_to_helper__: typing.ClassVar[typing.Dict[SupportedIDE, typing.Type['IDEJumpHelper']]] = {}
 
     def __init_subclass__(cls, **kwargs):
+        if cls.__new__ != IDEJumpHelper.__new__:
+            raise TypeError(f'Subclasses of IDEJumpHelper cannot override __new__ method, which may bypass instantiation restriction.')
+
         if cls.__ide_type__ in (SupportedIDE.NoneType, SupportedIDE.Custom):
             raise NotImplementedError(
                 'Subclasses of IDEJumpHelper must override __ide_type__ attribute with a valid SupportedIDE value.'
@@ -58,10 +72,15 @@ class IDEJumpHelper(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def get_executable_name_candidates(cls) -> typing.List[str]:
+    def get_executable_name_candidates(cls) -> typing.Set[str]:
         """ Get the list of possible executable names for the IDE.
         @note: For IDE default path finding, they will be used to search the IDE executable in system PATH.
         """
+
+    @classmethod
+    def match_executable_name(cls, exe_path: str) -> bool:
+        """ Check if the given executable path matches any of the known executable names for the IDE. """
+        return exe_path in cls.get_executable_name_candidates()
     # endregion
 
 
@@ -78,8 +97,8 @@ class PyCharmJumpHelper(IDEJumpHelper):
         return 'pycharm'
 
     @classmethod
-    def get_executable_name_candidates(cls) -> typing.List[str]:
-        return ['pycharm64.exe', 'pycharm.exe', 'pycharm']
+    def get_executable_name_candidates(cls) -> typing.Set[str]:
+        return {'pycharm64.exe', 'pycharm.exe', 'pycharm'}
 
 
 class VSCodeJumpHelper(IDEJumpHelper):
@@ -95,9 +114,43 @@ class VSCodeJumpHelper(IDEJumpHelper):
         return 'code'
 
     @classmethod
-    def get_executable_name_candidates(cls) -> typing.List[str]:
-        return ['Code.exe', 'code']
+    def get_executable_name_candidates(cls) -> typing.Set[str]:
+        return {'Code.exe', 'code'}
 
+    @classmethod
+    def _bundle_id_candidates_on_macos(cls) -> typing.Set[str]:
+        return {'com.microsoft.VSCode', 'com.microsoft.VSCodeInsiders'}
+
+    @classmethod
+    def _check_macos_bundle_id(cls, exe_path: str) -> bool:
+        exe_path = pathlib.Path(exe_path)
+        # Check if the executable path ends with the typical Electron app path
+        if not _path_endswith(exe_path, pathlib.Path('Contents/MacOS/Electron')):
+            return False
+
+        # Traverse up to find the .app bundle and check the bundle identifier
+        for parent in exe_path.parents[2:]:  # skip 'Contents/MacOS/Electron'
+            if parent.suffix == '.app':
+                plist = parent / 'Contents' / 'Info.plist'
+                if plist.is_file():
+                    try:
+                        import plistlib
+                        with open(plist, 'rb') as f:
+                            plist_data = plistlib.load(f)
+                            if plist_data.get('CFBundleIdentifier') in cls._bundle_id_candidates_on_macos():
+                                return True
+                    except Exception as e:
+                        pqi_log.warning(f'Failed to load {plist}: {e}')
+        return False
+
+    @classmethod
+    def match_executable_name(cls, exe_path: str) -> bool:
+        if super().match_executable_name(exe_path):
+            return True
+        # Special handling for macOS where the running executable might be `Applications/Visual Studio Code.app/Contents/MacOS/Electron`
+        if IS_MACOS and cls._check_macos_bundle_id(exe_path):
+            return True
+        return False
 
 class CursorJumpHelper(IDEJumpHelper):
     """ Jump helper for Cursor. """
@@ -112,13 +165,13 @@ class CursorJumpHelper(IDEJumpHelper):
         return 'cursor'
 
     @classmethod
-    def get_executable_name_candidates(cls) -> typing.List[str]:
-        return ['Cursor.exe', 'cursor']
+    def get_executable_name_candidates(cls) -> typing.Set[str]:
+        return {'Cursor.exe', 'cursor'}
 
 
 def _find_default_ide_path_helper(
         command_name: str,
-        executable_names: typing.List[str]
+        executable_names: typing.Iterable[str]
 ) -> str:
     def _find_for_windows() -> str:
         """ For Windows, we can use powershell command to find the path """
@@ -166,7 +219,7 @@ def _find_default_ide_path_helper(
 
 
 def _find_ide_path_from_running_processes_helper(
-        executable_names: typing.List[str]
+        ide_jump_helper: typing.Type['IDEJumpHelper']
 ) -> str:
     """ Try to find the IDE path from running processes. """
     try:
@@ -175,12 +228,10 @@ def _find_ide_path_from_running_processes_helper(
         pqi_log.warning('psutil module is not installed, cannot find IDE path from running processes.')
         return ''
 
-    executable_names = set(executable_names)
-
     for proc in psutil.process_iter(['exe']):
         try:
             exe_path = proc.info['exe']
-            if exe_path and os.path.basename(exe_path) in executable_names:
+            if exe_path and ide_jump_helper.match_executable_name(exe_path):
                 pqi_log.info(f'Found IDE path from running process: {exe_path}')
                 return exe_path
         except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -259,9 +310,7 @@ def find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
         raise ValueError('Cannot find IDE path for Custom or NoneType IDE.')
 
     helper = IDEJumpHelper.get_jump_helper(ide_type)
-    return _find_ide_path_from_running_processes_helper(
-        helper.get_executable_name_candidates()
-    )
+    return _find_ide_path_from_running_processes_helper(helper)
 
 def auto_detect_ide_path(ide_type: SupportedIDE) -> str:
     """ Auto-detect the IDE path by first checking running processes, then default installation paths. """
