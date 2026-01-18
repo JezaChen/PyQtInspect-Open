@@ -292,7 +292,7 @@ def jump_to_ide(file: str, line: int):
         ) from e
 
 
-def find_default_ide_path(ide_type: SupportedIDE) -> str:
+def _find_default_ide_path(ide_type: SupportedIDE) -> str:
     """ Find the default path of the specified IDE type. """
     if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
         raise ValueError('Cannot find default path for Custom or NoneType IDE.')
@@ -304,7 +304,7 @@ def find_default_ide_path(ide_type: SupportedIDE) -> str:
     )
 
 
-def find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
+def _find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
     """ Try to find the IDE path from running processes. """
     if ide_type in (SupportedIDE.Custom, SupportedIDE.NoneType):
         raise ValueError('Cannot find IDE path for Custom or NoneType IDE.')
@@ -314,11 +314,11 @@ def find_ide_path_from_running_processes(ide_type: SupportedIDE) -> str:
 
 def auto_detect_ide_path(ide_type: SupportedIDE) -> str:
     """ Auto-detect the IDE path by first checking running processes, then default installation paths. """
-    ide_path = find_ide_path_from_running_processes(ide_type)
+    ide_path = _find_ide_path_from_running_processes(ide_type)
     if ide_path:
         return ide_path
 
-    ide_path = find_default_ide_path(ide_type)
+    ide_path = _find_default_ide_path(ide_type)
     return ide_path
 
 # endregion
