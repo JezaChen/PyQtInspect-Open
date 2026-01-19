@@ -15,7 +15,7 @@ from PyQtInspect.pqi_gui._pqi_res import get_icon
 
 from PyQtInspect.pqi_gui.settings import SettingsController
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE
-from PyQtInspect.pqi_gui.settings.ide_jumpers import find_default_ide_path
+from PyQtInspect.pqi_gui.settings.ide_jumpers import auto_detect_ide_path
 
 
 class IDESettingsGroupBox(QtWidgets.QGroupBox):
@@ -129,7 +129,7 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
 
     def _autoDetectIDEPath(self):
         """ Automatically detect IDE path based on common installation locations """
-        path = find_default_ide_path(self.getIDEType())
+        path = auto_detect_ide_path(self.getIDEType())
         if path:
             self._idePathLineEdit.setText(os.path.normpath(path))
         else:
