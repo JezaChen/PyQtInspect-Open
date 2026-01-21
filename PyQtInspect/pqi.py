@@ -816,20 +816,23 @@ def main():
 
         try:
             # Run with detached mode
-            args = ['pqi-server', *server_args]
-            pqi_log.debug(f'Starting pqi-server with args: {args}')
+            # try to run the GUI entry directly
+            pqi_log.info('Starting pqi-server directly...')
+            gui_entry = find_pqi_server_gui_entry()
             subprocess.Popen(
-                args,
+                [sys.executable, gui_entry, *server_args],
                 close_fds=True, stdin=None, stdout=None, stderr=None,
             )
+
         except Exception as e:
-            # If we can't start the server by calling ``pqi-server``,
-            # try to run the GUI entry directly.
-            pqi_log.warning(f'Failed to start pqi-server: "{e}", trying to run GUI entry directly.')
+            # If we can't start the server directly,
+            # try to start it via `pqi-server` command (assuming it's in PATH)
+            pqi_log.warning(f'Failed to start pqi-server directly: "{e}", trying to start via "pqi-server" command...')
             try:
-                gui_entry = find_pqi_server_gui_entry()
+                args = ['pqi-server', *server_args]
+                pqi_log.debug(f'Starting pqi-server with args: {args}')
                 subprocess.Popen(
-                    [sys.executable, gui_entry, *server_args],
+                    args,
                     close_fds=True, stdin=None, stdout=None, stderr=None,
                 )
             except:
