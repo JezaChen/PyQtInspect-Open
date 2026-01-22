@@ -11,7 +11,7 @@
 </p>
 
 For Python GUI programs developed with PyQt/PySide using Qt Widgets,
-it is difficult to view control information, locate the codes where they are defined, 
+it is difficult to view control information, locate the code where they are defined, 
 and perform other operations at runtime. 
 It's not as easy as inspecting HTML elements in Chrome/Firefox browsers. 
 This project aims to solve this problem by providing an element inspector tool for PyQt/PySide programs, 
@@ -23,7 +23,7 @@ similar to Chrome's element inspector.
 
 - Python 3.7+
 
-- One of the following Qt for Python frameworks installed: PyQt5/PySide2/PyQt6/Pyside6
+- One of the following Qt for Python frameworks installed: PyQt5/PySide2/PyQt6/PySide6
 
 ## 2. Installation
 
