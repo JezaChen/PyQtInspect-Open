@@ -65,6 +65,16 @@ The `PyQtInspect` architecture has two parts:
 
 - **Debuggee/Client**: Runs inside the target Python process, patches the host’s Python Qt framework, responds to the debugger, and sends host information back.
 
+### 3.0 Quick Start (Recommended)
+
+If you just want to **debug immediately**, use **Direct Mode** (recommended). It auto-launches the GUI server and auto-detects the Qt framework.
+
+```powershell
+python -m PyQtInspect --direct --file path/to/your_app.py [app_args]
+```
+
+That’s it — the GUI inspector will start alongside your app.
+
 ### 3.1 Overview of startup modes
 
 Two startup modes are supported:
