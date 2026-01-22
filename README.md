@@ -77,22 +77,21 @@ Note that in **Direct Mode**, each client (debuggee) creates its own server, i.e
 
 **Detached Mode** supports remote debugging (server and client on different machines). **Direct Mode** does not, since the client and its auto-launched server run on the same machine.
 
-PyQtInspect also supports [running in IDEs like PyCharm](#341-run-pyqtinspect-in-pycharm-and-other-ides-supports-detached-mode-direct-mode) and [attaching to an existing PyQt/PySide process](#342-attach-to-process-detached-mode-only-currently-unstable).
+PyQtInspect also supports [running in IDEs like PyCharm/VSCode/Cursor](#341-run-pyqtinspect-in-pycharm-and-other-ides-supports-detached-mode-direct-mode) and [attaching to an existing PyQt/PySide process](#342-attach-to-process-detached-mode-only-currently-unstable).
 
 ### 3.2 Direct Mode (Convenient method, recommended 👍)
 
 This **recommended** one-step method launches both the PyQtInspect server and client together. It requires full access to the Python source code of the debugged program.
 
-If you normally run your **PyQt5** app via `python xxx.py param1 param2`, simply insert `-m PyQtInspect --direct --file` between `python` and `xxx.py`, i.e.:
+If you normally run your app via `python xxx.py param1 param2`, simply insert `-m PyQtInspect --direct --file` between `python` and `xxx.py`, i.e.:
 `python -m PyQtInspect --direct --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
-If the app uses **PySide2/PyQt6/PySide6**, you **must also add the `--qt-support` option** to specify the Qt framework. For example, for PySide2 you should use:
-`python -m PyQtInspect --direct --qt-support=pyside2 --file xxx.py param1 param2`.
+PyQtInspect now **auto-detects** whether your app uses **PyQt5/PyQt6/PySide2/PySide6**, so you usually **do not need** to pass `--qt-support`. Use `--qt-support` only if you want to **override** the auto-detection.
 
 For Direct Mode, the full command is:
 
 ```powershell
-python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
+python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[auto|pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
 ```
 
 Parameter meanings:
@@ -100,15 +99,16 @@ Parameter meanings:
 * `--direct`: Use **Direct Mode**
 * `--multiprocess`: Enable **multi-process debugging** (off by default)
 * `--show-pqi-stack`: Show call stacks related to PyQtInspect (hidden by default)
-* `--qt-support`: Qt framework used by the target app, default `pyqt5`; choose from `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
+* `--qt-support`: Qt framework used by the target app, default `auto` (auto-detect); choose from `auto`, `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the debuggee
 
 For example, to debug the PySide2 version of [`PyQt-Fluent-Widgets`][1], whose demo runs via
 `python examples/gallery/demo.py`, you can use:
-`python -m PyQtInspect --direct --qt-support=pyside2 --file examples/gallery/demo.py` to launch PyQtInspect in Direct Mode.
+`python -m PyQtInspect --direct --file examples/gallery/demo.py` to launch PyQtInspect in Direct Mode.
+If you need to force PySide2, use `--qt-support=pyside2`.
 
-> Note: When using PyCharm or other IDEs that rely on the pydevd debugger, **ensure the IDE’s [‘PyQt compatible’ option][4] matches the Qt framework used by your project**, otherwise PyQtInspect may not work correctly or could crash the program.
+> ⚠️ **Important:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 
 ### 3.3 Detached Mode (Traditional method, one-to-many debugging)
 
@@ -124,16 +124,15 @@ Run `pqi-server` in a terminal to launch the server GUI. After launch, set the l
 
 Prerequisite: You must have the target program’s Python source.
 
-Similar to Direct Mode, if you run a **PyQt5** app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py`, i.e.:
+Similar to Direct Mode, if you run an app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py`, i.e.:
 `python -m PyQtInspect --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
-Likewise, for **PySide2/PyQt6/Pyside6**, **also add `--qt-support`** to specify the framework. For example, for PySide2:
-`python -m PyQtInspect --qt-support=pyside2 --file xxx.py param1 param2`.
+PyQtInspect **auto-detects** the Qt framework (PyQt5/PyQt6/PySide2/PySide6) by default, so `--qt-support` is optional unless you want to override the detection.
 
 For Detached Mode, the full command is:
 
 ```powershell
-python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
+python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pqi-stack] [--qt-support=[auto|pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
 ```
 
 Parameter meanings:
@@ -142,21 +141,21 @@ Parameter meanings:
 * `--client`: Server address (default `127.0.0.1`)
 * `--multiprocess`: Enable **multi-process debugging** (off by default)
 * `--show-pqi-stack`: Show call stacks related to PyQtInspect (hidden by default)
-* `--qt-support`: Qt framework used by the target app, default `pyqt5`; choose from `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
+* `--qt-support`: Qt framework used by the target app, default `auto` (auto-detect); choose from `auto`, `pyqt5`, `pyside2`, `pyqt6`, `pyside6`
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the target app
 
 Again using the PySide2 version of [`PyQt-Fluent-Widgets`][1] as an example: if the GUI debugger is already running locally (address `127.0.0.1`) on the default port `19394`, you can start the client with
-`python -m PyQtInspect --qt-support=pyside2 --file examples/gallery/demo.py`.
+`python -m PyQtInspect --file examples/gallery/demo.py`.
 (Here the server address and port are defaults, so you don’t need to pass `--client` or `--port`.)
 
-> Note: When using PyCharm or other IDEs that rely on the pydevd debugger, make sure the IDE’s [‘PyQt compatible’ option][4] matches your project’s framework, otherwise PyQtInspect may not work correctly or could crash the program.
+> ⚠️ **Important:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 
 ### 3.4 Other run methods
 
 #### 3.4.1 Run PyQtInspect in PyCharm and other IDEs (supports Detached Mode/Direct Mode)
 
-Debug the PyQtInspect module directly in PyCharm; this won’t interfere with debugging your app.
+Debug the PyQtInspect module directly in PyCharm (or other IDEs/editors like VSCode/Cursor); this won’t interfere with debugging your app.
 
 Also taking [`PyQt-Fluent-Widgets`][1] as an example, you can create a new Debug configuration like so:
 
@@ -192,11 +191,11 @@ The second tab below the brief info shows detailed properties, organized hierarc
 
 ### 4.3 View the control’s initialization call stack
 
-The first tab below the brief info shows the call stack at control creation. Double-click to open PyCharm and navigate to the file and line.
+The first tab below the brief info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
 
 ![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/create_stack.gif?raw=true)
 
-If opening PyCharm fails, set the PyCharm path under **More → Settings**.
+If IDE jump fails, configure the IDE type and executable path under **More → Settings**. PyQtInspect can also auto-detect a running IDE’s path, and the error dialog provides a **Configure IDE** shortcut when a jump fails.
 
 **P.S. For clients started via [Attach to Process](#342-attach-to-process-detached-mode-only-currently-unstable), if the control already existed when you attached, creation info won’t be available and the call stack will be empty.**
 
@@ -247,6 +246,14 @@ Click (or hover) a row in the tree to highlight the corresponding control.
     which may cause crash when accessing the `propertyName` method.
 
 ## 6. Changelog
+
+### 0.5.0
+
+* Auto-detect Qt framework (PyQt5/PyQt6/PySide2/PySide6) so `--qt-support` is optional
+* IDE jump supports PyCharm, VSCode, Cursor, and custom commands, with auto-detection of IDE paths
+* Added a “Configure IDE” shortcut when IDE jumping fails
+* Improved Direct Mode server launch ordering and IDE detection logging
+* UI refinements for hierarchy/children views and updated arrow icons to SVGs
 
 ### 0.4.0
 
