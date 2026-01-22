@@ -59,10 +59,10 @@ pip install .
 
 ## 3. Quick Start
 
-Use **Direct Mode** to quickly attach PyQtInspect with your app. The GUI inspector will start alongside your app.
+Use [**Direct Mode**](#direct-mode) to quickly attach PyQtInspect with your app. The GUI inspector will start alongside your app.
 
 ```powershell
-python -m PyQtInspect --direct --file path/to/your_app.py [app_args]
+python -m PyQtInspect --direct --file path/to/your_app.py [your_app_args]
 ```
 
 ## 4. Detailed Start Guide
@@ -94,10 +94,10 @@ This **recommended** one-step method launches both the PyQtInspect server and cl
 If you normally run your app via `python xxx.py param1 param2`, simply insert `-m PyQtInspect --direct --file` between `python` and `xxx.py`, i.e.:
 `python -m PyQtInspect --direct --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
-**✨ New in v0.5.0: Automatic Qt Framework Detection**  
-PyQtInspect now **automatically detects** which Qt framework your application uses (PyQt5, PyQt6, PySide2, or PySide6). You no longer need to specify `--qt-support` in most cases! The tool will detect and patch the appropriate framework based on the debugged program's imports.
+> **✨ New in v0.5.0: Automatic Qt Framework Detection**  
+> PyQtInspect now **automatically detects** which Qt framework your application uses (PyQt5, PyQt6, PySide2, or PySide6). You no longer need to specify `--qt-support` in most cases! The tool will detect and patch the appropriate framework based on the debugged program's imports.
 
-If you need to override the auto-detection, you can still manually specify the framework:
+For Direct Mode, the full command is:
 
 ```powershell
 python -m PyQtInspect --direct [--multiprocess] [--show-pqi-stack] [--qt-support=[auto|pyqt5|pyside2|pyqt6|pyside6]] --file py_file [file_args]
@@ -130,7 +130,7 @@ Run `pqi-server` in a terminal to launch the server GUI. After launch, set the l
 
 Prerequisite: You must have the target program’s source code.
 
-Similar to Direct Mode, if you run an app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py`, i.e.:
+Similar to Direct Mode, if you run an app via `python xxx.py param1 param2`, insert `-m PyQtInspect --file` between `python` and `xxx.py` (no `--direct`!), i.e.:
 `python -m PyQtInspect --file xxx.py param1 param2` to start debugging with PyQtInspect.
 
 PyQtInspect **auto-detects** the Qt framework (PyQt5/PyQt6/PySide2/PySide6) by default, so `--qt-support` is optional unless you want to override the detection.
@@ -191,13 +191,13 @@ The second tab below the brief info shows detailed properties, organized hierarc
 
 <img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/detailed_props.png?raw=true" width="350"/>
 
-### 5.3 View the control’s initialization call stack
+### 5.3 View the control’s creation call stack
 
 The first tab below the brief info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
 
 ![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/create_stack.gif?raw=true)
 
-If IDE jump fails, configure the IDE type and executable path under **More → Settings**. PyQtInspect can also auto-detect a running IDE’s path, and the error dialog provides a **Configure IDE** shortcut when a jump fails.
+If IDE jump fails, please configure the IDE type and executable path under **More → Settings**.
 
 **P.S. For clients started via [Attach to Process](#attach-mode), if the control already existed when you attached, creation info won’t be available and the call stack will be empty.**
 
