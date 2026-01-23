@@ -17,7 +17,7 @@ It's not as easy as inspecting HTML elements in Chrome/Firefox browsers.
 This project aims to solve this problem by providing an element inspector tool for PyQt/PySide programs, 
 similar to Chrome's element inspector.
 
-![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/overview.gif?raw=true)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/overview.gif?raw=true)
 
 ## 1. Requirements
 
@@ -41,13 +41,7 @@ you can install from git or download the source ZIP package and install after ex
 pip install git+https://github.com/JezaChen/PyQtInspect-Open.git
 ```
 
-> ⚠️ **Note:** Installing directly from the default branch is not reproducible. For deterministic installs, pin to a specific tag or commit.
-> ```
-> # pin to a specific tag
-> pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@v0.5.0
-> # or pin to a specific commit
-> pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@<commit-sha>
-> ```
+> ⚠️ **Note:** Installing directly from the default branch is not reproducible. For deterministic installs, pin to a specific tag (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@v0.5.0`) or commit (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@<commit-sha>`).
 
 **Install from Source ZIP:**
 1. Download [the source ZIP package](https://github.com/JezaChen/PyQtInspect-Open/archive/refs/heads/master.zip)
@@ -59,7 +53,7 @@ pip install .
 
 ## 3. Quick Start
 
-Use [**Direct Mode**](#direct-mode) to quickly attach PyQtInspect with your app. The GUI inspector will start alongside your app.
+Use [**Direct Mode**](#direct-mode) to quickly attach PyQtInspect to your app. The GUI inspector will start alongside your app.
 
 ```powershell
 python -m PyQtInspect --direct --file path/to/your_app.py [your_app_args]
@@ -81,7 +75,7 @@ Two startup modes are supported:
 
 * [**Direct Mode (Recommended)**](#direct-mode): Start only the debuggee; it will **launch a local GUI server automatically** (no need to start the server yourself). **When the debuggee exits, the GUI server exits with it.**
 
-Note that in **Direct Mode**, each client (debuggee) creates its own server, i.e., one-to-one relationship. And you cannot manually specify the listening port, close connections, or attach to processes.
+Note that in **Direct Mode**, each client (debuggee) creates its own server, i.e., a one-to-one relationship. And you cannot manually specify the listening port, close connections, or attach to processes.
 
 **Detached Mode** supports remote debugging (server and client on different machines). **Direct Mode** does not, since the client and its auto-launched server run on the same machine.
 
@@ -124,7 +118,7 @@ In Detached Mode, **make sure to start the GUI server before launching the debug
 
 Run `pqi-server` in a terminal to launch the server GUI. After launch, set the listening port (default `19394`) and click **Serve** to start the server.
 
-<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/start_server.png?raw=true"/>
+<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/start_server.png?raw=true"/>
 
 #### 4.3.2 Start the Debuggee (Client): Attach PyQtInspect when running program source code
 
@@ -151,7 +145,7 @@ Parameter meanings:
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the target app
 
-> ⚠️ **Re-emphasize:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
+> ⚠️ **Reminder:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 
 ### 4.4 Other run methods
 
@@ -167,66 +161,66 @@ Then simply Run/Debug.
 
 #### 4.4.2 Attach to Process (Detached Mode only, currently unstable) <a id="attach-mode"></a>
 
-If you **don’t have the target app’s source**, you can **try** enabling inspect via process attach.
+If you **don’t have the target app’s source code**, you can **try** enabling inspect via process attach.
 
 Click **More → Attach To Process** to open the attach window, choose the target process, then click **Attach**.
 
 **Note:** For most controls, you **cannot retrieve their creation call stacks** unless they were created **after** you attached.
 
-![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/attach_process.gif?raw=true)
+![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/attach_process.gif?raw=true)
 
 ## 5. Usage
 
 ### 5.1 Select elements
 
-Click **Select** to start picking. Hover over a control to highlight it and preview brief info (class name, object name, size, relative position, styles, etc.).
+Click **Select** to start picking. Hover over a control to highlight it and preview basic info (class name, object name, size, relative position, styles, etc.).
 
 Left-click to select the control. You can then inspect it in depth: view and jump to its initialization call stack, execute code in its context, view hierarchy info, view the control tree, and inspect properties.
 
-![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/select_and_click.gif?raw=true)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/select_and_click.gif?raw=true)
 
 ### 5.2 View control properties
 
-The second tab below the brief info shows detailed properties, organized hierarchically by class inheritance and property type.
+The second tab below the basic info shows detailed properties, organized hierarchically by class inheritance and property type.
 
-<img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/detailed_props.png?raw=true" width="350"/>
+<img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/detailed_props.png?raw=true" width="350"/>
 
 ### 5.3 View the control’s creation call stack
 
-The first tab below the brief info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
+The first tab below the basic info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
 
-![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/create_stack.gif?raw=true)
+![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/creation_stack.gif?raw=true)
 
 If IDE jump fails, please configure the IDE type and executable path under **More → Settings**.
 
 **P.S. For clients started via [Attach to Process](#attach-mode), if the control already existed when you attached, creation info won’t be available and the call stack will be empty.**
 
-### 5.4 Execute code
+### 5.4 Run code snippet
 
-After selecting a control, click **Run Code** to execute code in the scope of the selected control (`self` is the control instance; essentially this runs inside a method of the control object).
+After selecting a control, click **Run Snippet…** to execute code in the scope of the selected control (`self` is the control instance; essentially this runs inside a method of the control object).
 
-![run code](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/run_code.gif?raw=true)
+![run code](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/run_code_snippet.gif?raw=true)
 
 ### 5.5 View hierarchy information
 
 At the bottom is the hierarchy breadcrumb. You can view, highlight, and locate ancestor and child controls of the selection, making it easy to navigate the hierarchy.
-Combined with mouse selecting, this enables more precise selection.
+Combined with mouse selection, this enables more precise control picking.
 
-![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/inspect_hierarchy.gif?raw=true)
+![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/inspect_hierarchy.gif?raw=true)
 
 ### 5.6 While selecting, use right-click to simulate left-click
 
-*(Enabled by default. To disable, go to **More → Mock Right Button Down as Left When Selecting Elements** and uncheck.)*
+*(Enabled by default. To disable, go to **More → Treat Right Click as Left Click When Selecting Elements** and uncheck.)*
 
 Some controls only appear after a left-click. For easier picking, you can simulate left-click with the right mouse button.
 
 **P.S. This only applies while mouse selecting is active.**
 
-![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/mock_right_btn_as_left.gif?raw=true)
+![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/treat_right_click_as_left.gif?raw=true)
 
 ### 5.7 Force-select with F8
 
-*(Only available on Windows, enabled by default. To disable, go to **More → Press F8 to Finish Selecting** and uncheck.)*
+*(Only available on Windows, enabled by default. To disable, go to **More → Finish Selection with F8** and uncheck.)*
 
 For controls that are hard to pick with the mouse, press **F8** to finish selection. Note that F8 only ends an ongoing selection; when selection isn’t active, pressing F8 will not start it.
 
@@ -235,7 +229,7 @@ For controls that are hard to pick with the mouse, press **F8** to finish select
 Click **View → Control Tree** to see the control tree of the process that contains the selected control.
 Click (or hover) a row in the tree to highlight the corresponding control.
 
-![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/control_tree.gif?raw=true)
+![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/control_tree.gif?raw=true)
 
 ## 6. Known Issues
 - **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
@@ -245,7 +239,7 @@ Click (or hover) a row in the tree to highlight the corresponding control.
 - Cannot select some controls for **PyQt6**.
 
 - For some computers, sometimes the `QEnterEvent` will have the type `170` (which is `QEvent.DynamicPropertyChange`),
-    which may cause crash when accessing the `propertyName` method.
+    which may cause a crash when accessing the `propertyName` method.
 
 ## 7. Changelog
 
