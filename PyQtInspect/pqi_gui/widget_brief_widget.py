@@ -56,19 +56,19 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._mainLayout.setContentsMargins(0, 0, 0, 0)
         self._mainLayout.setSpacing(5)
 
-        self._classNameLine = BriefLine(self, "class name")
+        self._classNameLine = BriefLine(self, "Class")
         self._mainLayout.addWidget(self._classNameLine)
 
-        self._objectNameLine = BriefLine(self, "object name")
+        self._objectNameLine = BriefLine(self, "Object Name")
         self._mainLayout.addWidget(self._objectNameLine)
 
-        self._sizeLine = BriefLine(self, "size")
+        self._sizeLine = BriefLine(self, "Size (W, H)")
         self._mainLayout.addWidget(self._sizeLine)
 
-        self._posLine = BriefLine(self, "pos")
+        self._posLine = BriefLine(self, "Position (X, Y)")
         self._mainLayout.addWidget(self._posLine)
 
-        self._styleSheetLine = BriefLine(self, "stylesheet")
+        self._styleSheetLine = BriefLine(self, "Style Sheet")
         self._mainLayout.addWidget(self._styleSheetLine)
 
         self._executionButtonsLayout = QtWidgets.QHBoxLayout()
@@ -76,7 +76,8 @@ class WidgetBriefWidget(QtWidgets.QWidget):
         self._executionButtonsLayout.setSpacing(5)
 
         self._execCodeButton = QtWidgets.QPushButton(self)
-        self._execCodeButton.setText("Run Code")
+        self._execCodeButton.setText("Run Snippet…")
+        self._execCodeButton.setToolTip("Run the snippet in the selected control's context.")
         self._execCodeButton.setFixedHeight(30)
         self._execCodeButton.clicked.connect(self.sigOpenCodeWindow)
 
