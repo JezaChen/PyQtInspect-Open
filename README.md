@@ -17,7 +17,7 @@ It's not as easy as inspecting HTML elements in Chrome/Firefox browsers.
 This project aims to solve this problem by providing an element inspector tool for PyQt/PySide programs, 
 similar to Chrome's element inspector.
 
-![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/overview.gif?raw=true)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/overview.gif?raw=true)
 
 ## 1. Requirements
 
@@ -124,7 +124,7 @@ In Detached Mode, **make sure to start the GUI server before launching the debug
 
 Run `pqi-server` in a terminal to launch the server GUI. After launch, set the listening port (default `19394`) and click **Serve** to start the server.
 
-<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/start_server.png?raw=true"/>
+<img alt="start_server.png" height="600" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/start_server.png?raw=true"/>
 
 #### 4.3.2 Start the Debuggee (Client): Attach PyQtInspect when running program source code
 
@@ -173,7 +173,7 @@ Click **More → Attach To Process** to open the attach window, choose the targe
 
 **Note:** For most controls, you **cannot retrieve their creation call stacks** unless they were created **after** you attached.
 
-![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/attach_process.gif?raw=true)
+![attach process](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/attach_process.gif?raw=true)
 
 ## 5. Usage
 
@@ -183,19 +183,19 @@ Click **Select** to start picking. Hover over a control to highlight it and prev
 
 Left-click to select the control. You can then inspect it in depth: view and jump to its initialization call stack, execute code in its context, view hierarchy info, view the control tree, and inspect properties.
 
-![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/select_and_click.gif?raw=true)
+![hover and inspect](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/select_and_click.gif?raw=true)
 
 ### 5.2 View control properties
 
 The second tab below the basic info shows detailed properties, organized hierarchically by class inheritance and property type.
 
-<img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/detailed_props.png?raw=true" width="350"/>
+<img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/detailed_props.png?raw=true" width="350"/>
 
 ### 5.3 View the control’s creation call stack
 
 The first tab below the basic info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
 
-![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/create_stack.gif?raw=true)
+![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/creation_stack.gif?raw=true)
 
 If IDE jump fails, please configure the IDE type and executable path under **More → Settings**.
 
@@ -205,14 +205,14 @@ If IDE jump fails, please configure the IDE type and executable path under **Mor
 
 After selecting a control, click **Run Snippet…** to execute code in the scope of the selected control (`self` is the control instance; essentially this runs inside a method of the control object).
 
-![run code](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/run_code.gif?raw=true)
+![run code](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/run_code_snippet.gif?raw=true)
 
 ### 5.5 View hierarchy information
 
 At the bottom is the hierarchy breadcrumb. You can view, highlight, and locate ancestor and child controls of the selection, making it easy to navigate the hierarchy.
 Combined with mouse selection, this enables more precise control picking.
 
-![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/inspect_hierarchy.gif?raw=true)
+![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/inspect_hierarchy.gif?raw=true)
 
 ### 5.6 While selecting, use right-click to simulate left-click
 
@@ -222,7 +222,7 @@ Some controls only appear after a left-click. For easier picking, you can simula
 
 **P.S. This only applies while mouse selecting is active.**
 
-![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/mock_right_btn_as_left.gif?raw=true)
+![mock right button as left](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/treat_right_click_as_left.gif?raw=true)
 
 ### 5.7 Force-select with F8
 
@@ -235,7 +235,7 @@ For controls that are hard to pick with the mouse, press **F8** to finish select
 Click **View → Control Tree** to see the control tree of the process that contains the selected control.
 Click (or hover) a row in the tree to highlight the corresponding control.
 
-![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/control_tree.gif?raw=true)
+![control tree](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.5.0/control_tree.gif?raw=true)
 
 ## 6. Known Issues
 - **Patching fails with multiple inheritance involving more than two PyQt classes**, such as class `A(B, C)`, 
