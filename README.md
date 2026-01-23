@@ -59,7 +59,7 @@ pip install .
 
 ## 3. Quick Start
 
-Use [**Direct Mode**](#direct-mode) to quickly attach PyQtInspect with your app. The GUI inspector will start alongside your app.
+Use [**Direct Mode**](#direct-mode) to quickly attach PyQtInspect to your app. The GUI inspector will start alongside your app.
 
 ```powershell
 python -m PyQtInspect --direct --file path/to/your_app.py [your_app_args]
@@ -81,7 +81,7 @@ Two startup modes are supported:
 
 * [**Direct Mode (Recommended)**](#direct-mode): Start only the debuggee; it will **launch a local GUI server automatically** (no need to start the server yourself). **When the debuggee exits, the GUI server exits with it.**
 
-Note that in **Direct Mode**, each client (debuggee) creates its own server, i.e., one-to-one relationship. And you cannot manually specify the listening port, close connections, or attach to processes.
+Note that in **Direct Mode**, each client (debuggee) creates its own server, i.e., a one-to-one relationship. And you cannot manually specify the listening port, close connections, or attach to processes.
 
 **Detached Mode** supports remote debugging (server and client on different machines). **Direct Mode** does not, since the client and its auto-launched server run on the same machine.
 
@@ -151,7 +151,7 @@ Parameter meanings:
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the target app
 
-> ⚠️ **Re-emphasize:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
+> ⚠️ **Reminder:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 
 ### 4.4 Other run methods
 
@@ -167,7 +167,7 @@ Then simply Run/Debug.
 
 #### 4.4.2 Attach to Process (Detached Mode only, currently unstable) <a id="attach-mode"></a>
 
-If you **don’t have the target app’s source**, you can **try** enabling inspect via process attach.
+If you **don’t have the target app’s source code**, you can **try** enabling inspect via process attach.
 
 Click **More → Attach To Process** to open the attach window, choose the target process, then click **Attach**.
 
@@ -210,7 +210,7 @@ After selecting a control, click **Run Code** to execute code in the scope of th
 ### 5.5 View hierarchy information
 
 At the bottom is the hierarchy breadcrumb. You can view, highlight, and locate ancestor and child controls of the selection, making it easy to navigate the hierarchy.
-Combined with mouse selecting, this enables more precise selection.
+Combined with mouse selection, this enables more precise control picking.
 
 ![inspect hierarchy](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/inspect_hierarchy.gif?raw=true)
 
@@ -245,7 +245,7 @@ Click (or hover) a row in the tree to highlight the corresponding control.
 - Cannot select some controls for **PyQt6**.
 
 - For some computers, sometimes the `QEnterEvent` will have the type `170` (which is `QEvent.DynamicPropertyChange`),
-    which may cause crash when accessing the `propertyName` method.
+    which may cause a crash when accessing the `propertyName` method.
 
 ## 7. Changelog
 
