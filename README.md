@@ -179,7 +179,7 @@ Click **More → Attach To Process** to open the attach window, choose the targe
 
 ### 5.1 Select elements
 
-Click **Select** to start picking. Hover over a control to highlight it and preview brief info (class name, object name, size, relative position, styles, etc.).
+Click **Select** to start picking. Hover over a control to highlight it and preview basic info (class name, object name, size, relative position, styles, etc.).
 
 Left-click to select the control. You can then inspect it in depth: view and jump to its initialization call stack, execute code in its context, view hierarchy info, view the control tree, and inspect properties.
 
@@ -187,13 +187,13 @@ Left-click to select the control. You can then inspect it in depth: view and jum
 
 ### 5.2 View control properties
 
-The second tab below the brief info shows detailed properties, organized hierarchically by class inheritance and property type.
+The second tab below the basic info shows detailed properties, organized hierarchically by class inheritance and property type.
 
 <img alt="detailed_props" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/detailed_props.png?raw=true" width="350"/>
 
 ### 5.3 View the control’s creation call stack
 
-The first tab below the brief info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
+The first tab below the basic info shows the call stack at control creation. Double-click to open your configured IDE (PyCharm/VSCode/Cursor or a custom command) and navigate to the file and line.
 
 ![create stacks](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/create_stack.gif?raw=true)
 
@@ -201,9 +201,9 @@ If IDE jump fails, please configure the IDE type and executable path under **Mor
 
 **P.S. For clients started via [Attach to Process](#attach-mode), if the control already existed when you attached, creation info won’t be available and the call stack will be empty.**
 
-### 5.4 Execute code
+### 5.4 Run code snippet
 
-After selecting a control, click **Run Code** to execute code in the scope of the selected control (`self` is the control instance; essentially this runs inside a method of the control object).
+After selecting a control, click **Run Snippet…** to execute code in the scope of the selected control (`self` is the control instance; essentially this runs inside a method of the control object).
 
 ![run code](https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/0.4.0/run_code.gif?raw=true)
 
@@ -216,7 +216,7 @@ Combined with mouse selection, this enables more precise control picking.
 
 ### 5.6 While selecting, use right-click to simulate left-click
 
-*(Enabled by default. To disable, go to **More → Mock Right Button Down as Left When Selecting Elements** and uncheck.)*
+*(Enabled by default. To disable, go to **More → Treat Right Click as Left Click When Selecting Elements** and uncheck.)*
 
 Some controls only appear after a left-click. For easier picking, you can simulate left-click with the right mouse button.
 
@@ -226,7 +226,7 @@ Some controls only appear after a left-click. For easier picking, you can simula
 
 ### 5.7 Force-select with F8
 
-*(Only available on Windows, enabled by default. To disable, go to **More → Press F8 to Finish Selecting** and uncheck.)*
+*(Only available on Windows, enabled by default. To disable, go to **More → Finish Selection with F8** and uncheck.)*
 
 For controls that are hard to pick with the mouse, press **F8** to finish selection. Note that F8 only ends an ongoing selection; when selection isn’t active, pressing F8 will not start it.
 
