@@ -247,7 +247,7 @@ Click (or hover) a row in the tree to highlight the corresponding control.
 
 * **🎉 Auto-Detection Support**: PyQtInspect now automatically detects which Qt framework (PyQt5, PyQt6, PySide2, PySide6) your application uses - no need to specify `--qt-support` for most applications.
 * IDE jump supports PyCharm, VSCode, Cursor, and custom commands, with auto-detection of IDE paths
-* Improved Direct Mode server launch ordering and IDE detection logging
+* Some bug fixes and improvements
 * Minor UI refinements
 
 ### 0.4.0
