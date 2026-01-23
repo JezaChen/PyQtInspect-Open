@@ -6,7 +6,7 @@
 
 <p align="center">
 <a href="https://github.com/JezaChen/PyQtInspect-Open">源代码</a> |
-<a href="https://jeza-chen.com/PyqtInspect">英文文档</a> | 
+<a href="/">英文文档</a> | 
 <a href="https://pypi.org/project/PyQtInspect/">PyPI</a>
 </p>
 
