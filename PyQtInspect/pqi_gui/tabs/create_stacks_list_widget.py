@@ -8,7 +8,7 @@ from PyQtInspect.pqi_gui.settings.ide_jumpers import jump_to_ide
 
 
 class CreateStacksListWidget(QtWidgets.QListWidget):
-    tab_name = "Create Stack"
+    tab_name = "Creation Stack"
 
     def __init__(self, parent):
         super().__init__(parent)

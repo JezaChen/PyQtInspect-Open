@@ -145,7 +145,7 @@ class ControlTreeWindow(QtWidgets.QWidget):
         self._treeWidget.currentRowChanged.connect(self._onCurrentRowChanged)
 
         self._highlightWhenHoverOption = QtWidgets.QCheckBox(self)
-        self._highlightWhenHoverOption.setText("When hovering a row, highlight the corresponding widget")
+        self._highlightWhenHoverOption.setText("Highlight the corresponding widget when hovering a tree row")
         self._highlightWhenHoverOption.setChecked(_DefaultOptions.HighlightWhenHover)
         self._highlightWhenHoverOption.stateChanged.connect(self._onHighlightWhenHoverOptionChanged)
 

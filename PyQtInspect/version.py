@@ -1,2 +1,2 @@
-PQI_VERSION = '0.4.0'
+PQI_VERSION = '0.5.0'
 PQI_NAME = 'PyQtInspect'

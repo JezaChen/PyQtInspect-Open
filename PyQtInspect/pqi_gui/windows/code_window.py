@@ -51,7 +51,7 @@ class CodeWindow(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Exec Code For Selected Widget")
+        self.setWindowTitle("Run code snippet for selected widget")
         self.setWindowIcon(get_icon())
         self.resize(800, 500)
 

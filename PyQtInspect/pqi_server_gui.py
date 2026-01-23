@@ -119,7 +119,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._keyboardHookHandler = KeyboardHookHandler(self)
 
         self._pressF8ToFinishSelectingAction = QtWidgets.QAction(self)
-        self._pressF8ToFinishSelectingAction.setText("Press F8 to Finish Selecting")
+        self._pressF8ToFinishSelectingAction.setText("Finish Selection with F8")
         self._pressF8ToFinishSelectingAction.setCheckable(True)
         self._pressF8ToFinishSelectingAction.setEnabled(self._keyboardHookHandler.isValid())
         self._pressF8ToFinishSelectingAction.setChecked(
@@ -141,7 +141,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         # Mock Left Button Down Action
         self._isMockLeftButtonDownAction = QtWidgets.QAction(self)
-        self._isMockLeftButtonDownAction.setText("Mock Right Button Down as Left When Selecting Elements")
+        self._isMockLeftButtonDownAction.setText("Treat Right Click as Left Click When Selecting Elements")
         self._isMockLeftButtonDownAction.setCheckable(True)
         self._isMockLeftButtonDownAction.setChecked(SettingsController.instance().mockRightClickAsLeftClick)  # default
         self._isMockLeftButtonDownAction.toggled.connect(self._onMockLeftButtonDownToggled)
@@ -250,7 +250,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._mainLayout.addWidget(self._topContainer)
 
         self._widgetInfoGroupBox = QtWidgets.QGroupBox(self)
-        self._widgetInfoGroupBox.setTitle("Widget Brief Info")
+        self._widgetInfoGroupBox.setTitle("Widget Basic Info")
 
         self._widgetInfoGroupBoxLayout = QtWidgets.QVBoxLayout(self._widgetInfoGroupBox)
         self._widgetInfoGroupBoxLayout.setContentsMargins(0, 4, 0, 6)
@@ -262,7 +262,7 @@ class PQIWindow(QtWidgets.QMainWindow):
 
         self._widgetInfoGroupBoxLayout.addWidget(self._widgetBriefWidget)
 
-        self._mainLayout.addSpacing(3)
+        self._mainLayout.addSpacing(5)
         self._mainLayout.addWidget(self._widgetInfoGroupBox)
         # endregion
 
@@ -282,7 +282,7 @@ class PQIWindow(QtWidgets.QMainWindow):
         self._sigInspectFinished.connect(self._requestCurSelectedWidgetProperties)
         # endregion
 
-        self._mainLayout.addSpacing(3)
+        self._mainLayout.addSpacing(5)
         self._mainLayout.addWidget(self._widgetInfoTabWidget)
         # endregion
 
