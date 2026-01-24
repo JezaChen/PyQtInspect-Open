@@ -732,7 +732,7 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _openAboutWindow(self):
         QtWidgets.QMessageBox.about(self, f"About {version.PQI_NAME}",
                                     f"{version.PQI_NAME} {version.PQI_VERSION}\n"
-                                    "© 2025 Jeza Chen (陈建彰)\n\n"
+                                    "© 2026 Jeza Chen (陈建彰)\n\n"
                                     f"{version.PQI_NAME} is a tool for developers to inspect the native elements in the running PyQt/PySide applications.")
 
     def _getWindowTitle(self) -> str:

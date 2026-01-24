@@ -44,6 +44,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: Eclipse Public License 2.0 (EPL-2.0)",
     ],
