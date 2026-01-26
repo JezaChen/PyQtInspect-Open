@@ -41,7 +41,7 @@ you can install from git or download the source ZIP package and install after ex
 pip install git+https://github.com/JezaChen/PyQtInspect-Open.git
 ```
 
-> ⚠️ **Note:** Installing directly from the default branch is not reproducible. For deterministic installs, pin to a specific tag (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@v0.5.0`) or commit (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@<commit-sha>`).
+> ⚠️ **Note:** Installing directly from the default branch is not reproducible. For deterministic installs, pin to a specific tag (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@0.5.0`) or commit (`pip install git+https://github.com/JezaChen/PyQtInspect-Open.git@<commit-sha>`).
 
 **Install from Source ZIP:**
 1. Download [the source ZIP package](https://github.com/JezaChen/PyQtInspect-Open/archive/refs/heads/master.zip)
