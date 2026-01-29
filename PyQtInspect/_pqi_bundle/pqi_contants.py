@@ -159,7 +159,7 @@ INTERACTIVE_MODE_AVAILABLE = sys.platform in ('darwin', 'win32') or os.getenv('D
 IS_PYCHARM = True
 ASYNC_EVAL_TIMEOUT_SEC = 60
 NEXT_VALUE_SEPARATOR = "__pydev_val__"
-BUILTINS_MODULE_NAME = '__builtin__' if IS_PY2 else 'builtins'
+BUILTINS_MODULE_NAME = '__builtin__'
 SHOW_DEBUG_INFO_ENV = os.getenv('PYCHARM_DEBUG') == 'True' or os.getenv('PQI_DEBUG') == 'True'
 IS_ASYNCIO_REPL = os.getenv('ASYNCIO_REPL') == 'True' and IS_PY38_OR_GREATER
 IS_ASYNCIO_DEBUGGER_ENV = os.getenv('ASYNCIO_DEBUGGER_ENV') == 'True' and IS_PY38_OR_GREATER

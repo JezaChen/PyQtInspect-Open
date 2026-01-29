@@ -409,12 +409,8 @@ class NetCommand:
             encoded = quote(str(text), '/<>_=" \t')
             msg = '%s\t%s\t%s\n' % (cmd_id, seq, encoded)
 
-        if IS_PY2:
-            assert isinstance(msg, str)  # i.e.: bytes
-            as_bytes = msg
-        else:
-            if isinstance(msg, str):
-                msg = msg.encode('utf-8')
+        if isinstance(msg, str):
+            msg = msg.encode('utf-8')
 
             assert isinstance(msg, bytes)
             as_bytes = msg
@@ -432,26 +428,6 @@ class NetCommand:
         pqi_log.debug(
             'sending cmd --> %20s %s' % (ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN'), text.replace('\n', ' '))
         )
-        # with cls._show_debug_info_lock:
-        #     # Only one thread each time (rlock).
-        #     if cls._showing_debug_info:
-        #         # avoid recursing in the same thread (just printing could create
-        #         # a new command when redirecting output).
-        #         return
-        #
-        #     cls._showing_debug_info += 1
-        #     try:
-        #         out_message = 'sending cmd --> '
-        #         out_message += "%20s" % ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN')
-        #         out_message += ' '
-        #         out_message += text.replace('\n', ' ')
-        #         try:
-        #             sys.stderr.write('%s\n' % (out_message,))
-        #         except:
-        #             pass
-        #     finally:
-        #         cls._showing_debug_info -= 1
-
 
 # # =======================================================================================================================
 # # NetCommandFactory
@@ -540,30 +516,3 @@ class NetCommandFactory:
 
     def make_exit_message(self):
         return NetCommand(CMD_EXIT, 0, '')
-
-
-INTERNAL_TERMINATE_THREAD = 1
-INTERNAL_SUSPEND_THREAD = 2
-
-
-# =======================================================================================================================
-# InternalThreadCommand
-# =======================================================================================================================
-class InternalThreadCommand:
-    """ internal commands are generated/executed by the debugger.
-
-    The reason for their existence is that some commands have to be executed
-    on specific threads. These are the InternalThreadCommands that get
-    get posted to PyDB.cmdQueue.
-    """
-
-    def __init__(self, thread_id):
-        self.thread_id = thread_id
-
-    def can_be_executed_by(self, thread_id):
-        '''By default, it must be in the same thread to be executed
-        '''
-        return self.thread_id == thread_id or self.thread_id.endswith('|' + thread_id)
-
-    def do_it(self, dbg):
-        raise NotImplementedError("you have to override do_it")
