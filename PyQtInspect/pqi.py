@@ -21,7 +21,7 @@ from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent
     get_create_stack, get_control_tree
 from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
+from PyQtInspect._pqi_bundle.pqi_contants import SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
@@ -445,9 +445,6 @@ class PyDB:
 
             while not self.ready_to_run:
                 time.sleep(0.1)  # busy wait until we receive run command
-
-        t = threadingCurrentThread()
-        thread_id = get_current_thread_id(t)
 
         if hasattr(sys, 'exc_clear'):
             # we should clean exception information in Python 2, before user's code execution
