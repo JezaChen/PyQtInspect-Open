@@ -9,7 +9,6 @@ This module holds the constants used for specifying the states of the debugger.
 '''
 
 import logging
-import platform
 import sys  # Note: the sys import must be here anyways (others depend on it)
 import os
 
