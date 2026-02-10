@@ -20,7 +20,7 @@ At a high level:
 
 ## 2. Runtime Architecture and Responsibilities
 
-## 2.1 Server side (GUI)
+### 2.1 Server side (GUI)
 
 Primary modules:
 
@@ -35,7 +35,7 @@ Key behavior:
 - UI actions route to a target dispatcher (or all dispatchers) via `PQYWorker` methods.
 - Incoming network messages are decoded and dispatched by command ID in `PQIWindow.onWidgetInfoRecv`.
 
-## 2.2 Client side (debuggee runtime)
+### 2.2 Client side (debuggee runtime)
 
 Primary modules:
 
@@ -51,7 +51,7 @@ Key behavior:
 - Client stores widget references by `id(widget)` and serves info on demand.
 - On server commands, client performs operations like enable inspect, highlight widget, select widget, execute code, return properties/tree/children.
 
-## 2.3 Mode differences
+### 2.3 Mode differences
 
 - **Detached mode**: server started explicitly; clients connect to configured host/port.
 - **Direct mode**: debuggee launches a colocated server process and exits together with it.
@@ -60,7 +60,7 @@ Key behavior:
 
 ## 3. Client/Server Interaction Contract
 
-## 3.1 Transport and framing
+### 3.1 Transport and framing
 
 - Default protocol is **quoted-line** (one command per line):
   - `cmd_id\tseq\tpayload\n`
@@ -72,7 +72,7 @@ Implementation anchors:
 - `NetCommand` serialization + encoding in `pqi_comm.py`.
 - `ReaderThread` parses by newline, then tab-splitting into `cmd_id`, `seq`, `text`.
 
-## 3.2 Command IDs and message semantics
+### 3.2 Command IDs and message semantics
 
 Message IDs are defined in `PyQtInspect/_pqi_bundle/pqi_comm_constants.py`.
 
@@ -95,22 +95,22 @@ Common flows:
   - `CMD_EXEC_CODE` request.
   - `CMD_EXEC_CODE_RESULT` or `CMD_EXEC_CODE_ERROR` response.
 
-## 3.3 Payload structures
+### 3.3 Payload structures
 
 - `QWidgetInfo` and `QWidgetChildrenInfo` dataclasses in `pqi_structures.py` define key response schema.
 - Tree payloads use compact key constants in `TreeViewKeys`, `TreeViewResultKeys`, etc. for low transfer overhead.
 - Properties payload is a list of property dictionaries (schema produced by widget property fetcher modules).
 
-## 3.4 Processing and dispatch flow
+### 3.4 Processing and dispatch flow
 
-### Server -> Client
+#### Server -> Client
 
 1. GUI action triggers worker API call.
 2. `PQYWorker` routes command to dispatcher.
 3. `Dispatcher` enqueues network command via `WriterThread`.
 4. Client `ReaderThread.process_net_command()` maps command ID to `PyDB` method.
 
-### Client -> Server
+#### Client -> Server
 
 1. Client side emits command via `NetCommandFactory` + writer.
 2. Server `DispatchReader` receives, unquotes, forwards raw message to `Dispatcher.notify()`.
@@ -149,7 +149,7 @@ When modifying protocol/runtime code, preserve these behaviors:
 
 ## 5. Coding Standards
 
-## 5.1 Python style baseline
+### 5.1 Python style baseline
 
 - Follow **PEP 8** for all Python code:
   - Imports grouped/ordered.
@@ -157,7 +157,7 @@ When modifying protocol/runtime code, preserve these behaviors:
   - Descriptive naming.
   - Avoid unused imports/variables.
 
-## 5.2 Qt naming exception (important)
+### 5.2 Qt naming exception (important)
 
 When writing **PyQt/PySide UI code**, use **Qt-style naming** where it improves consistency with the existing codebase and Qt conventions, e.g.:
 
@@ -167,7 +167,7 @@ When writing **PyQt/PySide UI code**, use **Qt-style naming** where it improves 
 
 In short: PEP 8 by default, but **Qt-style identifiers are allowed/preferred in Qt-facing code paths**.
 
-## 5.3 Logging requirements
+### 5.3 Logging requirements
 
 Use logging from `PyQtInspect._pqi_bundle.pqi_log` for critical paths.
 
