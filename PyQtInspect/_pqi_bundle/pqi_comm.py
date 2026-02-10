@@ -10,7 +10,7 @@ import typing
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, IS_PY2, GlobalDebuggerHolder, get_global_debugger, \
+from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, GlobalDebuggerHolder, get_global_debugger, \
     set_global_debugger
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 import json
@@ -409,15 +409,10 @@ class NetCommand:
             encoded = quote(str(text), '/<>_=" \t')
             msg = '%s\t%s\t%s\n' % (cmd_id, seq, encoded)
 
-        if IS_PY2:
-            assert isinstance(msg, str)  # i.e.: bytes
-            as_bytes = msg
-        else:
-            if isinstance(msg, str):
-                msg = msg.encode('utf-8')
-
-            assert isinstance(msg, bytes)
-            as_bytes = msg
+        if isinstance(msg, str):
+            msg = msg.encode('utf-8')
+        assert isinstance(msg, bytes)
+        as_bytes = msg
         self._as_bytes = as_bytes
 
     def send(self, sock):
