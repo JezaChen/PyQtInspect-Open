@@ -79,13 +79,13 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         widget.setObjectName(_PQI_HIGHLIGHT_FG_NAME)
         # Fix for #63: Prevent repeated icon artifacts when highlighting widgets with background-image qss.
         # -------------------------------------------------------------------------------------------------
-        # Use `background: transparent` shorthand to reset all inherited background properties
-        #   (background-image, border-image, etc.) from parent stylesheets, then apply our highlight color.
+        # Use `background: transparent` shorthand to reset all inherited background property from parent stylesheets,
+        #   then apply our highlight color.
         # -------------------------------------------------------------------------------------------------
         # Note: `background-image: none` is ineffective here, and reversing the declaration order
         #   will cause "background-color" to be overridden by the shorthand.
         # -------------------------------------------------------------------------------------------------
-        widget.setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 0.2); ")
+        widget.setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 0.2);")
         return widget
 
     def _mark_obj_inspected(obj):
