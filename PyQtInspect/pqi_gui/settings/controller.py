@@ -44,6 +44,9 @@ class SettingsController:
             Path = "IDE/Path"
             Parameters = "IDE/Parameters"
 
+        class Highlight:
+            Color = "Highlight/Color"
+
     __slots__ = ('_setting',)
 
     _instance = None
@@ -76,4 +79,6 @@ class SettingsController:
     ideType = SettingField(SettingsKeys.IDE.Type, str, SupportedIDE.NoneType.value)
     idePath = SettingField(SettingsKeys.IDE.Path, str, "")
     ideParameters = SettingField(SettingsKeys.IDE.Parameters, str, "")
+
+    highlightColor = SettingField(SettingsKeys.Highlight.Color, str, "255,0,0,51")
 

@@ -69,6 +69,17 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         if debugger is not None:
             debugger.register_widget(widget)
 
+    def _get_highlight_stylesheet() -> str:
+        color_css = "rgba(255, 0, 0, 0.2)"
+        debugger = get_global_debugger()
+        if debugger is not None:
+            try:
+                r, g, b, a = (int(x) for x in debugger.highlight_color.split(','))
+                color_css = f"rgba({r},{g},{b},{a / 255:.2f})"
+            except (ValueError, AttributeError):
+                pass
+        return f"background: transparent; background-color: {color_css};"
+
     def _createHighlightFg(parent: QtWidgets.QWidget):
         # Instantiate with __new__ first, then invoke the original __init__.
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
@@ -85,7 +96,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         # Note: `background-image: none` is ineffective here, and reversing the declaration order
         #   will cause "background-color" to be overridden by the shorthand.
         # -------------------------------------------------------------------------------------------------
-        widget.setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 0.2);")
+        widget.setStyleSheet(_get_highlight_stylesheet())
         return widget
 
     def _mark_obj_inspected(obj):
@@ -125,6 +136,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
             fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME)
             fg.setFixedSize(*get_widget_size(widget))
+            fg.setStyleSheet(_get_highlight_stylesheet())
             cls.unhighlight_last()
             fg.show()
             cls.last_highlighted_widget = fg

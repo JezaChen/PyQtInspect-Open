@@ -532,6 +532,10 @@ class PyDB:
     def mock_left_button_down(self) -> bool:
         return self._inspect_extra_data.get('mock_left_button_down', False)
 
+    @property
+    def highlight_color(self) -> str:
+        return self._inspect_extra_data.get('highlight_color', '255,0,0,51')
+
     def notify_inspect_finished(self, widget):
         self.select_widget(widget)
 
