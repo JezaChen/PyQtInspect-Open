@@ -76,6 +76,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             color_str = debugger.highlight_color
         try:
             r, g, b, a = (int(x) for x in color_str.split(','))
+            r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))
             color_css = f"rgba({r},{g},{b},{a})"
         except (ValueError, AttributeError):
             color_css = "rgba(255,0,0,51)"

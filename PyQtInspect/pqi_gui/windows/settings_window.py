@@ -249,10 +249,11 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
 
     def setColor(self, colorStr: str):
         """ Set the highlight color from a comma-separated RGBA string (e.g. "255,0,0,51").
-        If the string is malformed, resets to the default color.
+        Values are clamped to [0, 255]. If the string is malformed, resets to the default color.
         """
         try:
             r, g, b, a = (int(x) for x in colorStr.split(','))
+            r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))
             self._color = f"{r},{g},{b},{a}"
         except Exception as e:
             pqi_log.warning(f"Invalid color string: {colorStr}. Resetting to default. Error: {e}")
