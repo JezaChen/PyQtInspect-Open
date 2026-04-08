@@ -285,6 +285,7 @@ class PyDB:
 
         self.inspect_enabled = False
         self._inspect_extra_data = {}
+        self._highlight_color = DEFAULT_HIGHLIGHT_COLOR
         self._selected_widget = None
 
         # Mapping from QWidget object's ID to QWidget object
@@ -524,6 +525,9 @@ class PyDB:
         self.inspect_enabled = True
         self._inspect_extra_data = extra_data
 
+        if 'highlight_color' in extra_data:
+            self._highlight_color = extra_data['highlight_color']
+
     def disable_inspect(self):
         self.inspect_enabled = False
         self._inspect_extra_data = {}
@@ -534,7 +538,11 @@ class PyDB:
 
     @property
     def highlight_color(self) -> str:
-        return self._inspect_extra_data.get('highlight_color', DEFAULT_HIGHLIGHT_COLOR)
+        return self._highlight_color
+
+    def on_settings_changed(self, settings: dict):
+        if 'highlight_color' in settings:
+            self._highlight_color = settings['highlight_color']
 
     def notify_inspect_finished(self, widget):
         self.select_widget(widget)

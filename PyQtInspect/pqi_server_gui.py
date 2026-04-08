@@ -587,10 +587,16 @@ class PQIWindow(QtWidgets.QMainWindow):
     #   |
     #   * Close the server / Stop Serving -> Disable Inspect
     # ----------------------------------------------------------------------------------------
+    def _buildClientSettings(self) -> dict:
+        """ Build a dict of settings that need to be synced to the client. """
+        return {
+            'highlight_color': SettingsController.instance().highlightColor,
+        }
+
     def _buildInspectExtraData(self) -> dict:
         return {
             'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked(),
-            'highlight_color': SettingsController.instance().highlightColor,
+            **self._buildClientSettings(),
         }
 
     def _beginInspect(self):
@@ -631,7 +637,13 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _openSettingWindow(self):
         if self._settingWindow is None:
             self._settingWindow = SettingWindow(self)
+            self._settingWindow.sigSettingsSaved.connect(self._onSettingsSaved)
         self._settingWindow.show()
+
+    def _onSettingsSaved(self):
+        worker = self._getWorker()
+        if worker:
+            worker.sendSettingsChanged(self._buildClientSettings())
 
     # endregion
 
@@ -805,16 +817,17 @@ class PQIWindow(QtWidgets.QMainWindow):
 
     def _clearLogs(self):
         """ Clear the logs in the console and file. """
+        _title = "Clear Logs"
         reply = QtWidgets.QMessageBox.question(
             self,
-            self._getWindowTitle(),
+            _title,
             "Are you sure you want to delete all logs?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             pqi_log.clear_logs()
-            QtWidgets.QMessageBox.information(self, self._getWindowTitle(),
+            QtWidgets.QMessageBox.information(self, _title,
                                               "All logs have been deleted.")
     # endregion
 

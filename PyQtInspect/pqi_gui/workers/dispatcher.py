@@ -107,5 +107,8 @@ class Dispatcher(QtCore.QThread):
     def sendRequestWidgetPropsEvent(self, widgetId: int):
         self.writer.add_command(self.net_command_factory.make_req_widget_props_message(widgetId))
 
+    def sendSettingsChanged(self, settings: dict):
+        self.writer.add_command(self.net_command_factory.make_settings_changed_message(settings))
+
     def notifyDelete(self):
         self.close()

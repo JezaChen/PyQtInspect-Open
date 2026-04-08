@@ -216,8 +216,24 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
 
         self._mainLayout.addWidget(self._colorWidget)
 
+        # Preview area: hover to see the overlay effect
+        self._previewLabel = QtWidgets.QLabel("Preview:", self)
+        self._previewLabel.setFixedWidth(100)
+
+        self._previewArea = _HighlightPreviewWidget(self)
+        self._previewArea.setFixedHeight(80)
+
+        self._previewWidget = QtWidgets.QWidget(self)
+        self._previewLayout = QtWidgets.QHBoxLayout(self._previewWidget)
+        self._previewLayout.setSpacing(10)
+        self._previewLayout.addWidget(self._previewLabel, 0, QtCore.Qt.AlignTop)
+        self._previewLayout.addWidget(self._previewArea)
+
+        self._mainLayout.addWidget(self._previewWidget)
+
         self._color = self._DEFAULT_COLOR
         self._updateButtonPreview()
+        self._updateOverlayPreview()
 
     @property
     def _qcolor(self) -> QtGui.QColor:
@@ -234,6 +250,9 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
             border: 1px solid #888;
         }}""")
 
+    def _updateOverlayPreview(self):
+        self._previewArea.setOverlayColor(self._qcolor)
+
     def _selectColor(self):
         initial = self._qcolor
         color = QtWidgets.QColorDialog.getColor(
@@ -243,6 +262,7 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
         if color.isValid():
             self._color = f"{color.red()},{color.green()},{color.blue()},{color.alpha()}"
             self._updateButtonPreview()
+            self._updateOverlayPreview()
 
     def getColor(self) -> str:
         return self._color
@@ -259,9 +279,61 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
             pqi_log.warning(f"Invalid color string: {colorStr}. Resetting to default. Error: {e}")
             self._color = self._DEFAULT_COLOR
         self._updateButtonPreview()
+        self._updateOverlayPreview()
+
+
+class _HighlightPreviewWidget(QtWidgets.QWidget):
+    """ A preview widget that shows a colored overlay when the mouse hovers over it. """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._highlightColor = QtGui.QColor(255, 0, 0, 51)
+
+        self.setStyleSheet("_HighlightPreviewWidget { border: 1px solid #aaa; }")
+        self.setMouseTracking(True)
+
+        contentLayout = QtWidgets.QHBoxLayout(self)
+        contentLayout.setContentsMargins(20, 20, 20, 20)
+
+        self._sampleLabel = QtWidgets.QLabel("Hover here to preview the highlight overlay effect", self)
+        self._sampleLabel.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        contentLayout.addWidget(self._sampleLabel)
+
+        # Highlight overlay (hidden by default, shown on hover)
+        self._highlightOverlay = QtWidgets.QWidget(self)
+        self._highlightOverlay.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        self._highlightOverlay.hide()
+        self._updateHighlightStylesheet()
+
+    def setOverlayColor(self, color: QtGui.QColor):
+        self._highlightColor = color
+        self._updateHighlightStylesheet()
+
+    def _updateHighlightStylesheet(self):
+        c = self._highlightColor
+        self._highlightOverlay.setStyleSheet(
+            f"background: transparent; background-color: rgba({c.red()},{c.green()},{c.blue()},{c.alpha()});"
+        )
+
+    def enterEvent(self, event):
+        self._highlightOverlay.setGeometry(self.rect())
+        self._highlightOverlay.show()
+        self._highlightOverlay.raise_()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._highlightOverlay.hide()
+        super().leaveEvent(event)
+
+    def resizeEvent(self, event):
+        if self._highlightOverlay.isVisible():
+            self._highlightOverlay.setGeometry(self.rect())
+        super().resizeEvent(event)
 
 
 class SettingWindow(QtWidgets.QDialog):
+    sigSettingsSaved = QtCore.pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
@@ -350,6 +422,7 @@ class SettingWindow(QtWidgets.QDialog):
         pqi_log.info(f"Settings saved: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters},"
                      f" Highlight Color={highlightColor}")
 
+        self.sigSettingsSaved.emit()
         self.close()
 
     def showEvent(self, ev):
