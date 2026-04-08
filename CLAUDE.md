@@ -209,8 +209,9 @@ Do not introduce ad-hoc print debugging in production code.
 
 ### 5.4 Shared constants
 
-Constants used by **both** server and client must be defined in `PyQtInspect/_pqi_bundle/pqi_contants.py` and imported from there. Do not duplicate literal values across server-side and client-side modules — this leads to silent drift.
+Shared **runtime/UI** constants used by both server and client should be defined in `PyQtInspect/_pqi_bundle/pqi_contants.py` and imported from there (for example, values such as default highlight settings or platform/runtime flags). **Protocol/message constants are an exception**: command IDs, message IDs, and other communication-boundary constants should live in `pqi_comm_constants.py`.
 
+Do not duplicate shared literal values across server-side and client-side modules — this leads to silent drift. When adding a constant, prefer extending the existing constants module for that category rather than creating a second source of truth.
 ### 5.5 Qt notes
 
 - Qt's `rgba()` in stylesheets accepts **four integers 0-255** (including alpha), unlike Web CSS where alpha is a float 0.0-1.0. Prefer the integer form for simplicity and precision.
