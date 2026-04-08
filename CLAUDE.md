@@ -27,6 +27,8 @@ Primary modules:
 - `PyQtInspect/pqi_server_gui.py`: main window and UI orchestration.
 - `PyQtInspect/pqi_gui/workers/pqy_worker.py`: TCP listener accepting clients and creating per-client dispatchers.
 - `PyQtInspect/pqi_gui/workers/dispatcher.py`: per-connection bridge with reader/writer threads.
+- `PyQtInspect/pqi_gui/settings/controller.py`: settings persistence via `QSettings` + INI format.
+- `PyQtInspect/pqi_gui/windows/settings_window.py`: settings dialog with GroupBox-based sections.
 
 Key behavior:
 
@@ -55,6 +57,27 @@ Key behavior:
 
 - **Detached mode**: server started explicitly; clients connect to configured host/port.
 - **Direct mode**: debuggee launches a colocated server process and exits together with it.
+
+### 2.4 Settings system
+
+Settings are persisted in `settings.ini` using Qt's `QSettings` (INI format, UTF-8).
+
+- **`SettingsController`** (`pqi_gui/settings/controller.py`): singleton that manages all settings. Uses the `SettingField` descriptor pattern — each setting is declared as a class-level descriptor with key, type, and default value, providing clean property-style access.
+- **Settings keys** are organized in nested classes inside `SettingsController.SettingsKeys` (e.g., `IDE.Type`, `Highlight.Color`).
+- **Settings window** (`pqi_gui/windows/settings_window.py`): a `QDialog` containing `QGroupBox`-based sections. Each section is a standalone class (e.g., `IDESettingsGroupBox`, `HighlightSettingsGroupBox`) with its own getter/setter methods and optional validation via `isValid()`. To add a new settings section:
+  1. Create a new `QGroupBox` subclass with getter/setter methods.
+  2. Add it to `SettingWindow.__init__` layout (before the stretch).
+  3. Wire it in `loadSettings()` and `saveSettings()`.
+
+#### Server-to-client settings transmission
+
+Some settings need to reach the client (debuggee) process. Rather than adding new command IDs, the preferred pattern is to **piggyback on `CMD_ENABLE_INSPECT`'s extra data dict**:
+
+1. Server builds the extra dict (see `PQIWindow._buildInspectExtraData()`), which is sent as JSON payload with `CMD_ENABLE_INSPECT`.
+2. Client stores it in `PyDB._inspect_extra_data` and exposes individual settings as properties (e.g., `mock_left_button_down`, `highlight_color`).
+3. Client-side code (e.g., monkey patches) reads these properties from `get_global_debugger()`.
+
+This approach is additive and backward compatible — older clients ignore unknown keys and fall back to defaults.
 
 ---
 
@@ -145,6 +168,13 @@ When modifying protocol/runtime code, preserve these behaviors:
    - For attach mode, existing widgets are patched via BFS traversal.
    - PySide and PyQt patching scope differs (PySide may patch many subclasses; PyQt often patches `QWidget`).
 
+7. **Highlight overlay mechanism**
+   - When inspect is enabled and the user hovers over a widget, a semi-transparent overlay is shown on it.
+   - `_createHighlightFg()` (inside `patch_QtWidgets` closure in `pqi_monkey_qt_helpers.py`) creates a `QWidget` overlay with `WA_TransparentForMouseEvents` and a colored stylesheet.
+   - `HighlightController` manages show/hide lifecycle. Overlay widgets are **cached as dynamic attributes** on the target widget (via `setattr(widget, _PQI_HIGHLIGHT_FG_NAME, ...)`), so they are created once per widget and reused.
+   - The overlay stylesheet is refreshed each time `HighlightController.highlight()` is called, allowing color changes to take effect on cached overlays without recreation.
+   - The stylesheet uses `background: transparent` shorthand first to reset inherited background properties (e.g., `background-image`), then applies `background-color`. Do not reverse this order.
+
 ---
 
 ## 5. Coding Standards
@@ -176,6 +206,15 @@ Use logging from `PyQtInspect._pqi_bundle.pqi_log` for critical paths.
 - Avoid noisy logs inside extremely hot per-event loops unless debug-gated.
 
 Do not introduce ad-hoc print debugging in production code.
+
+### 5.4 Shared constants
+
+Shared **runtime/UI** constants used by both server and client should be defined in `PyQtInspect/_pqi_bundle/pqi_contants.py` and imported from there (for example, values such as default highlight settings or platform/runtime flags). **Protocol/message constants are an exception**: command IDs, message IDs, and other communication-boundary constants should live in `pqi_comm_constants.py`.
+
+Do not duplicate shared literal values across server-side and client-side modules — this leads to silent drift. When adding a constant, prefer extending the existing constants module for that category rather than creating a second source of truth.
+### 5.5 Qt notes
+
+- Qt's `rgba()` in stylesheets accepts **four integers 0-255** (including alpha), unlike Web CSS where alpha is a float 0.0-1.0. Prefer the integer form for simplicity and precision.
 
 ---
 
