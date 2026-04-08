@@ -99,6 +99,10 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendDisableInspect()
 
+    def sendSettingsChanged(self, settings: dict):
+        for dispatcher in self.dispatchers:
+            dispatcher.sendSettingsChanged(settings)
+
     def sendExecCodeEvent(self, dispatcherId: int, code: str):
         dispatcher = self.idToDispatcher.get(dispatcherId)
         if dispatcher:

@@ -40,7 +40,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import (
     ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
     CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
     CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO, CMD_REQ_CHILDREN_INFO, CMD_CHILDREN_INFO,
-    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE, CMD_REQ_WIDGET_PROPS, CMD_WIDGET_PROPS,
+    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE, CMD_REQ_WIDGET_PROPS, CMD_WIDGET_PROPS, CMD_SETTINGS_CHANGED,
     # Keys
     TreeViewResultKeys
 )
@@ -229,6 +229,9 @@ class ReaderThread(PyDBDaemonThread):
         elif cmd_id == CMD_REQ_WIDGET_PROPS:
             widget_id = int(unquote(text))
             global_dbg.notify_widget_props(widget_id)
+        elif cmd_id == CMD_SETTINGS_CHANGED:
+            settings = json.loads(unquote(text))
+            global_dbg.on_settings_changed(settings)
 
 
 
@@ -532,6 +535,9 @@ class NetCommandFactory:
 
     def make_widget_props_message(self, widget_props: typing.List[typing.Dict]):
         return NetCommand(CMD_WIDGET_PROPS, 0, self._dump_json(widget_props))
+
+    def make_settings_changed_message(self, settings: dict):
+        return NetCommand(CMD_SETTINGS_CHANGED, 0, self._dump_json(settings))
 
     def make_exit_message(self):
         return NetCommand(CMD_EXIT, 0, '')
