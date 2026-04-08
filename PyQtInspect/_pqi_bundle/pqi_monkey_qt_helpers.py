@@ -6,7 +6,7 @@ from io import StringIO
 import os
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
@@ -70,14 +70,15 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             debugger.register_widget(widget)
 
     def _get_highlight_stylesheet() -> str:
-        color_css = "rgba(255, 0, 0, 0.2)"
+        color_str = DEFAULT_HIGHLIGHT_COLOR
         debugger = get_global_debugger()
         if debugger is not None:
-            try:
-                r, g, b, a = (int(x) for x in debugger.highlight_color.split(','))
-                color_css = f"rgba({r},{g},{b},{a / 255:.2f})"
-            except (ValueError, AttributeError):
-                pass
+            color_str = debugger.highlight_color
+        try:
+            r, g, b, a = (int(x) for x in color_str.split(','))
+            color_css = f"rgba({r},{g},{b},{a})"
+        except (ValueError, AttributeError):
+            color_css = "rgba(255,0,0,51)"
         return f"background: transparent; background-color: {color_css};"
 
     def _createHighlightFg(parent: QtWidgets.QWidget):

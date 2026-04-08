@@ -8,6 +8,7 @@ import typing
 
 from PyQt5 import QtCore
 
+from PyQtInspect._pqi_bundle.pqi_contants import DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE
 
 T = typing.TypeVar("T")
@@ -80,5 +81,5 @@ class SettingsController:
     idePath = SettingField(SettingsKeys.IDE.Path, str, "")
     ideParameters = SettingField(SettingsKeys.IDE.Parameters, str, "")
 
-    highlightColor = SettingField(SettingsKeys.Highlight.Color, str, "255,0,0,51")
+    highlightColor = SettingField(SettingsKeys.Highlight.Color, str, DEFAULT_HIGHLIGHT_COLOR)
 

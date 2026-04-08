@@ -125,6 +125,9 @@ def set_global_debugger(dbg):
 # Qt Patch
 # =======================================================================================================================
 
+# Default highlight overlay color: red with ~20% opacity (RGBA integers 0-255)
+DEFAULT_HIGHLIGHT_COLOR = "255,0,0,51"
+
 QtWidgetClasses = [
     'QWidget',
     'QAbstractButton',

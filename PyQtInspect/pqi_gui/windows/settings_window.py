@@ -10,7 +10,7 @@ import typing
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 
 from PyQtInspect.pqi_gui.settings import SettingsController
@@ -188,7 +188,7 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
 class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
     """ Highlight settings group box with overlay color picker """
 
-    _DEFAULT_COLOR = "255,0,0,51"
+    _DEFAULT_COLOR = DEFAULT_HIGHLIGHT_COLOR
 
     def __init__(self, parent):
         super().__init__("Highlight Settings", parent)
@@ -248,7 +248,15 @@ class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
         return self._color
 
     def setColor(self, colorStr: str):
-        self._color = colorStr if colorStr else self._DEFAULT_COLOR
+        """ Set the highlight color from a comma-separated RGBA string (e.g. "255,0,0,51").
+        If the string is malformed, resets to the default color.
+        """
+        try:
+            r, g, b, a = (int(x) for x in colorStr.split(','))
+            self._color = f"{r},{g},{b},{a}"
+        except Exception as e:
+            pqi_log.warning(f"Invalid color string: {colorStr}. Resetting to default. Error: {e}")
+            self._color = self._DEFAULT_COLOR
         self._updateButtonPreview()
 
 
