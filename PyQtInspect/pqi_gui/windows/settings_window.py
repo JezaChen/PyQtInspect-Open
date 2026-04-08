@@ -289,13 +289,17 @@ class _HighlightPreviewWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._highlightColor = QtGui.QColor(255, 0, 0, 51)
 
-        self.setStyleSheet("border: 1px solid #aaa;")
+        # Enable stylesheet-driven painting (border, background) for plain QWidget subclass.
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
+        self.setObjectName("highlightPreview")
+        self.setStyleSheet("#highlightPreview { border: 1px solid #aaa; border-radius: 4px; }")
         self.setMouseTracking(True)
 
         contentLayout = QtWidgets.QHBoxLayout(self)
         contentLayout.setContentsMargins(20, 20, 20, 20)
 
         self._sampleLabel = QtWidgets.QLabel("Hover here to preview the highlight overlay effect", self)
+        self._sampleLabel.setAlignment(QtCore.Qt.AlignCenter)
         self._sampleLabel.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         contentLayout.addWidget(self._sampleLabel)
 
