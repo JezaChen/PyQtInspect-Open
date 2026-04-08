@@ -289,7 +289,8 @@ class _HighlightPreviewWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._highlightColor = QtGui.QColor(255, 0, 0, 51)
 
-        self.setStyleSheet("_HighlightPreviewWidget { border: 1px solid #aaa; }")
+        self.setObjectName("highlightPreview")
+        self.setStyleSheet("#highlightPreview { border: 1px solid #aaa; }")
         self.setMouseTracking(True)
 
         contentLayout = QtWidgets.QHBoxLayout(self)

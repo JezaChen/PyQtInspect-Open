@@ -462,6 +462,9 @@ class PQIWindow(QtWidgets.QMainWindow):
             pid = int(text)
             pqi_log.info(f"Qt patched successfully, pid: {pid}")
 
+            # Sync client-relevant settings to the newly connected client.
+            self._getWorker().sendSettingsChangedToDispatcher(dispatcherId, self._buildClientSettings())
+
             # If inspection is enabled, enable it for the new process.
             if self._selectButton.isChecked():
                 self._getWorker().sendEnableInspectToDispatcher(
@@ -643,7 +646,9 @@ class PQIWindow(QtWidgets.QMainWindow):
     def _onSettingsSaved(self):
         worker = self._getWorker()
         if worker:
-            worker.sendSettingsChanged(self._buildClientSettings())
+            settings = self._buildClientSettings()
+            pqi_log.info(f"Broadcasting settings change to all clients: {settings}")
+            worker.sendSettingsChanged(settings)
 
     # endregion
 

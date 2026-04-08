@@ -103,6 +103,11 @@ class PQYWorker(QtCore.QObject):
         for dispatcher in self.dispatchers:
             dispatcher.sendSettingsChanged(settings)
 
+    def sendSettingsChangedToDispatcher(self, dispatcherId: int, settings: dict):
+        dispatcher = self.idToDispatcher.get(dispatcherId)
+        if dispatcher:
+            dispatcher.sendSettingsChanged(settings)
+
     def sendExecCodeEvent(self, dispatcherId: int, code: str):
         dispatcher = self.idToDispatcher.get(dispatcherId)
         if dispatcher:

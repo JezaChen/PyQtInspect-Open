@@ -541,6 +541,7 @@ class PyDB:
         return self._highlight_color
 
     def on_settings_changed(self, settings: dict):
+        pqi_log.info(f"Settings changed from server: {settings}")
         if 'highlight_color' in settings:
             self._highlight_color = settings['highlight_color']
 
