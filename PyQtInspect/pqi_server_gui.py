@@ -466,7 +466,7 @@ class PQIWindow(QtWidgets.QMainWindow):
             if self._selectButton.isChecked():
                 self._getWorker().sendEnableInspectToDispatcher(
                     dispatcherId,
-                    {'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()}
+                    self._buildInspectExtraData()
                 )
         elif cmdId == CMD_WIDGET_INFO:
             # It also means the widget is selected
@@ -587,11 +587,17 @@ class PQIWindow(QtWidgets.QMainWindow):
     #   |
     #   * Close the server / Stop Serving -> Disable Inspect
     # ----------------------------------------------------------------------------------------
+    def _buildInspectExtraData(self) -> dict:
+        return {
+            'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked(),
+            'highlight_color': SettingsController.instance().highlightColor,
+        }
+
     def _beginInspect(self):
         worker = self._getWorker()
         if not worker:
             return
-        worker.sendEnableInspect({'mock_left_button_down': self._isMockLeftButtonDownAction.isChecked()})
+        worker.sendEnableInspect(self._buildInspectExtraData())
         self._sigInspectBegin.emit()
 
     def _handleInspectFinishedFromClient(self):

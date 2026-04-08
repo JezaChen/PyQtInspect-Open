@@ -10,7 +10,7 @@ import typing
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 
 from PyQtInspect.pqi_gui.settings import SettingsController
@@ -185,6 +185,82 @@ class IDESettingsGroupBox(QtWidgets.QGroupBox):
         return True, ""
 
 
+class HighlightSettingsGroupBox(QtWidgets.QGroupBox):
+    """ Highlight settings group box with overlay color picker """
+
+    _DEFAULT_COLOR = DEFAULT_HIGHLIGHT_COLOR
+
+    def __init__(self, parent):
+        super().__init__("Highlight Settings", parent)
+
+        self._mainLayout = QtWidgets.QVBoxLayout(self)
+        self._mainLayout.setContentsMargins(10, 15, 10, 10)
+        self._mainLayout.setSpacing(10)
+
+        self._colorWidget = QtWidgets.QWidget(self)
+        self._colorLayout = QtWidgets.QHBoxLayout(self._colorWidget)
+        self._colorLayout.setSpacing(10)
+
+        self._colorLabel = QtWidgets.QLabel("Overlay Color:", self)
+        self._colorLabel.setFixedWidth(100)
+        self._colorLayout.addWidget(self._colorLabel)
+
+        self._colorButton = QtWidgets.QPushButton(self)
+        self._colorButton.setFixedSize(32, 32)
+        self._colorButton.setCursor(QtCore.Qt.PointingHandCursor)
+        self._colorButton.setToolTip("Click to select highlight overlay color")
+        self._colorButton.clicked.connect(self._selectColor)
+        self._colorLayout.addWidget(self._colorButton)
+
+        self._colorLayout.addStretch()
+
+        self._mainLayout.addWidget(self._colorWidget)
+
+        self._color = self._DEFAULT_COLOR
+        self._updateButtonPreview()
+
+    @property
+    def _qcolor(self) -> QtGui.QColor:
+        try:
+            r, g, b, a = (int(x) for x in self._color.split(','))
+            return QtGui.QColor(r, g, b, a)
+        except (ValueError, TypeError):
+            return QtGui.QColor(255, 0, 0, 51)
+
+    def _updateButtonPreview(self):
+        c = self._qcolor
+        self._colorButton.setStyleSheet(f"""QPushButton {{
+            background-color: rgba({c.red()},{c.green()},{c.blue()},{c.alpha()});
+            border: 1px solid #888;
+        }}""")
+
+    def _selectColor(self):
+        initial = self._qcolor
+        color = QtWidgets.QColorDialog.getColor(
+            initial, self, "Select Highlight Overlay Color",
+            QtWidgets.QColorDialog.ShowAlphaChannel
+        )
+        if color.isValid():
+            self._color = f"{color.red()},{color.green()},{color.blue()},{color.alpha()}"
+            self._updateButtonPreview()
+
+    def getColor(self) -> str:
+        return self._color
+
+    def setColor(self, colorStr: str):
+        """ Set the highlight color from a comma-separated RGBA string (e.g. "255,0,0,51").
+        Values are clamped to [0, 255]. If the string is malformed, resets to the default color.
+        """
+        try:
+            r, g, b, a = (int(x) for x in colorStr.split(','))
+            r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))
+            self._color = f"{r},{g},{b},{a}"
+        except Exception as e:
+            pqi_log.warning(f"Invalid color string: {colorStr}. Resetting to default. Error: {e}")
+            self._color = self._DEFAULT_COLOR
+        self._updateButtonPreview()
+
+
 class SettingWindow(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -204,6 +280,10 @@ class SettingWindow(QtWidgets.QDialog):
         # IDE Settings GroupBox
         self._ideSettingsGroup = IDESettingsGroupBox(self)
         self._mainLayout.addWidget(self._ideSettingsGroup)
+
+        # Highlight Settings GroupBox
+        self._highlightSettingsGroup = HighlightSettingsGroupBox(self)
+        self._mainLayout.addWidget(self._highlightSettingsGroup)
 
         self._mainLayout.addStretch()
 
@@ -240,7 +320,11 @@ class SettingWindow(QtWidgets.QDialog):
         self._ideSettingsGroup.setIDEPath(idePath)
         self._ideSettingsGroup.setCustomCommandParameters(ideParameters)
 
-        pqi_log.info(f"Settings loaded: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
+        highlightColor = settingsCtrl.highlightColor  # type: str
+        self._highlightSettingsGroup.setColor(highlightColor)
+
+        pqi_log.info(f"Settings loaded: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters},"
+                     f" Highlight Color={highlightColor}")
 
     def saveSettings(self):
         # Validate IDE settings
@@ -260,7 +344,11 @@ class SettingWindow(QtWidgets.QDialog):
         settingsCtrl.idePath = idePath
         settingsCtrl.ideParameters = ideParameters
 
-        pqi_log.info(f"Settings saved: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters}")
+        highlightColor = self._highlightSettingsGroup.getColor()
+        settingsCtrl.highlightColor = highlightColor
+
+        pqi_log.info(f"Settings saved: IDE Type={ideType}, IDE Path={idePath}, Parameters={ideParameters},"
+                     f" Highlight Color={highlightColor}")
 
         self.close()
 

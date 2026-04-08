@@ -21,7 +21,7 @@ from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent
     get_create_stack, get_control_tree
 from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
 from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
-from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS
+from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
@@ -531,6 +531,10 @@ class PyDB:
     @property
     def mock_left_button_down(self) -> bool:
         return self._inspect_extra_data.get('mock_left_button_down', False)
+
+    @property
+    def highlight_color(self) -> str:
+        return self._inspect_extra_data.get('highlight_color', DEFAULT_HIGHLIGHT_COLOR)
 
     def notify_inspect_finished(self, widget):
         self.select_widget(widget)

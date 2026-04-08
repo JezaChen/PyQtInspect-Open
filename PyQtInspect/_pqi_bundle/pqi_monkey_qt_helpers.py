@@ -6,7 +6,7 @@ from io import StringIO
 import os
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
@@ -69,6 +69,19 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         if debugger is not None:
             debugger.register_widget(widget)
 
+    def _get_highlight_stylesheet() -> str:
+        color_str = DEFAULT_HIGHLIGHT_COLOR
+        debugger = get_global_debugger()
+        if debugger is not None:
+            color_str = debugger.highlight_color
+        try:
+            r, g, b, a = (int(x) for x in color_str.split(','))
+            r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))
+            color_css = f"rgba({r},{g},{b},{a})"
+        except (ValueError, AttributeError):
+            color_css = "rgba(255,0,0,51)"
+        return f"background: transparent; background-color: {color_css};"
+
     def _createHighlightFg(parent: QtWidgets.QWidget):
         # Instantiate with __new__ first, then invoke the original __init__.
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
@@ -85,7 +98,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         # Note: `background-image: none` is ineffective here, and reversing the declaration order
         #   will cause "background-color" to be overridden by the shorthand.
         # -------------------------------------------------------------------------------------------------
-        widget.setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 0.2);")
+        widget.setStyleSheet(_get_highlight_stylesheet())
         return widget
 
     def _mark_obj_inspected(obj):
@@ -125,6 +138,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
             fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME)
             fg.setFixedSize(*get_widget_size(widget))
+            fg.setStyleSheet(_get_highlight_stylesheet())
             cls.unhighlight_last()
             fg.show()
             cls.last_highlighted_widget = fg
