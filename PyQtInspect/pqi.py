@@ -20,7 +20,8 @@ from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
     get_create_stack, get_control_tree
 from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
-from PyQtInspect._pqi_imps._pqi_saved_modules import threading, thread
+import threading
+import _thread as thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
     WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
