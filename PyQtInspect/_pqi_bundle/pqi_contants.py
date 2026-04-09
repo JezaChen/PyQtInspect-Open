@@ -44,7 +44,7 @@ if SHOW_DEBUG_INFO_ENV:
     DebugInfoHolder.LOG_TO_CONSOLE_LEVEL = logging.DEBUG
 
 
-from PyQtInspect._pqi_imps._pqi_saved_modules import thread
+import _thread as thread
 _thread_id_lock = thread.allocate_lock()
 thread_get_ident = thread.get_ident
 
