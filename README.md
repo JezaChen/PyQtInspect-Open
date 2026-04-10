@@ -106,7 +106,7 @@ Parameter meanings:
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the debuggee
 
-> ⚠️ **Important:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project**. A mismatch can prevent PyQtInspect from working correctly or even crash the program.
+> ⚠️ **Important:** When relying on **auto-detection**, make sure the IDE’s [PyQt/PySide compatibility mode][4] **matches the Qt framework used by your project**. A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 > 
 > If you encounter issues with auto-detection, try explicitly specifying the framework with `--qt-support`.
 
@@ -137,7 +137,7 @@ python -m PyQtInspect [--port N] [--client hostname] [--multiprocess] [--show-pq
 
 Parameter meanings:
 
-* `--port`: Server listening port (default `19394`)
+* `--port`: Server port to connect to (default `19394`)
 * `--client`: Server address (default `127.0.0.1`)
 * `--multiprocess`: Enable **multi-process debugging** (off by default)
 * `--show-pqi-stack`: Show call stacks related to PyQtInspect (hidden by default)
@@ -145,7 +145,7 @@ Parameter meanings:
 * `--file`: Path to the target app’s Python entry file
 * `file_args`: Command-line arguments for the target app
 
-> ⚠️ **Reminder:** When relying on **auto-detection**, make sure the IDE’s [‘PyQt compatible’ option][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
+> ⚠️ **Reminder:** When relying on **auto-detection**, make sure the IDE’s [PyQt/PySide compatibility mode][4] **matches the Qt framework used by your project** (PyQt5/PyQt6/PySide2/PySide6). A mismatch can prevent PyQtInspect from working correctly or even crash the program.
 
 ### 4.4 Other run methods
 
@@ -153,7 +153,7 @@ Parameter meanings:
 
 Debug the PyQtInspect module directly in PyCharm (or other IDEs/editors like VSCode/Cursor); this won’t interfere with debugging your app.
 
-Also taking [`PyQt-Fluent-Widgets`][1] as an example, you can create a new Debug configuration like so:
+Taking [`PyQt-Fluent-Widgets`][1] as an example, you can create a new Debug configuration like so:
 
 <img alt="pycharm config" src="https://github.com/JezaChen/PyQtInspect-README-Assets/blob/main/Images/pycharm_config_en.png?raw=true"/>
 
@@ -258,6 +258,4 @@ Click (or hover) a row in the tree to highlight the corresponding control.
 
 [1]: https://github.com/zhiyiYo/PyQt-Fluent-Widgets
 [2]: https://www.riverbankcomputing.com/pipermail/pyqt/2017-January/038650.html
-[3]: https://pypi.org/project/PyQtInspect/#files
 [4]: https://www.jetbrains.com/help/pycharm/debugger-python.html
-[5]: https://github.com/JezaChen/ihook
