@@ -1,12 +1,13 @@
-import sys as _sys
 import typing as _typing
 
 from . import _base
 
 def _get_setup() -> _typing.Type[_base.Setup]:
-    if _sys.platform.startswith("win"):
+    from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
+
+    if IS_WINDOWS:
         from ._windows import WindowsSetup as PlatformSetup
-    elif _sys.platform == "darwin":
+    elif IS_MACOS:
         from ._macos import MacOSSetup as PlatformSetup
     else:
         from ._base import DummySetup as PlatformSetup

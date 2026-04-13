@@ -136,7 +136,7 @@ def is_python(path):
 
 
 def remove_quotes_from_args(args):
-    if sys.platform == "win32":
+    if IS_WINDOWS:
         new_args = []
         for x in args:
             if len(x) > 1 and x.startswith('"') and x.endswith('"'):
@@ -148,7 +148,7 @@ def remove_quotes_from_args(args):
 
 
 def quote_args(args):
-    if sys.platform == "win32":
+    if IS_WINDOWS:
         quoted_args = []
         for x in args:
             if x.startswith('"') and x.endswith('"'):
