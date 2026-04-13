@@ -9,7 +9,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQtInspect.pqi_gui._pqi_res import get_icon
 from PyQtInspect.pqi_gui.components.simple_kv_line_edit import SimpleSettingLineEdit
 import PyQtInspect.pqi_gui.data_center as DataCenter
-
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
 
 PYTHON_NAMES = ['python', ]
 
@@ -52,8 +52,7 @@ class PidLineEdit(SimpleSettingLineEdit):
 
         @note: Only available on Windows.
         """
-        import sys
-        if sys.platform == "win32":
+        if IS_WINDOWS:
             def _tryGrab():
                 import wingrab
                 pid = wingrab.grab()

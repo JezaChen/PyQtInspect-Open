@@ -199,7 +199,7 @@ def _find_default_ide_path_helper(
         return ''
 
     # First, try to use terminal command to find the path
-    if sys.platform == 'win32':
+    if IS_WINDOWS:
         defaultPath = _find_for_windows()
         if defaultPath:
             pqi_log.info(f'Found IDE path for {command_name} from commands on Windows: {defaultPath}')

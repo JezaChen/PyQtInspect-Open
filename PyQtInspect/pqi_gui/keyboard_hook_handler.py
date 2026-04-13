@@ -16,8 +16,8 @@ class KeyboardHookHandler(QtCore.QObject):
     def __new__(cls, *args, **kwargs):
         """ Factory method to create a proper instance according to the platform. """
 
-        import sys
-        if sys.platform == 'win32':
+        from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
+        if IS_WINDOWS:
             class_ = WindowsKeyboardHookHandler
         else:
             class_ = DummyKeyboardHookHandler

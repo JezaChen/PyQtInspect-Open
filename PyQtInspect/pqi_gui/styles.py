@@ -2,10 +2,10 @@
 
 
 def _get_default_font():
-    import sys
-    if sys.platform == 'win32':  # Windows
+    from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
+    if IS_WINDOWS:  # Windows
         return 'Microsoft Yahei'
-    elif sys.platform == 'darwin':  # macOS
+    elif IS_MACOS:  # macOS
         return 'Helvetica'
     else:  # Linux
         return 'DejaVu Sans'

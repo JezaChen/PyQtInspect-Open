@@ -10,6 +10,7 @@ import typing
 import argparse
 import json
 
+from PyQtInspect._pqi_bundle.pqi_contants import IS_MACOS
 from PyQtInspect.pqi_gui.common_operators import CommonOperators
 from PyQtInspect.pqi_gui.settings import SettingsController
 
@@ -930,7 +931,7 @@ def main():
     app.setWindowIcon(get_icon())
 
     # Use the fusion palette for macOS
-    if sys.platform == "darwin":
+    if IS_MACOS:
         style = QtWidgets.QStyleFactory.create("Fusion")
         if style:
             fusion_palette = style.standardPalette()
