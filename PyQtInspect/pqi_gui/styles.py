@@ -1,8 +1,8 @@
 # -*- encoding:utf-8 -*-
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
 
 
 def _get_default_font():
-    from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS
     if IS_WINDOWS:  # Windows
         return 'Microsoft Yahei'
     elif IS_MACOS:  # macOS

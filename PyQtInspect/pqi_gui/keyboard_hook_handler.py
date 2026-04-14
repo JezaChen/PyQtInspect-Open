@@ -8,6 +8,8 @@ import abc
 
 from PyQt5 import QtCore
 
+from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
+
 
 class KeyboardHookHandler(QtCore.QObject):
     sigDisableInspectKeyPressed = QtCore.pyqtSignal()
@@ -16,7 +18,6 @@ class KeyboardHookHandler(QtCore.QObject):
     def __new__(cls, *args, **kwargs):
         """ Factory method to create a proper instance according to the platform. """
 
-        from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
         if IS_WINDOWS:
             class_ = WindowsKeyboardHookHandler
         else:
