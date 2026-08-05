@@ -30,6 +30,7 @@ class WidgetPropertiesGetter:
             'QWidget': {
                 'enabled': _generate_prop_fetcher_by_calling_method('isEnabled'),
                 'geometry': _generate_prop_fetcher_by_calling_method('geometry'),
+                'sizeHint': _generate_prop_fetcher_by_calling_method('sizeHint'),
                 'sizePolicy': _generate_prop_fetcher_by_calling_method('sizePolicy'),
                 'minimumSize': _generate_prop_fetcher_by_calling_method('minimumSize'),
                 'maximumSize': _generate_prop_fetcher_by_calling_method('maximumSize'),
