@@ -4,7 +4,10 @@ import typing
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
 from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
-    _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR, _PQI_STACK_WHEN_CREATED_ATTR,
+    _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
+    _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
+    _PQI_STACK_WHEN_CREATED_ATTR,
+    _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR,
     _PQI_HIGHLIGHT_FG_NAME,
 )
 from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
@@ -84,6 +87,90 @@ def get_widget_size(widget):
 def get_widget_pos(widget):
     pos = find_method_by_name_and_call(widget, 'pos')
     return pos.x(), pos.y()
+
+
+def get_widget_window_pos(widget):
+    origin = find_method_by_name_and_call(
+        find_method_by_name_and_call(widget, 'rect'),
+        'topLeft',
+    )
+    window = find_method_by_name_and_call(widget, 'window')
+    pos = find_method_by_name_and_call(widget, 'mapTo', window, origin)
+    return pos.x(), pos.y()
+
+
+def get_widget_size_hint(widget):
+    size_hint = find_method_by_name_and_call(widget, 'sizeHint')
+    return size_hint.width(), size_hint.height()
+
+
+# Not a good idea for calculating the visual rect of the target widget
+# If the widget is covered fully by its children, the visual rect will be empty, which is not what we want!
+# vvv DO NOT USE vvv
+# def get_widget_visual_rect(widget):
+#     visible_region = find_method_by_name_and_call(widget, 'visibleRegion')
+#     origin = find_method_by_name_and_call(find_method_by_name_and_call(widget, 'rect'), 'topLeft')  # QPoint(0, 0)
+#     global_pt = find_method_by_name_and_call(widget, 'mapToGlobal', origin)
+#     # `translated` and `boundingRect` are methods of QRegion, so we can call them directly
+#     global_region = visible_region.translated(global_pt)
+#     global_region_bounding_rect = global_region.boundingRect()
+#     return (
+#         global_region_bounding_rect.x(),
+#         global_region_bounding_rect.y(),
+#         global_region_bounding_rect.width(),
+#         global_region_bounding_rect.height(),
+#     )
+# ^^^ DO NOT USE ^^^
+
+
+class Rect(typing.NamedTuple):
+    x: int
+    y: int
+    width: int
+    height: int
+
+
+def get_widget_visual_rect(widget) -> typing.Optional[Rect]:
+    origin = find_method_by_name_and_call(
+        find_method_by_name_and_call(widget, 'rect'),
+        'topLeft',
+    )
+    global_pos = find_method_by_name_and_call(widget, 'mapToGlobal', origin)
+    size = find_method_by_name_and_call(widget, 'size')
+
+    left = global_pos.x()  # type: int
+    top = global_pos.y()  # type: int
+    right = left + size.width()  # type: int
+    bottom = top + size.height()  # type: int
+
+    current = widget
+    while not find_method_by_name_and_call(current, 'isWindow'):
+        parent = find_method_by_name_and_call(current, 'parentWidget')  # parent = widget.parentWidget()
+        if parent is None:
+            break
+
+        parent_rect = find_method_by_name_and_call(parent, 'rect')  # parent_rect = parent.rect()
+        parent_origin = find_method_by_name_and_call(parent_rect, 'topLeft')  # parent_origin = parent_rect.topLeft()
+        parent_global_pos = find_method_by_name_and_call(parent, 'mapToGlobal', parent_origin)  # parent_global_pos = parent.mapToGlobal(parent_origin)
+        parent_size = find_method_by_name_and_call(parent, 'size')  # parent_size = parent.size()
+
+        parent_left = parent_global_pos.x()  # type: int
+        parent_top = parent_global_pos.y()  # type: int
+        parent_right = parent_left + parent_size.width()  # type: int
+        parent_bottom = parent_top + parent_size.height()  # type: int
+
+        # Adjust the rectangle to be within the parent's bounds
+        left = max(left, parent_left)
+        top = max(top, parent_top)
+        right = min(right, parent_right)
+        bottom = min(bottom, parent_bottom)
+
+        if right <= left or bottom <= top:
+            return None
+
+        current = parent
+
+    return Rect(left, top, right - left, bottom - top)
 
 
 def get_widget_parent(widget):
@@ -326,6 +413,10 @@ def set_widget_highlight(widget, highlight: bool):
 
 def exec_code_in_widget(widget, code: str):
     _send_custom_event(widget, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR, code)
+
+
+def notify_inspect_disabled(widget):
+    _send_custom_event(widget, _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR, True)
 
 
 def is_wrapped_pointer_valid(ptr):

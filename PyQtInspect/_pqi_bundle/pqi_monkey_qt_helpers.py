@@ -6,6 +6,7 @@ from io import StringIO
 import os
 
 from PyQtInspect._pqi_bundle import pqi_log
+from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedInspectTooltipManager
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
@@ -20,6 +21,8 @@ from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
     _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
     _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
     _PQI_STACK_WHEN_CREATED_ATTR,
+    _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR,
+    SuppressPatchMark,
 )
 
 def _is_inspect_enabled():
@@ -57,6 +60,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             import shiboken6 as _shiboken
         isdeleted = lambda obj: not _shiboken.isValid(obj)
         ispycreated = _shiboken.createdByPython
+
+    detailed_inspect_tooltip_mgr = DetailedInspectTooltipManager(QtModule)
 
     def _create_mouse_event(event_type, pos, button):
         """ Create a mouse event with the specified parameters.
@@ -185,11 +190,17 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     def _inspect_widget(debugger, widget: QtWidgets.QWidget):
         # print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
+        # === save widget ===
+        debugger.set_current_inspected_widget(widget)
+
         # === send widget info === #
         debugger.send_widget_info_to_server(widget)
 
         # === highlight widget === #
         HighlightController.highlight(widget)
+
+        # === populate detailed inspect tooltip === #
+        detailed_inspect_tooltip_mgr.show_tooltip(widget)
 
         # === hook mouseReleaseEvent === #
         _mark_obj_inspected(widget)
@@ -232,6 +243,10 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 _entered_widget_stack.pop()
             else:
                 _entered_widget_stack.clear()
+
+            if len(_entered_widget_stack) == 0:
+                # no inspected widgets, hide the tooltip
+                detailed_inspect_tooltip_mgr.hide_tooltip()
 
             HighlightController.unhighlight(obj)
             _clear_obj_inspected_mark(obj)
@@ -292,6 +307,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             HighlightController.unhighlight(obj)
             _entered_widget_stack.clear()
             _clear_obj_inspected_mark(obj)
+            detailed_inspect_tooltip_mgr.hide_tooltip()
 
             # stop event propagation
             return True
@@ -329,6 +345,12 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             if hasattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR):
                 code = getattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR)
                 obj._pqi_exec(code)
+            # handle inspect disabled
+            if hasattr(event, _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR):
+                # no need call debugger.disable_inspect() here,
+                # because this event is sent by the debugger
+                _entered_widget_stack.clear()
+                detailed_inspect_tooltip_mgr.hide_tooltip()
 
         def _handleContextMenuEvent(self, obj, event):
             """ #1 https://github.com/JezaChen/PyQtInspect-Open/issues/1
@@ -563,6 +585,9 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         self._original_QWidget_init(*args, **kwargs)
         if not ispycreated(self):
             # DO NOT install event listener for non-pycreated widget, because it may cause crash when exit
+            return
+
+        if SuppressPatchMark.is_marked(self):
             return
 
         # === save stack when create === #

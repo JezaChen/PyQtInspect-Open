@@ -18,7 +18,7 @@ if pyqt_inspect_module_dir not in sys.path:
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
-    get_create_stack, get_control_tree
+    get_create_stack, get_control_tree, notify_inspect_disabled
 from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
 import threading
 import _thread as thread
@@ -287,7 +287,17 @@ class PyDB:
         self.inspect_enabled = False
         self._inspect_extra_data = {}
         self._highlight_color = DEFAULT_HIGHLIGHT_COLOR
+
+        # --- Widget selection and inspection ---
+        # * selected: after the user releases the mouse button / F8 hotkey, the FINAL selected widget
+        # * cur_inspected: the widget currently being inspected by hovering the mouse over it (may change as the mouse moves)
+        # * TODO maybe refactor? v0.7
+        # selected: release mouse / F8 / view in hierarchy
+        # cur_inspected: mouse hover
+        # highlighted: mouse hover / hover in hierarchy / hover in control tree ...
+        # ---
         self._selected_widget = None
+        self._cur_inspected_widget = None
 
         # Mapping from QWidget object's ID to QWidget object
         # The reason for using dict instead of WeakValueDictionary,
@@ -530,8 +540,11 @@ class PyDB:
             self._highlight_color = extra_data['highlight_color']
 
     def disable_inspect(self):
+        # todo fixme renamed to finish inspect?
         self.inspect_enabled = False
         self._inspect_extra_data = {}
+        if self._cur_inspected_widget is not None:
+            notify_inspect_disabled(self._cur_inspected_widget)
 
     @property
     def mock_left_button_down(self) -> bool:
@@ -548,6 +561,7 @@ class PyDB:
 
     def notify_inspect_finished(self, widget):
         self.select_widget(widget)
+        self.set_current_inspected_widget(None)
 
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
@@ -557,6 +571,9 @@ class PyDB:
 
     def exec_code_in_selected_widget(self, code):
         exec_code_in_widget(self._selected_widget, code)
+
+    def set_current_inspected_widget(self, widget):
+        self._cur_inspected_widget = widget
 
     def notify_exec_code_result(self, result):
         cmd = self.cmd_factory.make_exec_code_result_message(result)
