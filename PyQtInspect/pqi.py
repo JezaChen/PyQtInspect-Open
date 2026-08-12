@@ -198,35 +198,6 @@ def execfile(file, glob=None, loc=None):
 # =======================================================================================================================
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
 
-
-class TrackedLock:
-    """The lock that tracks if it has been acquired by the current thread
-    """
-
-    def __init__(self):
-        self._lock = thread.allocate_lock()
-        # thread-local storage
-        self._tls = threading.local()
-        self._tls.is_lock_acquired = False
-
-    def acquire(self):
-        self._lock.acquire()
-        self._tls.is_lock_acquired = True
-
-    def release(self):
-        self._lock.release()
-        self._tls.is_lock_acquired = False
-
-    def __enter__(self):
-        self.acquire()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.release()
-
-    def is_acquired_by_current_thread(self):
-        return self._tls.is_lock_acquired
-
-
 connected = False
 
 
@@ -273,9 +244,6 @@ class PyDB:
         self.reader = None
         self.writer = None
         self.cmd_factory = NetCommandFactory()
-        # self._cmd_queue = defaultdict(_queue.Queue)  # Key is thread id or '*', value is Queue
-
-        self.breakpoints = {}
 
         self.ready_to_run = True
 
@@ -512,10 +480,6 @@ class PyDB:
         cmd = self.cmd_factory.make_widget_info_message(widget_info)
         self.writer.add_command(cmd)
 
-    # trace_dispatch = _trace_dispatch
-    # frame_eval_func = frame_eval_func
-    # dummy_trace_dispatch = dummy_trace_dispatch
-
     # noinspection SpellCheckingInspection
     @staticmethod
     def stoptrace():
@@ -538,7 +502,6 @@ class PyDB:
 
         if 'highlight_color' in extra_data:
             self._highlight_color = extra_data['highlight_color']
-
 
     @property
     def mock_left_button_down(self) -> bool:
@@ -591,9 +554,6 @@ class PyDB:
     def notify_exec_code_error_message(self, err_msg):
         cmd = self.cmd_factory.make_exec_code_err_message(err_msg)
         self.writer.add_command(cmd)
-
-    def notify_thread_not_alive(self, thread_id):
-        ...
 
     def register_widget(self, widget):
         self._id_to_widget[id(widget)] = widget
