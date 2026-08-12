@@ -205,7 +205,7 @@ class ReaderThread(PyDBDaemonThread):
             extra = json.loads(unquote(text))
             global_dbg.enable_inspect(extra)
         elif cmd_id == CMD_DISABLE_INSPECT:
-            global_dbg.disable_inspect()
+            global_dbg.stop_select()
         elif cmd_id == CMD_EXEC_CODE:
             code = unquote(text)
             global_dbg.exec_code_in_selected_widget(code)

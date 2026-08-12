@@ -290,14 +290,14 @@ class PyDB:
 
         # --- Widget selection and inspection ---
         # * selected: after the user releases the mouse button / F8 hotkey, the FINAL selected widget
-        # * cur_inspected: the widget currently being inspected by hovering the mouse over it (may change as the mouse moves)
+        # * hovered: the widget currently under the mouse during inspection (may change as the mouse moves)
         # * TODO maybe refactor? v0.7
         # selected: release mouse / F8 / view in hierarchy
-        # cur_inspected: mouse hover
+        # hovered: mouse hover
         # highlighted: mouse hover / hover in hierarchy / hover in control tree ...
         # ---
         self._selected_widget = None
-        self._cur_inspected_widget = None
+        self._hovered_widget = None
 
         # Mapping from QWidget object's ID to QWidget object
         # The reason for using dict instead of WeakValueDictionary,
@@ -539,12 +539,6 @@ class PyDB:
         if 'highlight_color' in extra_data:
             self._highlight_color = extra_data['highlight_color']
 
-    def disable_inspect(self):
-        # todo fixme renamed to finish inspect?
-        self.inspect_enabled = False
-        self._inspect_extra_data = {}
-        if self._cur_inspected_widget is not None:
-            notify_inspect_disabled(self._cur_inspected_widget)
 
     @property
     def mock_left_button_down(self) -> bool:
@@ -559,10 +553,25 @@ class PyDB:
         if 'highlight_color' in settings:
             self._highlight_color = settings['highlight_color']
 
-    def notify_inspect_finished(self, widget):
-        self.select_widget(widget)
-        self.set_current_inspected_widget(None)
+    def stop_select(self):
+        """ The selection is stopped by the server (press F8 or toggle the select button) """
+        # todo fixme when the selection is stopped by server, the stack is not cleaned up
+        self.inspect_enabled = False
+        self._inspect_extra_data = {}
+        last_hovered_widget = self._hovered_widget
+        if last_hovered_widget is not None:
+            notify_inspect_disabled(last_hovered_widget)
+        self.set_hovered_widget(None)
 
+    def finish_select(self, widget):
+        """ The qt helper notify the selection is finished """
+        self.inspect_enabled = False
+        self._inspect_extra_data = {}
+
+        self.select_widget(widget)
+        self.set_hovered_widget(None)
+
+        # notify server
         cmd = self.cmd_factory.make_inspect_finished_message()
         self.writer.add_command(cmd)
 
@@ -572,8 +581,8 @@ class PyDB:
     def exec_code_in_selected_widget(self, code):
         exec_code_in_widget(self._selected_widget, code)
 
-    def set_current_inspected_widget(self, widget):
-        self._cur_inspected_widget = widget
+    def set_hovered_widget(self, widget):
+        self._hovered_widget = widget
 
     def notify_exec_code_result(self, result):
         cmd = self.cmd_factory.make_exec_code_result_message(result)
