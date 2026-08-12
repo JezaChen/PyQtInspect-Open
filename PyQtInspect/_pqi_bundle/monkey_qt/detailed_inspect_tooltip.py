@@ -86,16 +86,7 @@ class DetailedInspectTooltipManager:
         QGraphicsDropShadowEffect = QtWidgets.QGraphicsDropShadowEffect
         QSizePolicy = QtWidgets.QSizePolicy
 
-        _self.widget_classes_to_mark = [
-            QApplication,
-            QWidget,
-            QFrame,
-            QLabel,
-            QVBoxLayout,
-            QGridLayout,
-            QGraphicsDropShadowEffect,
-            QSizePolicy,
-        ]
+        _self._QWidget_cls = QWidget
 
         class DetailedInspectTooltip(QWidget):
             def __init__(self, parent=None):
@@ -219,7 +210,7 @@ class DetailedInspectTooltipManager:
 
             def setInfo(self, info: _WidgetInfo):
                 with SuppressPatchMark.marked(
-                    *_self.widget_classes_to_mark
+                    _self._QWidget_cls
                 ):
                     self.titleLabel.setText(_make_breakable(
                         info.class_name
@@ -278,7 +269,7 @@ class DetailedInspectTooltipManager:
 
                     if y + self.height() > available_bottom:
                         # Place the tooltip above the target widget if there is not enough space below.
-                        y = visual_rect[1] - self.height() - 4
+                        y = visual_rect.y - self.height() - 4
 
                     x = max(rect.left(), x)
                     y = max(rect.top(), y)
@@ -294,7 +285,7 @@ class DetailedInspectTooltipManager:
         # Creating it in DetailedInspectTooltipManager.__init__ may occur before Qt's event loop starts.
         if not hasattr(_self, "_tooltip"):
             with SuppressPatchMark.marked(
-                *_self.widget_classes_to_mark
+                _self._QWidget_cls  # patch QWidget is enough, because all the other widgets are subclasses of QWidget
             ):
                 _self._tooltip = _self._tooltipCls()
         _self._tooltip.showNear(target_widget)

@@ -188,10 +188,14 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     _entered_widget_stack = EnteredWidgetStack()
 
-    def _inspect_widget(debugger, widget: QtWidgets.QWidget):
+    def _inspect_widget(widget: QtWidgets.QWidget):
+        debugger = get_global_debugger()
+        if debugger is None:
+            return
+
         # print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
         # === save widget ===
-        debugger.set_current_inspected_widget(widget)
+        debugger.set_hovered_widget(widget)
 
         # === send widget info === #
         debugger.send_widget_info_to_server(widget)
@@ -206,17 +210,16 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         _mark_obj_inspected(widget)
 
     def _inspect_top(stack: EnteredWidgetStack):
+        # todo move to EnteredWidgetStack class
         stack.filter()
         if not stack:
             return
 
         if not _is_inspect_enabled():
             return
-        debugger = get_global_debugger()
 
         obj = stack[-1]
-
-        _inspect_widget(debugger, obj)
+        _inspect_widget(obj)
 
     class EventListener(QtCore.QObject):
 
@@ -247,6 +250,9 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
             if len(_entered_widget_stack) == 0:
                 # no inspected widgets, hide the tooltip
                 detailed_inspect_tooltip_mgr.hide_tooltip()
+                debugger = get_global_debugger()
+                if debugger:
+                    debugger.set_hovered_widget(None)
 
             HighlightController.unhighlight(obj)
             _clear_obj_inspected_mark(obj)
@@ -268,9 +274,11 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 return False
 
             debugger = get_global_debugger()
+            if debugger is None:
+                return False
 
             if event.button() != MouseButtonEnum.LeftButton:
-                if debugger is not None and debugger.mock_left_button_down and event.button() == MouseButtonEnum.RightButton:
+                if debugger.mock_left_button_down and event.button() == MouseButtonEnum.RightButton:
                     # mock left button press and release event
                     # First, send a mouse press event
                     pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(),
@@ -302,8 +310,8 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                     return False
 
             # inspect finished
-            debugger.notify_inspect_finished(obj)
-            debugger.disable_inspect()
+            debugger.finish_select(obj)
+            debugger.stop_select()
             HighlightController.unhighlight(obj)
             _entered_widget_stack.clear()
             _clear_obj_inspected_mark(obj)
@@ -347,7 +355,7 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
                 obj._pqi_exec(code)
             # handle inspect disabled
             if hasattr(event, _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR):
-                # no need call debugger.disable_inspect() here,
+                # no need call debugger.stop_select() here,
                 # because this event is sent by the debugger
                 _entered_widget_stack.clear()
                 detailed_inspect_tooltip_mgr.hide_tooltip()
@@ -371,6 +379,23 @@ def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
         def eventFilter(self, obj, event):
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
+
+            # --- top-level window show event ---
+            # Not used in production, only for debugging
+            # if isinstance(obj, QtWidgets.QWidget):
+            #     if event.type() == EventEnum.Show and obj.isWindow():
+            #         print("\n========== TOP LEVEL SHOW ==========")
+            #         print("python id   :", hex(id(obj)))
+            #         print("class       :", obj.metaObject().className())
+            #         print("objectName  :", obj.objectName())
+            #         print("parent      :", obj.parentWidget())
+            #         print("isWindow    :", obj.isWindow())
+            #         print("windowFlags :", hex(int(obj.windowFlags())))
+            #         print("visible     :", obj.isVisible())
+            #         print("geometry    :", obj.geometry())
+            #         print("====================================")
+            #
+
             with log_exception(suppress=True):
                 if (event.type() == EventEnum.DynamicPropertyChange
                         and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
