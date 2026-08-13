@@ -6,7 +6,7 @@ import os
 import sys
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.monkey_qt.helpers import patch_QtWidgets
+from PyQtInspect._pqi_bundle.monkey_qt.widget_patcher import patch_qt_widgets
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS
 from PyQtInspect._pqi_bundle.pqi_monkey import str_to_args_windows, is_python, patch_args
 
@@ -425,4 +425,4 @@ def _internal_patch_qt(QtCore, qt_support_mode='auto'):
 
 
 def _internal_patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
-    patch_QtWidgets(QtModule, qt_support_mode, is_attach)
+    patch_qt_widgets(QtModule, qt_support_mode, is_attach)

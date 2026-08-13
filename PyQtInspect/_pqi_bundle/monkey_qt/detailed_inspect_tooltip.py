@@ -2,7 +2,7 @@ from typing import NamedTuple, Tuple
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import SuppressPatchMark
-from PyQtInspect._pqi_bundle.pqi_qt_tools import (
+from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import (
     get_widget_class_name,
     get_widget_object_name,
     get_widget_size,

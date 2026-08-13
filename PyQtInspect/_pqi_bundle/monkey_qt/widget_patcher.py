@@ -8,7 +8,7 @@ import os
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedInspectTooltipManager
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
-from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
+from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
@@ -38,7 +38,7 @@ def _markPatched(widget):
     widget.setProperty(_PQI_INSPECTED_PROP_NAME, True)
 
 
-def patch_QtWidgets(QtModule, qt_support_mode='auto', is_attach=False):
+def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
     QtWidgets = QtModule.QtWidgets
     QtGui = QtModule.QtGui
     QtCore = QtModule.QtCore

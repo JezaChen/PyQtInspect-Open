@@ -1,4 +1,4 @@
-# PQI Tools for Qt
+"""Utilities for inspecting and interacting with Qt widgets."""
 import typing
 
 from PyQtInspect._pqi_bundle import pqi_log
