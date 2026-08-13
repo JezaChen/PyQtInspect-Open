@@ -6,7 +6,7 @@ import typing
 from collections import defaultdict
 
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher._types_repr._base import TypeRepr
+from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr._base import TypeRepr
 
 __all__ = [
     # Just expose the CustomEnumRepr class, its subclasses can be registered by internal logic

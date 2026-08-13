@@ -5,7 +5,7 @@ Representers of ordinary types
 from PyQtInspect._pqi_bundle import pqi_log
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
-from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher._types_repr._base import TypeRepr, get_representation
+from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr._base import TypeRepr, get_representation
 
 
 class QRectRepr(TypeRepr):
@@ -142,7 +142,7 @@ class QFontRepr(TypeRepr):
 
     def _repr_weight(self, weight) -> str:
         # QFont.weight() returns int value in PyQt5, so we need to call `WeightEnumRepr.repr` explicitly
-        from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher._types_repr._enum_reprs import WeightEnumRepr
+        from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr._enum_reprs import WeightEnumRepr
         return WeightEnumRepr.repr(weight)
 
     def _repr_impl(self, font):

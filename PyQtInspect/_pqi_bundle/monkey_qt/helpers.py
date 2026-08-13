@@ -11,7 +11,7 @@ from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetCl
 from PyQtInspect._pqi_bundle.pqi_qt_tools import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
-from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
+from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_MOCKED_EVENT_ATTR,
     _PQI_INSPECTED_PROP_NAME,
     _PQI_INSPECTED_PROP_NAME_BYTES,

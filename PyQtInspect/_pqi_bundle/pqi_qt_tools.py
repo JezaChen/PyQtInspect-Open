@@ -3,7 +3,7 @@ import typing
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
-from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
+from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
     _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
     _PQI_STACK_WHEN_CREATED_ATTR,

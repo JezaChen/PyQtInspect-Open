@@ -19,7 +19,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_
 from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
     get_create_stack, get_control_tree, notify_inspect_disabled
-from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher import WidgetPropertiesGetter
+from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher import WidgetPropertiesGetter
 import threading
 import _thread as thread
 from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS, DEFAULT_HIGHLIGHT_COLOR
@@ -42,7 +42,7 @@ _QT_AUTO_DETECT_NOTIFICATION = (
 
 def auto_patch_qt(is_attach: bool):
     global SetupHolder
-    import PyQtInspect._pqi_bundle.pqi_monkey_qt as monkey_qt
+    from PyQtInspect._pqi_bundle import monkey_qt
     import ihook
 
     def clear_ihook():
@@ -98,7 +98,7 @@ def auto_patch_qt(is_attach: bool):
 
 def enable_qt_support(qt_support_mode, is_attach: bool = False):
     global SetupHolder
-    import PyQtInspect._pqi_bundle.pqi_monkey_qt as monkey_qt
+    from PyQtInspect._pqi_bundle import monkey_qt
 
     if qt_support_mode == 'auto':
         if is_attach:
@@ -730,7 +730,7 @@ def _locked_settrace(
         atexit.register(stoptrace)
 
     try:
-        import PyQtInspect._pqi_bundle.pqi_monkey_qt
+        import PyQtInspect._pqi_bundle.monkey_qt
     except:
         pass
     else:
