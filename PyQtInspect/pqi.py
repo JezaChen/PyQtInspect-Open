@@ -730,7 +730,8 @@ def _locked_settrace(
         atexit.register(stoptrace)
 
     try:
-        import PyQtInspect._pqi_bundle.monkey_qt
+        # Try to find the patcher... otherwise, just run the original code
+        import PyQtInspect._pqi_bundle.monkey_qt.patcher
     except:
         pass
     else:
