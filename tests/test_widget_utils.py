@@ -1,4 +1,4 @@
-from PyQtInspect._pqi_bundle.pqi_qt_tools import (
+from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import (
     get_widget_visual_rect,
     get_widget_window_pos,
 )

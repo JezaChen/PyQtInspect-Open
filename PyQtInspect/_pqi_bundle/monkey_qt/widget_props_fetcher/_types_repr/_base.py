@@ -2,7 +2,7 @@ import abc
 import functools
 import typing
 
-from PyQtInspect._pqi_bundle.pqi_qt_tools import import_Qt
+from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import import_Qt
 
 __all__ = [
     'TypeRepr',

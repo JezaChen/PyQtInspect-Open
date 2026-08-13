@@ -42,7 +42,7 @@ Key behavior:
 Primary modules:
 
 - `PyQtInspect/pqi.py`: core debugger/client runtime (`PyDB`) and command handlers.
-- `PyQtInspect/_pqi_bundle/monkey_qt/helpers.py`: Qt patching logic and event interception.
+- `PyQtInspect/_pqi_bundle/monkey_qt/widget_patcher.py`: Qt patching logic and event interception.
 - `PyQtInspect/_pqi_bundle/pqi_comm.py`: network protocol, reader/writer threads, command factory.
 
 Key behavior:
@@ -170,7 +170,7 @@ When modifying protocol/runtime code, preserve these behaviors:
 
 7. **Highlight overlay mechanism**
    - When inspect is enabled and the user hovers over a widget, a semi-transparent overlay is shown on it.
-   - `_createHighlightFg()` (inside `patch_QtWidgets` closure in `helpers.py`) creates a `QWidget` overlay with `WA_TransparentForMouseEvents` and a colored stylesheet.
+   - `_createHighlightFg()` (inside `patch_qt_widgets` closure in `widget_patcher.py`) creates a `QWidget` overlay with `WA_TransparentForMouseEvents` and a colored stylesheet.
    - `HighlightController` manages show/hide lifecycle. Overlay widgets are **cached as dynamic attributes** on the target widget (via `setattr(widget, _PQI_HIGHLIGHT_FG_NAME, ...)`), so they are created once per widget and reused.
    - The overlay stylesheet is refreshed each time `HighlightController.highlight()` is called, allowing color changes to take effect on cached overlays without recreation.
    - The stylesheet uses `background: transparent` shorthand first to reset inherited background properties (e.g., `background-image`), then applies `background-color`. Do not reverse this order.

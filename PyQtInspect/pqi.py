@@ -16,7 +16,7 @@ if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
-from PyQtInspect._pqi_bundle.pqi_qt_tools import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
+from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
     get_create_stack, get_control_tree, notify_inspect_disabled
 from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher import WidgetPropertiesGetter
@@ -731,7 +731,7 @@ def _locked_settrace(
 
     try:
         # Try to find the patcher... otherwise, just run the original code
-        import PyQtInspect._pqi_bundle.monkey_qt.patcher
+        import PyQtInspect._pqi_bundle.monkey_qt.runtime_patcher
     except:
         pass
     else:
