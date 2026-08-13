@@ -5,7 +5,7 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
 from PyQtInspect._pqi_bundle.pqi_qt_tools import (
     find_method_by_name_and_call, find_method_by_name_and_safe_call
 )
-from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher._types_repr import get_representation
+from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr import get_representation
 
 __all__ = [
     'WidgetPropertiesGetter',

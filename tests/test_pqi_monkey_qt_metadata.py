@@ -1,4 +1,4 @@
-from PyQtInspect._pqi_bundle.pqi_monkey_qt_props import (
+from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     PatchMark,
     SuppressPatchMark,
 )

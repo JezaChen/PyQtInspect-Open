@@ -4,7 +4,7 @@ Representers of flags types
 import abc
 import typing
 
-from PyQtInspect._pqi_bundle.pqi_qt_widget_props_fetcher._types_repr._enum_reprs import CustomEnumRepr
+from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr._enum_reprs import CustomEnumRepr
 
 
 class CustomFlagRepr(CustomEnumRepr, abc.ABC):

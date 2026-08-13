@@ -170,7 +170,7 @@ When modifying protocol/runtime code, preserve these behaviors:
 
 7. **Highlight overlay mechanism**
    - When inspect is enabled and the user hovers over a widget, a semi-transparent overlay is shown on it.
-   - `_createHighlightFg()` (inside `patch_QtWidgets` closure in `pqi_monkey_qt_helpers.py`) creates a `QWidget` overlay with `WA_TransparentForMouseEvents` and a colored stylesheet.
+   - `_createHighlightFg()` (inside `patch_QtWidgets` closure in `helpers.py`) creates a `QWidget` overlay with `WA_TransparentForMouseEvents` and a colored stylesheet.
    - `HighlightController` manages show/hide lifecycle. Overlay widgets are **cached as dynamic attributes** on the target widget (via `setattr(widget, _PQI_HIGHLIGHT_FG_NAME, ...)`), so they are created once per widget and reused.
    - The overlay stylesheet is refreshed each time `HighlightController.highlight()` is called, allowing color changes to take effect on cached overlays without recreation.
    - The stylesheet uses `background: transparent` shorthand first to reset inherited background properties (e.g., `background-image`), then applies `background-color`. Do not reverse this order.
