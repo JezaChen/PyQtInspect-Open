@@ -29,7 +29,7 @@ from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_connect_tools import random_port
-from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_server_gui_entry
+from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_server_gui_entry, get_fullname, get_package_dir
 
 import traceback
 
@@ -114,29 +114,6 @@ def enable_qt_support(qt_support_mode, is_attach: bool = False):
         print(_QT_AUTO_DETECT_NOTIFICATION.replace("📢", ""))
 
     monkey_qt.patch_qt(qt_support_mode, is_attach)
-
-
-def get_fullname(mod_name):
-    import pkgutil
-
-    try:
-        loader = pkgutil.get_loader(mod_name)
-    except:
-        return None
-    if loader is not None:
-        for attr in ("get_filename", "_get_filename"):
-            meth = getattr(loader, attr, None)
-            if meth is not None:
-                return meth(mod_name)
-    return None
-
-
-def get_package_dir(mod_name):
-    for path in sys.path:
-        mod_path = os.path.join(path, mod_name.replace('.', '/'))
-        if os.path.isdir(mod_path):
-            return mod_path
-    return None
 
 
 def save_main_module(file, module_name):
