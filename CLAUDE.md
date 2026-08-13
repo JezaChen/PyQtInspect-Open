@@ -42,7 +42,7 @@ Key behavior:
 Primary modules:
 
 - `PyQtInspect/pqi.py`: core debugger/client runtime (`PyDB`) and command handlers.
-- `PyQtInspect/_pqi_bundle/pqi_monkey_qt_helpers.py`: Qt patching logic and event interception.
+- `PyQtInspect/_pqi_bundle/monkey_qt/helpers.py`: Qt patching logic and event interception.
 - `PyQtInspect/_pqi_bundle/pqi_comm.py`: network protocol, reader/writer threads, command factory.
 
 Key behavior:
