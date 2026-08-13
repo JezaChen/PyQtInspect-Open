@@ -6,6 +6,8 @@ import sys
 __all__ = [
     'is_relative_to',
     'find_pqi_module_path',
+    'get_fullname',
+    'get_package_dir',
     'find_compile_pqi_tool',
     'find_pqi_server_gui_entry',
 ]
