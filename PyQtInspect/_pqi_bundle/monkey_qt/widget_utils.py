@@ -6,31 +6,9 @@ from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
     _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
-    _PQI_STACK_WHEN_CREATED_ATTR,
     _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR,
     _PQI_HIGHLIGHT_FG_NAME,
 )
-from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_module_path, is_relative_to
-
-
-def _filter_trace_stack(traceStacks):
-    filteredStacks = []
-    from PyQtInspect.pqi import SetupHolder
-    stackMaxDepth = SetupHolder.setup[SetupHolder.KEY_STACK_MAX_DEPTH]
-    showPqiStack = SetupHolder.setup[SetupHolder.KEY_SHOW_PQI_STACK]
-    pqi_module_path = find_pqi_module_path()
-    stacks = traceStacks[2:stackMaxDepth + 1] if stackMaxDepth != 0 else traceStacks[2:]
-    for filename, lineno, func_name in stacks:
-        if not showPqiStack and is_relative_to(filename, pqi_module_path):
-            break
-        filteredStacks.append(
-            {
-                'filename': filename,
-                'lineno': lineno,
-                'function': func_name,
-            }
-        )
-    return filteredStacks
 
 
 # ==== TODO ====
@@ -204,10 +182,6 @@ def get_children_info(widget):
         if obj_name == _PQI_HIGHLIGHT_FG_NAME and not need_to_include_fg:
             continue
         yield get_widget_class_name(child), id(child), get_widget_object_name(child)
-
-
-def get_create_stack(widget):
-    return _filter_trace_stack(getattr(widget, _PQI_STACK_WHEN_CREATED_ATTR, []))
 
 
 def _get_full_class_name(o):
