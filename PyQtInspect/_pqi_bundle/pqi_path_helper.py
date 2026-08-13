@@ -1,5 +1,7 @@
 # -*- encoding:utf-8 -*-
+import os
 import pathlib
+import sys
 
 __all__ = [
     'is_relative_to',
@@ -43,6 +45,29 @@ def find_pqi_module_path():
     result = str(path).replace('\\', '/')
     _PQI_MODULE_PATH_CACHE = result
     return result
+
+
+def get_fullname(mod_name):
+    import pkgutil
+
+    try:
+        loader = pkgutil.get_loader(mod_name)
+    except:
+        return None
+    if loader is not None:
+        for attr in ("get_filename", "_get_filename"):
+            meth = getattr(loader, attr, None)
+            if meth is not None:
+                return meth(mod_name)
+    return None
+
+
+def get_package_dir(mod_name):
+    for path in sys.path:
+        mod_path = os.path.join(path, mod_name.replace('.', '/'))
+        if os.path.isdir(mod_path):
+            return mod_path
+    return None
 
 
 # === FOR COMPILE ===
