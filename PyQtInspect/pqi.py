@@ -16,9 +16,10 @@ if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
 from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
+from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import get_widget_creation_stack
 from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
-    get_create_stack, get_control_tree, notify_inspect_disabled
+    get_control_tree, notify_inspect_disabled
 from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher import WidgetPropertiesGetter
 import threading
 import _thread as thread
@@ -574,7 +575,7 @@ class PyDB:
             class_name=widget.__class__.__name__,
             object_name=get_widget_object_name(widget),
             id=id(widget),
-            stacks_when_create=get_create_stack(widget),
+            stacks_when_create=get_widget_creation_stack(widget),
             size=get_widget_size(widget),
             pos=get_widget_pos(widget),
             parent_classes=parent_classes,

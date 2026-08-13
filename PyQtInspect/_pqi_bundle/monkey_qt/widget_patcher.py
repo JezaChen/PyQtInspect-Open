@@ -7,9 +7,9 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedInspectTooltipManager
+from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import capture_current_stack
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
 from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import get_widget_size
-from PyQtInspect._pqi_bundle.pqi_stack_tools import getStackFrame
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_MOCKED_EVENT_ATTR,
@@ -616,7 +616,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             return
 
         # === save stack when create === #
-        frames = getStackFrame()
+        frames = capture_current_stack()
         setattr(self, _PQI_STACK_WHEN_CREATED_ATTR, frames)
 
         # Initialize the global filter when it does not exist
