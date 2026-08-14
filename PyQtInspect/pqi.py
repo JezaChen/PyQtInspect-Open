@@ -730,13 +730,9 @@ def _locked_settrace(
         # Stop the tracing as the last thing before the actual shutdown for a clean exit.
         atexit.register(stoptrace)
 
-    try:
-        # Try to find the patcher... otherwise, just run the original code
-        import PyQtInspect._pqi_bundle.monkey_qt.runtime_patcher
-    except:
-        pass
-    else:
-        enable_qt_support(qt_support, is_attach)
+    # The runtime patcher is bundled with PyQtInspect. Let import or initialization
+    # errors propagate so attach does not appear to succeed without Qt being patched.
+    enable_qt_support(qt_support, is_attach)
 
 
 # =======================================================================================================================
