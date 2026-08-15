@@ -43,7 +43,10 @@ Primary modules:
 
 - `PyQtInspect/pqi.py`: core debugger/client runtime (`PyDB`) and command handlers.
 - `PyQtInspect/_pqi_bundle/monkey_qt/widget_patcher.py`: Qt patching logic and event interception.
-- `PyQtInspect/_pqi_bundle/pqi_comm.py`: network protocol, reader/writer threads, command factory.
+- `PyQtInspect/_pqi_bundle/comm/protocol.py`: command IDs and compact payload keys.
+- `PyQtInspect/_pqi_bundle/comm/commands.py`: network command serialization and command factory.
+- `PyQtInspect/_pqi_bundle/comm/transport.py`: socket setup and reader/writer threads.
+- `PyQtInspect/_pqi_bundle/comm/connect_tools.py`: connection-related utilities.
 
 Key behavior:
 
@@ -92,12 +95,12 @@ This approach is additive and backward compatible — older clients ignore unkno
 
 Implementation anchors:
 
-- `NetCommand` serialization + encoding in `pqi_comm.py`.
-- `ReaderThread` parses by newline, then tab-splitting into `cmd_id`, `seq`, `text`.
+- `NetCommand` serialization + encoding in `comm/commands.py`.
+- `ReaderThread` in `comm/transport.py` parses by newline, then tab-splitting into `cmd_id`, `seq`, `text`.
 
 ### 3.2 Command IDs and message semantics
 
-Message IDs are defined in `PyQtInspect/_pqi_bundle/pqi_comm_constants.py`.
+Message IDs are defined in `PyQtInspect/_pqi_bundle/comm/protocol.py`.
 
 Common flows:
 
@@ -209,7 +212,7 @@ Do not introduce ad-hoc print debugging in production code.
 
 ### 5.4 Shared constants
 
-Shared **runtime/UI** constants used by both server and client should be defined in `PyQtInspect/_pqi_bundle/pqi_contants.py` and imported from there (for example, values such as default highlight settings or platform/runtime flags). **Protocol/message constants are an exception**: command IDs, message IDs, and other communication-boundary constants should live in `pqi_comm_constants.py`.
+Shared **runtime/UI** constants used by both server and client should be defined in `PyQtInspect/_pqi_bundle/pqi_contants.py` and imported from there (for example, values such as default highlight settings or platform/runtime flags). **Protocol/message constants are an exception**: command IDs, message IDs, and other communication-boundary constants should live in `comm/protocol.py`.
 
 Do not duplicate shared literal values across server-side and client-side modules — this leads to silent drift. When adding a constant, prefer extending the existing constants module for that category rather than creating a second source of truth.
 ### 5.5 Qt notes
@@ -222,9 +225,9 @@ Do not duplicate shared literal values across server-side and client-side module
 
 1. **Protocol evolution**
    - If adding command types, update all of:
-     - constants (`pqi_comm_constants.py`)
-     - factory builder (`NetCommandFactory`)
-     - client command handler (`ReaderThread.process_net_command`)
+     - constants (`comm/protocol.py`)
+     - factory builder (`NetCommandFactory` in `comm/commands.py`)
+     - client command handler (`ReaderThread.process_net_command` in `comm/transport.py`)
      - server handler (`PQIWindow.onWidgetInfoRecv`)
      - relevant docs (`README.md` and this file when behavior changes)
 

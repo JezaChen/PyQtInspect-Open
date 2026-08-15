@@ -4,7 +4,7 @@ Representers of ordinary types
 
 from PyQtInspect._pqi_bundle import pqi_log
 
-from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
+from PyQtInspect._pqi_bundle.comm.protocol import WidgetPropsKeys
 from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher._types_repr._base import TypeRepr, get_representation
 
 

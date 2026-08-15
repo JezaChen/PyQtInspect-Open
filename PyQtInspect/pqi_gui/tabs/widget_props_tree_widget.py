@@ -1,7 +1,7 @@
 import typing
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
+from PyQtInspect._pqi_bundle.comm.protocol import WidgetPropsKeys
 from PyQtInspect.pqi_gui.components.waiting_overlay import WaitingOverlay
 
 

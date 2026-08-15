@@ -15,7 +15,17 @@ pyqt_inspect_module_dir = str(pathlib.Path(__file__).resolve().parent.parent)
 if pyqt_inspect_module_dir not in sys.path:
     sys.path.insert(0, pyqt_inspect_module_dir)
 
-from PyQtInspect._pqi_bundle.pqi_comm_constants import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
+from PyQtInspect._pqi_bundle.comm.commands import NetCommand, NetCommandFactory
+from PyQtInspect._pqi_bundle.comm.connect_tools import find_available_port
+from PyQtInspect._pqi_bundle.comm.protocol import CMD_PROCESS_CREATED, CMD_QT_PATCH_SUCCESS
+from PyQtInspect._pqi_bundle.comm.transport import (
+    CommunicationRole,
+    PyDBDaemonThread,
+    ReaderThread,
+    WriterThread,
+    start_client,
+    start_server,
+)
 from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import get_widget_creation_stack
 from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import exec_code_in_widget, get_parent_info, get_widget_size, get_widget_pos, \
     get_stylesheet, get_children_info, set_widget_highlight, get_widget_object_name, is_wrapped_pointer_valid, \
@@ -23,13 +33,18 @@ from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import exec_code_in_widget, 
 from PyQtInspect._pqi_bundle.monkey_qt.widget_props_fetcher import WidgetPropertiesGetter
 import threading
 import _thread as thread
-from PyQtInspect._pqi_bundle.pqi_contants import get_current_thread_id, SHOW_DEBUG_INFO_ENV, DebugInfoHolder, IS_WINDOWS, DEFAULT_HIGHLIGHT_COLOR
-from PyQtInspect._pqi_bundle.pqi_comm import PyDBDaemonThread, ReaderThread, get_global_debugger, set_global_debugger, \
-    WriterThread, start_client, start_server, CommunicationRole, NetCommand, NetCommandFactory
+from PyQtInspect._pqi_bundle.pqi_contants import (
+    DEFAULT_HIGHLIGHT_COLOR,
+    DebugInfoHolder,
+    IS_WINDOWS,
+    SHOW_DEBUG_INFO_ENV,
+    get_current_thread_id,
+    get_global_debugger,
+    set_global_debugger,
+)
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
 from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_connect_tools import random_port
 from PyQtInspect._pqi_bundle.pqi_path_helper import find_pqi_server_gui_entry, get_fullname, get_package_dir
 
 import traceback
@@ -783,7 +798,7 @@ def main():
         # ===============================================
         # Override the host and port to localhost and a random port
         host = setup[SetupHolder.KEY_CLIENT] = '127.0.0.1'
-        port = setup[SetupHolder.KEY_PORT] = random_port()
+        port = setup[SetupHolder.KEY_PORT] = find_available_port()
         # Run server first
         server_args = ['--port', str(port), '--direct']
         if setup.get(SetupHolder.KEY_IS_DEBUG_MODE, False):

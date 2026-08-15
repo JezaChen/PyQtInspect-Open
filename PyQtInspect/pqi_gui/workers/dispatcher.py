@@ -4,7 +4,8 @@
 from PyQt5 import QtCore
 import threading
 
-from PyQtInspect._pqi_bundle.pqi_comm import ReaderThread, WriterThread, NetCommandFactory
+from PyQtInspect._pqi_bundle.comm.commands import NetCommandFactory
+from PyQtInspect._pqi_bundle.comm.transport import ReaderThread, WriterThread
 from PyQtInspect._pqi_bundle.pqi_override import overrides
 from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
 

@@ -2,7 +2,7 @@
 import typing
 
 from PyQt5 import QtGui, QtWidgets, QtCore
-from PyQtInspect._pqi_bundle.pqi_comm_constants import TreeViewKeys
+from PyQtInspect._pqi_bundle.comm.protocol import TreeViewKeys
 from PyQtInspect.pqi_gui.components.waiting_overlay import WaitingOverlay
 
 

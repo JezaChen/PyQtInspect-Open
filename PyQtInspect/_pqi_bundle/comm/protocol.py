@@ -2,7 +2,7 @@
 # ==============================================
 # Author: Jeza Chen
 # Time: 2023/8/23 11:06
-# Description: 
+# Description: Communication protocol constants and payload keys
 # ==============================================
 # === CONNECTION MANAGEMENT ===
 CMD_EXIT = 129
@@ -59,6 +59,7 @@ ID_TO_MEANING = {
     '1018': 'CMD_SETTINGS_CHANGED',
 }
 
+
 # === Tree Views ===
 class TreeViewKeys:
     OBJ_ID_KEY = 'i'
@@ -67,12 +68,15 @@ class TreeViewKeys:
     CHILDREN_KEY = 'ch'
     CHILD_CNT_KEY = 'cc'
 
+
 class TreeViewResultKeys:
     TREE_INFO_KEY = 't'
     EXTRA_KEY = 'e'
 
+
 class TreeViewExtraKeys:
     CURRENT_WIDGET_ID = 'c'
+
 
 # === Widget Props ===
 class WidgetPropsKeys:
