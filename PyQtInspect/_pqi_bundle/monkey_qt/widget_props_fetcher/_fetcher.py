@@ -1,7 +1,7 @@
 import typing
 from PyQtInspect._pqi_bundle import pqi_log
 
-from PyQtInspect._pqi_bundle.pqi_comm_constants import WidgetPropsKeys
+from PyQtInspect._pqi_bundle.comm.protocol import WidgetPropsKeys
 from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import (
     find_method_by_name_and_call, find_method_by_name_and_safe_call
 )

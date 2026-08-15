@@ -1,54 +1,45 @@
-# -*- encoding:utf-8 -*-
-
-import dataclasses
-
+import json
 import queue
+import sys
 import threading
 import time
-import socket
-import typing
-from socket import socket, AF_INET, SOCK_STREAM, SHUT_RD, SHUT_WR, SOL_SOCKET, SO_REUSEADDR
-
-from PyQtInspect._pqi_bundle import pqi_log
-from PyQtInspect._pqi_bundle.pqi_contants import DebugInfoHolder, GlobalDebuggerHolder, get_global_debugger, \
-    set_global_debugger
-from PyQtInspect._pqi_bundle.pqi_override import overrides
-import json
-
-from PyQtInspect._pqi_bundle.pqi_structures import QWidgetInfo, QWidgetChildrenInfo
-from PyQtInspect._pqi_bundle.pqi_typing import OptionalDict
-
-try:
-    from urllib import quote_plus, unquote, unquote_plus
-except:
-    from urllib.parse import quote_plus, unquote, unquote_plus  # @Reimport @UnresolvedImport
-
-import sys
 import traceback
-from urllib.parse import quote
-
-try:
-    import cStringIO as StringIO  # may not always be available @UnusedImport
-except:
-    try:
-        import StringIO  # @Reimport
-    except:
-        import io as StringIO
-
-# CMD_XXX constants imported for backward compatibility
-from PyQtInspect._pqi_bundle.pqi_comm_constants import (
-    ID_TO_MEANING, CMD_EXIT, CMD_WIDGET_INFO, CMD_ENABLE_INSPECT,
-    CMD_DISABLE_INSPECT, CMD_INSPECT_FINISHED, CMD_EXEC_CODE, CMD_EXEC_CODE_ERROR, CMD_EXEC_CODE_RESULT,
-    CMD_SET_WIDGET_HIGHLIGHT, CMD_SELECT_WIDGET, CMD_REQ_WIDGET_INFO, CMD_REQ_CHILDREN_INFO, CMD_CHILDREN_INFO,
-    CMD_REQ_CONTROL_TREE, CMD_CONTROL_TREE, CMD_REQ_WIDGET_PROPS, CMD_WIDGET_PROPS, CMD_SETTINGS_CHANGED,
-    # Keys
-    TreeViewResultKeys
+from socket import (
+    AF_INET,
+    SHUT_RD,
+    SHUT_WR,
+    SOCK_STREAM,
+    SOL_SOCKET,
+    SO_REUSEADDR,
+    socket,
 )
 
-MAX_IO_MSG_SIZE = 1000  # if the io is too big, we'll not send all (could make the debugger too non-responsive)
-# this number can be changed if there's need to do so
+try:
+    from urllib import unquote
+except:
+    from urllib.parse import unquote  # @Reimport @UnresolvedImport
 
-VERSION_STRING = "@@BUILD_NUMBER@@"
+from PyQtInspect._pqi_bundle import pqi_log
+from PyQtInspect._pqi_bundle.pqi_contants import (
+    DebugInfoHolder,
+    GlobalDebuggerHolder,
+)
+from PyQtInspect._pqi_bundle.pqi_override import overrides
+
+from .protocol import (
+    CMD_DISABLE_INSPECT,
+    CMD_ENABLE_INSPECT,
+    CMD_EXEC_CODE,
+    CMD_EXIT,
+    CMD_REQ_CHILDREN_INFO,
+    CMD_REQ_CONTROL_TREE,
+    CMD_REQ_WIDGET_INFO,
+    CMD_REQ_WIDGET_PROPS,
+    CMD_SELECT_WIDGET,
+    CMD_SETTINGS_CHANGED,
+    CMD_SET_WIDGET_HIGHLIGHT,
+    ID_TO_MEANING,
+)
 
 
 class CommunicationRole:
@@ -364,207 +355,3 @@ def start_client(host, port, *, output_errors=True):
         if output_errors:
             pqi_log.error(f'Could not connect to {host}:{port}', exc_info=True)
         raise
-
-
-# ------------------------------------------------------------------------------------ MANY COMMUNICATION STUFF
-
-# =======================================================================================================================
-# NetCommand
-# =======================================================================================================================
-class NetCommand:
-    """ Commands received/sent over the network.
-
-    Command can represent command received from the debugger,
-    or one to be sent by daemon.
-    """
-    next_seq = 0  # sequence numbers
-
-    # Protocol where each line is a new message (text is quoted to prevent new lines).
-    QUOTED_LINE_PROTOCOL = 'quoted-line'
-
-    # Uses http protocol to provide a new message.
-    # i.e.: Content-Length:xxx\r\n\r\npayload
-    HTTP_PROTOCOL = 'http'
-
-    protocol = QUOTED_LINE_PROTOCOL
-
-    _showing_debug_info = 0
-    _show_debug_info_lock = threading.RLock()
-
-    def __init__(self, cmd_id, seq, text):
-        """
-        If sequence is 0, new sequence will be generated (otherwise, this was the response
-        to a command from the client).
-        """
-        self.id = cmd_id
-        if seq == 0:
-            NetCommand.next_seq += 2
-            seq = NetCommand.next_seq
-        self.seq = seq
-
-        assert isinstance(text, str)
-
-        self._show_debug_info(cmd_id, seq, text)
-
-        if self.protocol == self.HTTP_PROTOCOL:
-            msg = '%s\t%s\t%s\n' % (cmd_id, seq, text)
-        else:
-            encoded = quote(str(text), '/<>_=" \t')
-            msg = '%s\t%s\t%s\n' % (cmd_id, seq, encoded)
-
-        if isinstance(msg, str):
-            msg = msg.encode('utf-8')
-        assert isinstance(msg, bytes)
-        as_bytes = msg
-        self._as_bytes = as_bytes
-
-    def send(self, sock):
-        as_bytes = self._as_bytes
-        if self.protocol == self.HTTP_PROTOCOL:
-            sock.sendall(('Content-Length: %s\r\n\r\n' % len(as_bytes)).encode('ascii'))
-
-        sock.sendall(as_bytes)
-
-    @classmethod
-    def _show_debug_info(cls, cmd_id, seq, text):
-        pqi_log.debug(
-            'sending cmd --> %20s %s' % (ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN'), text.replace('\n', ' '))
-        )
-        # with cls._show_debug_info_lock:
-        #     # Only one thread each time (rlock).
-        #     if cls._showing_debug_info:
-        #         # avoid recursing in the same thread (just printing could create
-        #         # a new command when redirecting output).
-        #         return
-        #
-        #     cls._showing_debug_info += 1
-        #     try:
-        #         out_message = 'sending cmd --> '
-        #         out_message += "%20s" % ID_TO_MEANING.get(str(cmd_id), 'UNKNOWN')
-        #         out_message += ' '
-        #         out_message += text.replace('\n', ' ')
-        #         try:
-        #             sys.stderr.write('%s\n' % (out_message,))
-        #         except:
-        #             pass
-        #     finally:
-        #         cls._showing_debug_info -= 1
-
-
-# # =======================================================================================================================
-# # NetCommandFactory
-# # =======================================================================================================================
-class NetCommandFactory:
-    def make_dict(self, **kwargs):
-        return kwargs
-
-    def _dump_json(self, obj):
-        return json.dumps(obj, indent=None, separators=(',', ':'))
-
-    def make_json(self, **kwargs):
-        return self._dump_json(kwargs)
-
-    def make_widget_info_message(self,
-                                 widget_info: QWidgetInfo):
-        cmd = NetCommand(CMD_WIDGET_INFO, 0, self.make_json(
-            **dataclasses.asdict(widget_info)
-        ))
-        return cmd
-
-    def make_exec_code_message(self, code: str):
-        cmd = NetCommand(CMD_EXEC_CODE, 0, code)
-        return cmd
-
-    def make_exec_code_result_message(self, result: str):
-        cmd = NetCommand(CMD_EXEC_CODE_RESULT, 0, result)
-        return cmd
-
-    def make_exec_code_err_message(self, err_msg: str):
-        cmd = NetCommand(CMD_EXEC_CODE_ERROR, 0, err_msg)
-        return cmd
-
-    def make_enable_inspect_message(self, extra: OptionalDict = None):
-        if extra is None:
-            extra = {}
-        return NetCommand(CMD_ENABLE_INSPECT, 0, self._dump_json(extra))
-
-    def make_disable_inspect_message(self):
-        return NetCommand(CMD_DISABLE_INSPECT, 0, '')
-
-    def make_inspect_finished_message(self):
-        return NetCommand(CMD_INSPECT_FINISHED, 0, '')
-
-    def make_set_widget_highlight_message(self, widget_id: int, is_highlight: bool):
-        return NetCommand(CMD_SET_WIDGET_HIGHLIGHT, 0, self.make_json(
-            widget_id=widget_id,
-            is_highlight=is_highlight
-        ))
-
-    def make_select_widget_message(self, widget_id: int):
-        return NetCommand(CMD_SELECT_WIDGET, 0, str(widget_id))
-
-    def make_req_widget_info_message(self, widget_id: int, extra: OptionalDict = None):
-        if extra is None:
-            extra = {}
-        return NetCommand(CMD_REQ_WIDGET_INFO, 0, self.make_json(
-            widget_id=widget_id,
-            extra=extra,
-        ))
-
-    def make_req_children_info_message(self, widget_id: int):
-        return NetCommand(CMD_REQ_CHILDREN_INFO, 0, str(widget_id))
-
-    def make_children_info_message(self, children_info: QWidgetChildrenInfo):
-        return NetCommand(CMD_CHILDREN_INFO, 0, self.make_json(
-            **dataclasses.asdict(children_info)
-        ))
-
-    def make_req_control_tree_message(self, extra: OptionalDict = None):
-        if extra is None:
-            extra = {}
-        return NetCommand(CMD_REQ_CONTROL_TREE, 0, self._dump_json(extra))
-
-    def make_control_tree_message(self, control_tree: typing.List[typing.Dict], extra: typing.Dict):
-        return NetCommand(CMD_CONTROL_TREE, 0, self._dump_json({
-            TreeViewResultKeys.TREE_INFO_KEY: control_tree,
-            TreeViewResultKeys.EXTRA_KEY: extra,
-        }))
-
-    def make_req_widget_props_message(self, widget_id: int):
-        return NetCommand(CMD_REQ_WIDGET_PROPS, 0, str(widget_id))
-
-    def make_widget_props_message(self, widget_props: typing.List[typing.Dict]):
-        return NetCommand(CMD_WIDGET_PROPS, 0, self._dump_json(widget_props))
-
-    def make_settings_changed_message(self, settings: dict):
-        return NetCommand(CMD_SETTINGS_CHANGED, 0, self._dump_json(settings))
-
-    def make_exit_message(self):
-        return NetCommand(CMD_EXIT, 0, '')
-
-
-INTERNAL_TERMINATE_THREAD = 1
-INTERNAL_SUSPEND_THREAD = 2
-
-
-# =======================================================================================================================
-# InternalThreadCommand
-# =======================================================================================================================
-class InternalThreadCommand:
-    """ internal commands are generated/executed by the debugger.
-
-    The reason for their existence is that some commands have to be executed
-    on specific threads. These are the InternalThreadCommands that get
-    get posted to PyDB.cmdQueue.
-    """
-
-    def __init__(self, thread_id):
-        self.thread_id = thread_id
-
-    def can_be_executed_by(self, thread_id):
-        '''By default, it must be in the same thread to be executed
-        '''
-        return self.thread_id == thread_id or self.thread_id.endswith('|' + thread_id)
-
-    def do_it(self, dbg):
-        raise NotImplementedError("you have to override do_it")

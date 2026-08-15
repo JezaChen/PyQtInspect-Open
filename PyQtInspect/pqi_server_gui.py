@@ -33,7 +33,7 @@ from PyQtInspect.pqi_gui.windows.attach_window import AttachWindow
 from PyQtInspect.pqi_gui.tabs.create_stacks_list_widget import CreateStacksListWidget
 from PyQtInspect.pqi_gui.tabs.widget_props_tree_widget import WidgetPropsTreeContainer
 
-from PyQtInspect._pqi_bundle.pqi_comm_constants import (
+from PyQtInspect._pqi_bundle.comm.protocol import (
     CMD_WIDGET_INFO, CMD_INSPECT_FINISHED, CMD_EXEC_CODE_ERROR,
     CMD_EXEC_CODE_RESULT, CMD_CHILDREN_INFO, CMD_QT_PATCH_SUCCESS, CMD_CONTROL_TREE,
     CMD_EXIT, TreeViewResultKeys, TreeViewExtraKeys, CMD_WIDGET_PROPS

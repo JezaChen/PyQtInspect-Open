@@ -2,23 +2,26 @@
 # ==============================================
 # Author: Jeza Chen
 # Time: 2024/9/16 23:22
-# Description: Tools for connecting
+# Description: Connection-related utilities
 # ==============================================
 
-def random_port() -> int:
+import random
+import socket
+
+
+def find_available_port() -> int:
     """
-    Get a random port number
-    :return: a valid port number
+    Find a random available port number.
+
+    :return: an available port number
     """
-    import random
     port = random.randint(10000, 60000)
     # check if the port is available
-    import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.bind(('', port))
         return port
     except:
-        return random_port()  # try again by recursion
+        return find_available_port()  # try again by recursion
     finally:
         s.close()
