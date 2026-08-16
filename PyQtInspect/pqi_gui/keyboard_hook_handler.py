@@ -56,10 +56,10 @@ class WindowsKeyboardHookHandler(KeyboardHookHandler):
 
     def _generateKeyboardHookThread(self):
         """ Initialize a thread to grab keyboard event. """
-        from PyQtInspect._pqi_bundle.pqi_keyboard_hook_win import GrabFlag
+        from PyQtInspect.pqi_gui.platform_specific.pqi_keyboard_hook_win import GrabFlag
 
         def _inSubThread():
-            import PyQtInspect._pqi_bundle.pqi_keyboard_hook_win as kb_hook
+            import PyQtInspect.pqi_gui.platform_specific.pqi_keyboard_hook_win as kb_hook
             kb_hook.grab(0x77, flag, lambda: self.sigDisableInspectKeyPressed.emit())
 
         thread = QtCore.QThread(self)
