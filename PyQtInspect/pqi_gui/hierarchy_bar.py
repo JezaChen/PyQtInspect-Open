@@ -416,7 +416,7 @@ if __name__ == '__main__':
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    import PyQtInspect.pqi_gui._pqi_res.resources
+    import PyQtInspect.pqi_gui.res.resources
 
     parentWin = TestWindow(None)
     parentWin.show()
