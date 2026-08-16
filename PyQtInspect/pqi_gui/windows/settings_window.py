@@ -11,7 +11,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.pqi_contants import IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
-from PyQtInspect.pqi_gui._pqi_res import get_icon
+from PyQtInspect.pqi_gui.res import get_icon
 
 from PyQtInspect.pqi_gui.settings import SettingsController
 from PyQtInspect.pqi_gui.settings.enums import SupportedIDE

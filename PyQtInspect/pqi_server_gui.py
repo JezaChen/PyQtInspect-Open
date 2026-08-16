@@ -43,7 +43,7 @@ from PyQtInspect.pqi_gui.hierarchy_bar import HierarchyBar
 from PyQtInspect.pqi_gui.windows.settings_window import SettingWindow
 from PyQtInspect.pqi_gui.styles import GLOBAL_STYLESHEET
 import PyQtInspect.pqi_gui.data_center as DataCenter
-from PyQtInspect.pqi_gui._pqi_res import get_icon
+from PyQtInspect.pqi_gui.res import get_icon
 from PyQtInspect.pqi_gui.keyboard_hook_handler import KeyboardHookHandler
 from PyQtInspect.pqi_gui.widget_brief_widget import WidgetBriefWidget
 from PyQtInspect._pqi_common.pqi_setup_holder import SetupHolder
