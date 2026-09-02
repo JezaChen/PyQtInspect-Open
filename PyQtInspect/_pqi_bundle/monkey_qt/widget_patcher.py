@@ -10,6 +10,7 @@ from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedI
 from PyQtInspect._pqi_bundle.monkey_qt.shared_api import QObjectInspectAPI, QObjectInspectAPIFunctions, QtModuleAPI
 from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import capture_current_stack
 from PyQtInspect._pqi_bundle.monkey_qt.widget_highlighter import QtWidgetHighlighter
+from PyQtInspect._pqi_bundle.monkey_qt.widget_patching.enter_widget_stack import EnteredWidgetStack
 from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
@@ -93,36 +94,6 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     def _is_obj_inspected(obj):
         return hasattr(obj, _PQI_WIDGET_INSPECTED_MARK)
-
-    class EnteredWidgetStack:
-        def __init__(self):
-            self._stack = []
-
-        def push(self, widget):
-            self._stack.append(widget)
-
-        def pop(self):
-            self._stack.pop()
-
-        def filter(self):
-            while self._stack:
-                wgt = self._stack[-1]
-                if isdeleted(wgt):
-                    self._stack.pop()
-                else:
-                    break
-
-        def clear(self):
-            self._stack.clear()
-
-        def __bool__(self):
-            return bool(self._stack)
-
-        def __getitem__(self, item):
-            return self._stack[item]
-
-        def __len__(self):
-            return len(self._stack)
 
     _entered_widget_stack = EnteredWidgetStack()
 

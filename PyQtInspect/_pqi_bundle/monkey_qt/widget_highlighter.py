@@ -63,7 +63,8 @@ class QtWidgetHighlighter:
 
     def unhighlight_last(self):
         if self.last_highlighted_widget is not None and not QObjectInspectAPI.instance().isdeleted(
-            self.last_highlighted_widget):
+            self.last_highlighted_widget
+        ):
             self.last_highlighted_widget.hide()
         self.last_highlighted_widget = None
 
