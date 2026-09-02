@@ -209,6 +209,21 @@ def stoptrace():
         connected = False
 
 
+class QtPatchApiGetter:
+    def __init__(self):
+        self._highlighter = None
+
+    def set_highlighter(self, highlighter):
+        self._highlighter = highlighter
+
+    @property
+    def highlighter(self):
+        assert self._highlighter is not None, \
+            "QtPatchApiGetter.highlighter is not set. Please call QtPatchApiGetter.set_highlighter() first."
+
+        return self._highlighter
+
+
 class PyDB:
     """ Main debugging class
     Lots of stuff going on here:
@@ -230,6 +245,8 @@ class PyDB:
         if set_as_global:
             set_global_debugger(self)
             # pydevd_tracing.replace_sys_set_trace_func()
+
+        self._qt_api_getter = QtPatchApiGetter()
 
         self._last_host = None
         self._last_port = None
@@ -646,6 +663,13 @@ class PyDB:
         widget_props = self._widget_props_getter.get_object_properties(widget)
         cmd = self.cmd_factory.make_widget_props_message(widget_props)
         self.writer.add_command(cmd)
+
+    # ============================================================
+    # Qt patch API getter
+    # ============================================================
+    @property
+    def qt_patch_api_getter(self):
+        return self._qt_api_getter
 
 
 def set_debug(setup):

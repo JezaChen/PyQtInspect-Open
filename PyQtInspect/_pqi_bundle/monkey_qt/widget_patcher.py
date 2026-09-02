@@ -7,16 +7,16 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedInspectTooltipManager
+from PyQtInspect._pqi_bundle.monkey_qt.shared_api import QObjectInspectAPI, QObjectInspectAPIFunctions, QtModuleAPI
 from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import capture_current_stack
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS, DEFAULT_HIGHLIGHT_COLOR
-from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import get_widget_size
+from PyQtInspect._pqi_bundle.monkey_qt.widget_highlighter import QtWidgetHighlighter
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
 from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_MOCKED_EVENT_ATTR,
     _PQI_INSPECTED_PROP_NAME,
     _PQI_INSPECTED_PROP_NAME_BYTES,
     _PQI_WIDGET_INSPECTED_MARK,
-    _PQI_HIGHLIGHT_FG_NAME,
     _PQI_CUSTOM_EVENT_IS_ENTER_ATTR,
     _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
     _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
@@ -44,10 +44,12 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
     QtCore = QtModule.QtCore
 
     EventEnum = QtCore.QEvent.Type
-    WidgetAttributeEnum = QtCore.Qt.WidgetAttribute
     MouseButtonEnum = QtCore.Qt.MouseButton
     KeyboardModifierEnum = QtCore.Qt.KeyboardModifier
     QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason
+
+    isdeleted = lambda obj: False
+    ispycreated = lambda obj: False
 
     if qt_support_mode.startswith("pyqt"):
         sip = QtModule.sip
@@ -60,6 +62,14 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             import shiboken6 as _shiboken
         isdeleted = lambda obj: not _shiboken.isValid(obj)
         ispycreated = _shiboken.createdByPython
+
+    # init internal shared api
+    QtModuleAPI.init_instance(QtModule)
+    QObjectInspectAPI.init_instance(QObjectInspectAPIFunctions(isdeleted, ispycreated))
+
+    debugger = get_global_debugger()
+    if debugger is not None:
+        debugger.qt_patch_api_getter.set_highlighter(QtWidgetHighlighter())
 
     detailed_inspect_tooltip_mgr = DetailedInspectTooltipManager(QtModule)
 
@@ -74,38 +84,6 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         if debugger is not None:
             debugger.register_widget(widget)
 
-    def _get_highlight_stylesheet() -> str:
-        color_str = DEFAULT_HIGHLIGHT_COLOR
-        debugger = get_global_debugger()
-        if debugger is not None:
-            color_str = debugger.highlight_color
-        try:
-            r, g, b, a = (int(x) for x in color_str.split(','))
-            r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))
-            color_css = f"rgba({r},{g},{b},{a})"
-        except (ValueError, AttributeError):
-            color_css = "rgba(255,0,0,51)"
-        return f"background: transparent; background-color: {color_css};"
-
-    def _createHighlightFg(parent: QtWidgets.QWidget):
-        # Instantiate with __new__ first, then invoke the original __init__.
-        widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
-        QtWidgets.QWidget._original_QWidget_init(widget, parent)
-        widget.setFixedSize(*get_widget_size(parent))
-        # Prevent it from responding to mouse events.
-        widget.setAttribute(WidgetAttributeEnum.WA_TransparentForMouseEvents)
-        widget.setObjectName(_PQI_HIGHLIGHT_FG_NAME)
-        # Fix for #63: Prevent repeated icon artifacts when highlighting widgets with background-image qss.
-        # -------------------------------------------------------------------------------------------------
-        # Use `background: transparent` shorthand to reset all inherited background properties
-        #   (e.g. background-image, background-color) from parent stylesheets, then apply our highlight color.
-        # -------------------------------------------------------------------------------------------------
-        # Note: `background-image: none` is ineffective here, and reversing the declaration order
-        #   will cause "background-color" to be overridden by the shorthand.
-        # -------------------------------------------------------------------------------------------------
-        widget.setStyleSheet(_get_highlight_stylesheet())
-        return widget
-
     def _mark_obj_inspected(obj):
         setattr(obj, _PQI_WIDGET_INSPECTED_MARK, True)
 
@@ -115,46 +93,6 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     def _is_obj_inspected(obj):
         return hasattr(obj, _PQI_WIDGET_INSPECTED_MARK)
-
-    class HighlightController:
-        last_highlighted_widget = None
-        # for some widgets like QSplitter, we should not highlight them, or they will change their size
-        widget_class_to_ignore = (
-            QtWidgets.QSplitter,
-        )
-
-        @classmethod
-        def _is_ignored(cls, widget):
-            return any(isinstance(widget, class_) for class_ in cls.widget_class_to_ignore)
-
-        @classmethod
-        def unhighlight_last(cls):
-            if cls.last_highlighted_widget is not None and not isdeleted(cls.last_highlighted_widget):
-                cls.last_highlighted_widget.hide()
-            cls.last_highlighted_widget = None
-
-        @classmethod
-        def highlight(cls, widget):
-            if cls._is_ignored(widget):
-                return
-
-            if not hasattr(widget, _PQI_HIGHLIGHT_FG_NAME):
-                setattr(widget, _PQI_HIGHLIGHT_FG_NAME, _createHighlightFg(widget))
-
-            fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME)
-            fg.setFixedSize(*get_widget_size(widget))
-            fg.setStyleSheet(_get_highlight_stylesheet())
-            cls.unhighlight_last()
-            fg.show()
-            cls.last_highlighted_widget = fg
-
-        @classmethod
-        def unhighlight(cls, widget):
-            fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME, None)
-            if fg is not None:
-                fg.hide()
-                if cls.last_highlighted_widget is fg:
-                    cls.last_highlighted_widget = None
 
     class EnteredWidgetStack:
         def __init__(self):
@@ -201,7 +139,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         debugger.send_widget_info_to_server(widget)
 
         # === highlight widget === #
-        HighlightController.highlight(widget)
+        debugger.qt_patch_api_getter.highlighter.highlight(widget)
 
         # === populate detailed inspect tooltip === #
         detailed_inspect_tooltip_mgr.show_tooltip(widget)
@@ -242,6 +180,10 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             if not _is_inspect_enabled():
                 return
 
+            debugger = get_global_debugger()
+            if not debugger:
+                return
+
             if _entered_widget_stack and _entered_widget_stack[-1] == obj:
                 _entered_widget_stack.pop()
             else:
@@ -254,7 +196,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                 if debugger:
                     debugger.set_hovered_widget(None)
 
-            HighlightController.unhighlight(obj)
+            debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
             _clear_obj_inspected_mark(obj)
 
             _inspect_top(_entered_widget_stack)
@@ -312,7 +254,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             # inspect finished
             debugger.finish_select(obj)
             debugger.stop_select()
-            HighlightController.unhighlight(obj)
+            debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
             _entered_widget_stack.clear()
             _clear_obj_inspected_mark(obj)
             detailed_inspect_tooltip_mgr.hide_tooltip()
@@ -345,10 +287,13 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             # handle highlight
             if hasattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR):
                 is_highlight = getattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR)
+                debugger = get_global_debugger()
+                if debugger is None:
+                    return
                 if is_highlight:
-                    HighlightController.highlight(obj)
+                    debugger.qt_patch_api_getter.highlighter.highlight(obj)
                 else:
-                    HighlightController.unhighlight(obj)
+                    debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
             # handle code exec
             if hasattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR):
                 code = getattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR)
