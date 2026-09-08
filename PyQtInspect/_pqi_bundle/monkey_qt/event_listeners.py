@@ -223,22 +223,6 @@ def make_qt_event_listener_cls(
             # Intercept `QDynamicPropertyChange` events for properties dynamically
             # added by PyQtInspect itself (like `_pqi_inspected`).
 
-            # --- top-level window show event ---
-            # Not used in production, only for debugging
-            # if isinstance(obj, QtWidgets.QWidget):
-            #     if event.type() == EventEnum.Show and obj.isWindow():
-            #         print("\n========== TOP LEVEL SHOW ==========")
-            #         print("python id   :", hex(id(obj)))
-            #         print("class       :", obj.metaObject().className())
-            #         print("objectName  :", obj.objectName())
-            #         print("parent      :", obj.parentWidget())
-            #         print("isWindow    :", obj.isWindow())
-            #         print("windowFlags :", hex(int(obj.windowFlags())))
-            #         print("visible     :", obj.isVisible())
-            #         print("geometry    :", obj.geometry())
-            #         print("====================================")
-            #
-
             with log_exception(suppress=True):
                 if (event.type() == EventEnum.DynamicPropertyChange
                     and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
