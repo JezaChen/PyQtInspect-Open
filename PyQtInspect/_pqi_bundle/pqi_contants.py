@@ -66,6 +66,7 @@ def get_pid():
             return '000001'
 
 
+# todo can remove
 def get_current_thread_id(thread):
     '''
     Note: the difference from get_current_thread_id to get_thread_id is that
@@ -108,6 +109,8 @@ class GlobalDebuggerHolder:
 # get_global_debugger
 #=======================================================================================================================
 def get_global_debugger():
+    assert GlobalDebuggerHolder.global_dbg is not None, \
+        "Global debugger is not set. Please ensure that the debugger is initialized before calling get_global_debugger()."
     return GlobalDebuggerHolder.global_dbg
 
 

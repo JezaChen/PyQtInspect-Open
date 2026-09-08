@@ -7,47 +7,21 @@ import os
 
 from PyQtInspect._pqi_bundle import pqi_log
 from PyQtInspect._pqi_bundle.monkey_qt.detailed_inspect_tooltip import DetailedInspectTooltipManager
-from PyQtInspect._pqi_bundle.monkey_qt.shared_api import QObjectInspectAPI, QObjectInspectAPIFunctions, QtModuleAPI
+from PyQtInspect._pqi_bundle.monkey_qt.event_listeners import make_qt_event_listener_cls, make_native_event_listener_cls
+from PyQtInspect._pqi_bundle.monkey_qt.shared.shared_api import QObjectInspectAPI, QObjectInspectAPIFunctions, QtModuleAPI
+from PyQtInspect._pqi_bundle.monkey_qt.shared.shared_tools import is_widget_patched, mark_widget_patched
 from PyQtInspect._pqi_bundle.monkey_qt.widget_creation_stack import capture_current_stack
 from PyQtInspect._pqi_bundle.monkey_qt.widget_highlighter import QtWidgetHighlighter
 from PyQtInspect._pqi_bundle.monkey_qt.widget_patching.enter_widget_stack import EnteredWidgetStack
-from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses, IS_WINDOWS, IS_MACOS
-from PyQtInspect._pqi_bundle.pqi_log.log_utils import log_exception
+from PyQtInspect._pqi_bundle.pqi_contants import get_global_debugger, QtWidgetClasses
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
-    _PQI_MOCKED_EVENT_ATTR,
-    _PQI_INSPECTED_PROP_NAME,
-    _PQI_INSPECTED_PROP_NAME_BYTES,
-    _PQI_WIDGET_INSPECTED_MARK,
-    _PQI_CUSTOM_EVENT_IS_ENTER_ATTR,
-    _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR,
-    _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR,
     _PQI_STACK_WHEN_CREATED_ATTR,
-    _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR,
     SuppressPatchMark,
 )
 
-def _is_inspect_enabled():
-    debugger = get_global_debugger()
-    return debugger is not None and debugger.inspect_enabled
-
-
-def _isWidgetPatched(obj) -> bool:
-    return bool(obj.property(_PQI_INSPECTED_PROP_NAME))
-
-
-def _markPatched(widget):
-    widget.setProperty(_PQI_INSPECTED_PROP_NAME, True)
-
-
 def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
     QtWidgets = QtModule.QtWidgets
-    QtGui = QtModule.QtGui
     QtCore = QtModule.QtCore
-
-    EventEnum = QtCore.QEvent.Type
-    MouseButtonEnum = QtCore.Qt.MouseButton
-    KeyboardModifierEnum = QtCore.Qt.KeyboardModifier
-    QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason
 
     isdeleted = lambda obj: False
     ispycreated = lambda obj: False
@@ -64,344 +38,20 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         isdeleted = lambda obj: not _shiboken.isValid(obj)
         ispycreated = _shiboken.createdByPython
 
-    # init internal shared api
+    # init internal shared APIs
     QtModuleAPI.init_instance(QtModule)
     QObjectInspectAPI.init_instance(QObjectInspectAPIFunctions(isdeleted, ispycreated))
 
-    debugger = get_global_debugger()
-    if debugger is not None:
-        debugger.qt_patch_api_getter.set_highlighter(QtWidgetHighlighter())
-
+    highlighter = QtWidgetHighlighter()
     detailed_inspect_tooltip_mgr = DetailedInspectTooltipManager(QtModule)
+    entered_widget_stack = EnteredWidgetStack()
 
-    def _create_mouse_event(event_type, pos, button):
-        """ Create a mouse event with the specified parameters.
-        It is safe, because the event object created by Python is allocated on the heap.
-        """
-        return QtGui.QMouseEvent(event_type, QtCore.QPointF(pos), button, button, KeyboardModifierEnum.NoModifier)
-
-    def _register_widget(widget):
-        debugger = get_global_debugger()
-        if debugger is not None:
-            debugger.register_widget(widget)
-
-    def _mark_obj_inspected(obj):
-        setattr(obj, _PQI_WIDGET_INSPECTED_MARK, True)
-
-    def _clear_obj_inspected_mark(obj):
-        if hasattr(obj, _PQI_WIDGET_INSPECTED_MARK):
-            delattr(obj, _PQI_WIDGET_INSPECTED_MARK)
-
-    def _is_obj_inspected(obj):
-        return hasattr(obj, _PQI_WIDGET_INSPECTED_MARK)
-
-    _entered_widget_stack = EnteredWidgetStack()
-
-    def _inspect_widget(widget: QtWidgets.QWidget):
-        debugger = get_global_debugger()
-        if debugger is None:
-            return
-
-        # print('inspect:', widget.__class__.__name__, widget.objectName(), widget)
-        # === save widget ===
-        debugger.set_hovered_widget(widget)
-
-        # === send widget info === #
-        debugger.send_widget_info_to_server(widget)
-
-        # === highlight widget === #
-        debugger.qt_patch_api_getter.highlighter.highlight(widget)
-
-        # === populate detailed inspect tooltip === #
-        detailed_inspect_tooltip_mgr.show_tooltip(widget)
-
-        # === hook mouseReleaseEvent === #
-        _mark_obj_inspected(widget)
-
-    def _inspect_top(stack: EnteredWidgetStack):
-        # todo move to EnteredWidgetStack class
-        stack.filter()
-        if not stack:
-            return
-
-        if not _is_inspect_enabled():
-            return
-
-        obj = stack[-1]
-        _inspect_widget(obj)
-
-    class EventListener(QtCore.QObject):
-
-        def _handleEnterEvent(self, obj, event):
-            if not _is_inspect_enabled():
-                return
-
-            if _entered_widget_stack:
-                # If the stack has elements, clear the selected state of the widget on top.
-                # Otherwise QTabWidget behaves abnormally.
-                # TODO: Investigate whether this logic can be integrated into the stack, as they are tightly coupled.
-                _clear_obj_inspected_mark(_entered_widget_stack[-1])
-            _entered_widget_stack.push(obj)
-            _inspect_top(_entered_widget_stack)
-
-        def _handleLeaveEvent(self, obj, event):
-            # Note the asymmetry:
-            # leaveEvent is triggered when the cursor leaves, but at that moment it may already have entered the next widget,
-            # so we cannot simply pop.
-            if not _is_inspect_enabled():
-                return
-
-            debugger = get_global_debugger()
-            if not debugger:
-                return
-
-            if _entered_widget_stack and _entered_widget_stack[-1] == obj:
-                _entered_widget_stack.pop()
-            else:
-                _entered_widget_stack.clear()
-
-            if len(_entered_widget_stack) == 0:
-                # no inspected widgets, hide the tooltip
-                detailed_inspect_tooltip_mgr.hide_tooltip()
-                debugger = get_global_debugger()
-                if debugger:
-                    debugger.set_hovered_widget(None)
-
-            debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
-            _clear_obj_inspected_mark(obj)
-
-            _inspect_top(_entered_widget_stack)
-
-        def _handleMouseReleaseEvent(self, obj, event) -> bool:
-            """Handle mouse click events and return whether to intercept them."""
-            if not _is_inspect_enabled():
-                return False
-
-            # print(f'click: {obj}, button: {event.button()}')
-            if not _is_obj_inspected(obj):
-                return False
-
-            # Ignore events posted by ourselves.
-            # Do not rely on event.spontaneous(), because for QTextBrowser click events it returns False.
-            if getattr(event, _PQI_MOCKED_EVENT_ATTR, False):
-                return False
-
-            debugger = get_global_debugger()
-            if debugger is None:
-                return False
-
-            if event.button() != MouseButtonEnum.LeftButton:
-                if debugger.mock_left_button_down and event.button() == MouseButtonEnum.RightButton:
-                    # mock left button press and release event
-                    # First, send a mouse press event
-                    pressEvent = _create_mouse_event(EventEnum.MouseButtonPress, event.pos(),
-                                                     MouseButtonEnum.LeftButton)
-                    # Propagate the event with postEvent instead of calling obj.mousePressEvent directly,
-                    # so that other event filters can receive it.
-                    QtCore.QCoreApplication.postEvent(obj, pressEvent)
-
-                    # Then, change the original event and send it again
-                    event = _create_mouse_event(EventEnum.MouseButtonRelease, event.pos(), MouseButtonEnum.LeftButton)
-                    setattr(event, _PQI_MOCKED_EVENT_ATTR, True)
-                    # Similarly, propagate the event again via postEvent so that subsequent event filters can process it.
-                    QtCore.QCoreApplication.postEvent(obj, event)
-                    # stop event propagation
-                    return True
-                else:
-                    # Bug Fixed 20240810: We CAN NOT re-post the original event,
-                    # because it will be deleted after the event loop.
-                    # see: https://doc.qt.io/qt-5/qcoreapplication.html#postEvent
-                    # ---
-                    # The event must be allocated on the heap
-                    # since the post event queue will take ownership of the event
-                    # and delete it once it has been posted.
-                    # It is not safe to access the event after it has been posted.
-                    # ---
-                    # Note: all objects created in Python are allocated on the heap.
-                    # see: https://docs.python.org/3/c-api/memory.html
-                    # ---
-                    return False
-
-            # inspect finished
-            debugger.finish_select(obj)
-            debugger.stop_select()
-            debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
-            _entered_widget_stack.clear()
-            _clear_obj_inspected_mark(obj)
-            detailed_inspect_tooltip_mgr.hide_tooltip()
-
-            # stop event propagation
-            return True
-
-        def _handleMousePressEvent(self, obj, event):
-            if not _is_inspect_enabled():
-                return False
-            # print(f'press: {obj}')
-            if not event.spontaneous():
-                return False
-            if not _is_obj_inspected(obj):
-                return False
-            # obj.mousePressEvent(event)
-            # For the widget currently under inspection, block MousePress propagation.
-            # This prevents other event filters from changing the inspected widget during MousePress handling,
-            # which would disrupt the subsequent MouseRelease processing.
-            return True
-
-        def _handleCustomEvent(self, obj, event):
-            # handle enter & leave
-            if hasattr(event, _PQI_CUSTOM_EVENT_IS_ENTER_ATTR):
-                is_enter = getattr(event, _PQI_CUSTOM_EVENT_IS_ENTER_ATTR)
-                if is_enter:
-                    self._handleEnterEvent(obj, event)
-                else:
-                    self._handleLeaveEvent(obj, event)
-            # handle highlight
-            if hasattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR):
-                is_highlight = getattr(event, _PQI_CUSTOM_EVENT_IS_HIGHLIGHT_ATTR)
-                debugger = get_global_debugger()
-                if debugger is None:
-                    return
-                if is_highlight:
-                    debugger.qt_patch_api_getter.highlighter.highlight(obj)
-                else:
-                    debugger.qt_patch_api_getter.highlighter.unhighlight(obj)
-            # handle code exec
-            if hasattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR):
-                code = getattr(event, _PQI_CUSTOM_EVENT_EXEC_CODE_ATTR)
-                obj._pqi_exec(code)
-            # handle inspect disabled
-            if hasattr(event, _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR):
-                # no need call debugger.stop_select() here,
-                # because this event is sent by the debugger
-                _entered_widget_stack.clear()
-                detailed_inspect_tooltip_mgr.hide_tooltip()
-
-        def _handleContextMenuEvent(self, obj, event):
-            """ #1 https://github.com/JezaChen/PyQtInspect-Open/issues/1
-            When mocking right-click is enabled,
-            we need to prevent the context menu from popping up when user right-clicks on the widget.
-            """
-            if not _is_inspect_enabled():
-                return False
-            if not _is_obj_inspected(obj):
-                return False
-            if hasattr(event, 'reason') and event.reason() != QContextMenuEventReasonEnum.Mouse:
-                # If the context menu is not triggered by the mouse, do not intercept
-                return False
-            debugger = get_global_debugger()
-            # Prevent the context menu from popping up
-            return debugger is not None and debugger.mock_left_button_down
-
-        def eventFilter(self, obj, event):
-            # Intercept `QDynamicPropertyChange` events for properties dynamically
-            # added by PyQtInspect itself (like `_pqi_inspected`).
-
-            # --- top-level window show event ---
-            # Not used in production, only for debugging
-            # if isinstance(obj, QtWidgets.QWidget):
-            #     if event.type() == EventEnum.Show and obj.isWindow():
-            #         print("\n========== TOP LEVEL SHOW ==========")
-            #         print("python id   :", hex(id(obj)))
-            #         print("class       :", obj.metaObject().className())
-            #         print("objectName  :", obj.objectName())
-            #         print("parent      :", obj.parentWidget())
-            #         print("isWindow    :", obj.isWindow())
-            #         print("windowFlags :", hex(int(obj.windowFlags())))
-            #         print("visible     :", obj.isVisible())
-            #         print("geometry    :", obj.geometry())
-            #         print("====================================")
-            #
-
-            with log_exception(suppress=True):
-                if (event.type() == EventEnum.DynamicPropertyChange
-                        and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
-                    return True
-
-                if not _isWidgetPatched(obj):
-                    return False
-
-                if event.type() == EventEnum.Enter:
-                    self._handleEnterEvent(obj, event)
-                elif event.type() == EventEnum.Leave:
-                    self._handleLeaveEvent(obj, event)
-                elif event.type() == EventEnum.MouseButtonPress:
-                    return self._handleMousePressEvent(obj, event)
-                elif event.type() == EventEnum.MouseButtonRelease:
-                    return self._handleMouseReleaseEvent(obj, event)
-                elif event.type() == EventEnum.ContextMenu:
-                    return self._handleContextMenuEvent(obj, event)
-                elif event.type() == EventEnum.User:
-                    self._handleCustomEvent(obj, event)
-            return False
-
-    if IS_WINDOWS:
-        class NativeEventListener(QtCore.QAbstractNativeEventFilter):
-            """
-            For some widgets that have overloaded the nativeEvent, mouse events may be intercepted earlier.
-            Therefore, a NativeEventFilter needs to be implemented to prevent mouse events from being intercepted.
-            """
-            HTCLIENT = 1
-            WM_NCHITTEST = 0x0084
-
-            def nativeEventFilter(self, eventType, message):
-                if not _is_inspect_enabled():
-                    # If inspect is disabled, do not filter native events
-                    return False, 0
-
-                from ctypes import wintypes
-                msg = wintypes.MSG.from_address(int(message))
-                if msg.message == self.WM_NCHITTEST:
-                    return True, self.HTCLIENT
-                return False, 0
-    elif IS_MACOS:
-        class NativeEventListener(QtCore.QAbstractNativeEventFilter):
-            """
-            For macOS, when the window is not focused, the mouse event will not be triggered.
-            Therefore, a NativeEventFilter needs to be implemented to obtain the mouse position
-            and generate the corresponding enter and leave events.
-            """
-            __last_widget = None
-
-            def nativeEventFilter(self, eventType, _):
-                if not _is_inspect_enabled():
-                    # If inspect is disabled, do not handle native events
-                    return False, 0
-
-                if eventType == 'mac_generic_NSEvent':
-                    if QtGui.QGuiApplication.instance().focusWindow():
-                        # If the window is focused, the event handle is not needed
-                        self.__last_widget = None
-                        return False, 0
-
-                    locationInWindow = QtGui.QCursor.pos()
-                    targetWidget = QtWidgets.QApplication.instance().widgetAt(locationInWindow)
-                    if not targetWidget:
-                        if self.__last_widget:
-                            leaveEvent = QtCore.QEvent(EventEnum.User)
-                            leaveEvent._pqi_is_enter = False
-                            QtWidgets.QApplication.postEvent(self.__last_widget, leaveEvent)
-                        self.__last_widget = None
-                        return False, 0
-
-                    if targetWidget != self.__last_widget:
-                        # generate enter event
-                        enterEvent = QtCore.QEvent(EventEnum.User)
-                        enterEvent._pqi_is_enter = True
-                        QtWidgets.QApplication.postEvent(targetWidget, enterEvent)
-                        # generate leave event
-                        if self.__last_widget:
-                            leaveEvent = QtCore.QEvent(EventEnum.User)
-                            leaveEvent._pqi_is_enter = False
-                            QtWidgets.QApplication.postEvent(self.__last_widget, leaveEvent)
-                        self.__last_widget = targetWidget
-                return False, 0
-    else:
-        NativeEventListener = None
+    EventListener = make_qt_event_listener_cls(QtModule, entered_widget_stack, detailed_inspect_tooltip_mgr, highlighter)
+    NativeEventListener = make_native_event_listener_cls(QtModule)
 
     def _initGlobalEventFilter():
         """ Initialize the global event filters when it does not exist """
         debugger = get_global_debugger()
-        assert debugger is not None
 
         app = QtWidgets.QApplication.instance()
         if app is None:
@@ -434,8 +84,6 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     def _patchWidget(obj, *, attach=False):
         """ Install event listener and register widget to debugger """
-        debugger = get_global_debugger()
-        assert debugger is not None
         if not attach:
             # We use the Qt property system to mark the widget inspected
             #   because Python binding instance may change and lose the mark
@@ -448,15 +96,15 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             # Bug Fixed 20240819: when the widget is deleted, the QTimer will not be executed.
             #   So we need to check if the widget is deleted before setting the property.
             # ---
-            QtCore.QTimer.singleShot(0, lambda: _markPatched(obj) if not isdeleted(obj) else None)
+            QtCore.QTimer.singleShot(0, lambda: mark_widget_patched(obj) if not isdeleted(obj) else None)
         else:
             # Attach thread may be different from the main thread,
             #   so the timer method will be invalid.
             # We just set the property directly because the widget has been initialized.
-            _markPatched(obj)
+            mark_widget_patched(obj)
         # === register widget === #
-        _register_widget(obj)
-
+        debugger = get_global_debugger()
+        debugger.register_widget(obj)
 
     def _needExtraPatchAfterInit(obj):
         """ Check if the widget needs extra patch after __init__ """
@@ -507,20 +155,19 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
         if need_to_patch_children:
             for child in obj.findChildren(QtWidgets.QWidget):
-                if not _isWidgetPatched(child):
+                if not is_widget_patched(child):
                     _patchWidget(child)
 
         # for QAbstractSpinBox we should install event listener on its line edit
         if isinstance(obj, (QtWidgets.QAbstractSpinBox,)):
             line_edit = obj.lineEdit()
-            if line_edit and _isWidgetPatched(line_edit):  # lineEdit may be None
+            if line_edit and is_widget_patched(line_edit):  # lineEdit may be None
                 _patchWidget(obj.lineEdit())
 
         # for QDialogButtonBox we should install event listener on its buttons (Issue #2)
         if isinstance(obj, QtWidgets.QDialogButtonBox):
             for button in obj.buttons():
                 _patchWidget(button)
-
 
     def _new_QWidget_init(self, *args, **kwargs):
         self._original_QWidget_init(*args, **kwargs)
@@ -563,8 +210,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
     def _notify_patch_success():
         _debugger = get_global_debugger()
-        if _debugger is not None:
-            _debugger.send_qt_patch_success_message()
+        _debugger.send_qt_patch_success_message()
 
     # ================================#
     #            ATTACH               #

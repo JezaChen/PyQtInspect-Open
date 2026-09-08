@@ -301,7 +301,7 @@ def get_control_tree() -> typing.List[typing.Dict]:
 
     from PyQtInspect.pqi import SetupHolder
 
-    QtLib = import_Qt(SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT])
+    QtLib = import_Qt(SetupHolder.setup[SetupHolder.KEY_QT_SUPPORT])  # todo refactor
     QtWidgets, QtGui = QtLib.QtWidgets, QtLib.QtGui  # noqa
 
     top_level_widgets = QtWidgets.QApplication.topLevelWidgets()

@@ -444,8 +444,7 @@ def create_warn_multiproc(original_name):
             # "forked" instance of the debugger can potentially hit a breakpoint, which results in the process hanging.
             if pid == 0:
                 debugger = get_global_debugger()
-                if debugger:
-                    debugger.stoptrace()
+                debugger.stoptrace()
             return pid
         else:
             return result
@@ -679,8 +678,7 @@ def create_fork(original_name):
 
 def send_process_created_message():
     debugger = get_global_debugger()
-    if debugger is not None:
-        debugger.send_process_created_message()
+    debugger.send_process_created_message()
 
 
 def send_process_will_be_substituted():

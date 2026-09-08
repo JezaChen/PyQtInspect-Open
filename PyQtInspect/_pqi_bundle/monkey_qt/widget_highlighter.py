@@ -1,5 +1,5 @@
 from PyQtInspect._pqi_bundle.monkey_qt.metadata import _PQI_HIGHLIGHT_FG_NAME
-from PyQtInspect._pqi_bundle.monkey_qt.shared_api import QObjectInspectAPI, QtModuleAPI
+from PyQtInspect._pqi_bundle.monkey_qt.shared.shared_api import QObjectInspectAPI, QtModuleAPI
 from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import get_widget_size
 from PyQtInspect._pqi_bundle.pqi_contants import DEFAULT_HIGHLIGHT_COLOR, get_global_debugger
 
@@ -9,10 +9,8 @@ __all__ = [
 
 
 def _get_highlight_stylesheet() -> str:
-    color_str = DEFAULT_HIGHLIGHT_COLOR
     debugger = get_global_debugger()
-    if debugger is not None:
-        color_str = debugger.highlight_color
+    color_str = debugger.highlight_color
     try:
         r, g, b, a = (int(x) for x in color_str.split(','))
         r, g, b, a = (max(0, min(255, v)) for v in (r, g, b, a))

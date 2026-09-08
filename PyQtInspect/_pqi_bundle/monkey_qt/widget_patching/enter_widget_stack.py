@@ -1,4 +1,4 @@
-from PyQtInspect._pqi_bundle.monkey_qt.shared_api import QObjectInspectAPI
+from PyQtInspect._pqi_bundle.monkey_qt.shared.shared_api import QObjectInspectAPI
 
 
 class EnteredWidgetStack:
