@@ -24,6 +24,12 @@ from PyQtInspect._pqi_bundle.monkey_qt.metadata import (
     _PQI_CUSTOM_EVENT_DISABLE_INSPECT_ATTR,
     SuppressPatchMark,
 )
+from PyQtInspect._pqi_bundle.monkey_qt.tools import (
+    snake_getvalue,
+    snake_getfunc,
+    snake_setattr,
+    unsnake,
+)
 
 def _is_inspect_enabled():
     debugger = get_global_debugger()
@@ -32,10 +38,6 @@ def _is_inspect_enabled():
 
 def _isWidgetPatched(obj) -> bool:
     return bool(obj.property(_PQI_INSPECTED_PROP_NAME))
-
-
-def _markPatched(widget):
-    widget.setProperty(_PQI_INSPECTED_PROP_NAME, True)
 
 
 def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
@@ -49,6 +51,10 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
     KeyboardModifierEnum = QtCore.Qt.KeyboardModifier
     QContextMenuEventReasonEnum = QtGui.QContextMenuEvent.Reason
 
+    getvalue = getattr
+    getfunc = getattr
+    setattr_ = setattr
+
     if qt_support_mode.startswith("pyqt"):
         sip = QtModule.sip
         isdeleted = sip.isdeleted
@@ -61,7 +67,14 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         isdeleted = lambda obj: not _shiboken.isValid(obj)
         ispycreated = _shiboken.createdByPython
 
+        getvalue = snake_getvalue
+        getfunc = snake_getfunc
+        setattr_ = snake_setattr
+
     detailed_inspect_tooltip_mgr = DetailedInspectTooltipManager(QtModule)
+
+    def _markPatched(widget):
+        getfunc(widget, "setProperty")(_PQI_INSPECTED_PROP_NAME, True)
 
     def _create_mouse_event(event_type, pos, button):
         """ Create a mouse event with the specified parameters.
@@ -91,10 +104,10 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         # Instantiate with __new__ first, then invoke the original __init__.
         widget = QtWidgets.QWidget.__new__(QtWidgets.QWidget)
         QtWidgets.QWidget._original_QWidget_init(widget, parent)
-        widget.setFixedSize(*get_widget_size(parent))
+        getfunc(widget, "setFixedSize")(*get_widget_size(parent))
         # Prevent it from responding to mouse events.
-        widget.setAttribute(WidgetAttributeEnum.WA_TransparentForMouseEvents)
-        widget.setObjectName(_PQI_HIGHLIGHT_FG_NAME)
+        getfunc(widget, "setAttribute")(WidgetAttributeEnum.WA_TransparentForMouseEvents)
+        setattr_(widget, "setObjectName", _PQI_HIGHLIGHT_FG_NAME)
         # Fix for #63: Prevent repeated icon artifacts when highlighting widgets with background-image qss.
         # -------------------------------------------------------------------------------------------------
         # Use `background: transparent` shorthand to reset all inherited background properties
@@ -103,7 +116,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         # Note: `background-image: none` is ineffective here, and reversing the declaration order
         #   will cause "background-color" to be overridden by the shorthand.
         # -------------------------------------------------------------------------------------------------
-        widget.setStyleSheet(_get_highlight_stylesheet())
+        setattr_(widget, "setStyleSheet", _get_highlight_stylesheet())
         return widget
 
     def _mark_obj_inspected(obj):
@@ -142,8 +155,8 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                 setattr(widget, _PQI_HIGHLIGHT_FG_NAME, _createHighlightFg(widget))
 
             fg = getattr(widget, _PQI_HIGHLIGHT_FG_NAME)
-            fg.setFixedSize(*get_widget_size(widget))
-            fg.setStyleSheet(_get_highlight_stylesheet())
+            getfunc(fg, "setFixedSize")(*get_widget_size(widget))
+            setattr_(fg, "setStyleSheet", _get_highlight_stylesheet())
             cls.unhighlight_last()
             fg.show()
             cls.last_highlighted_widget = fg
@@ -398,7 +411,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
             with log_exception(suppress=True):
                 if (event.type() == EventEnum.DynamicPropertyChange
-                        and bytes(event.propertyName()) == _PQI_INSPECTED_PROP_NAME_BYTES):
+                        and bytes(getvalue(event, "propertyName")) == _PQI_INSPECTED_PROP_NAME_BYTES):
                     return True
 
                 if not _isWidgetPatched(obj):
@@ -417,6 +430,8 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                 elif event.type() == EventEnum.User:
                     self._handleCustomEvent(obj, event)
             return False
+
+        event_filter = eventFilter
 
     if IS_WINDOWS:
         class NativeEventListener(QtCore.QAbstractNativeEventFilter):
@@ -437,6 +452,8 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                 if msg.message == self.WM_NCHITTEST:
                     return True, self.HTCLIENT
                 return False, 0
+
+            native_event_filter = nativeEventFilter
     elif IS_MACOS:
         class NativeEventListener(QtCore.QAbstractNativeEventFilter):
             """
@@ -452,13 +469,13 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                     return False, 0
 
                 if eventType == 'mac_generic_NSEvent':
-                    if QtGui.QGuiApplication.instance().focusWindow():
+                    if getvalue(QtGui.QGuiApplication.instance(), "focusWindow")():
                         # If the window is focused, the event handle is not needed
                         self.__last_widget = None
                         return False, 0
 
                     locationInWindow = QtGui.QCursor.pos()
-                    targetWidget = QtWidgets.QApplication.instance().widgetAt(locationInWindow)
+                    targetWidget = getvalue(QtWidgets.QApplication.instance(), "widgetAt")(locationInWindow)
                     if not targetWidget:
                         if self.__last_widget:
                             leaveEvent = QtCore.QEvent(EventEnum.User)
@@ -479,6 +496,8 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
                             QtWidgets.QApplication.postEvent(self.__last_widget, leaveEvent)
                         self.__last_widget = targetWidget
                 return False, 0
+
+            native_event_filter = nativeEventFilter
     else:
         NativeEventListener = None
 
@@ -506,15 +525,15 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
         if debugger.global_event_filter is None:
             eventFilter = EventListener()
             # We need to move the event filter to the main thread
-            eventFilter.moveToThread(topLevelWgt.thread())
+            getfunc(eventFilter, "moveToThread")(topLevelWgt.thread())
             debugger.global_event_filter = eventFilter
-            app.installEventFilter(eventFilter)
+            getfunc(app, "installEventFilter")(eventFilter)
 
         # Global native event filter
         if debugger.global_native_event_filter is None and NativeEventListener is not None:
             nativeEventFilter = NativeEventListener()
             debugger.global_native_event_filter = nativeEventFilter
-            app.installNativeEventFilter(nativeEventFilter)
+            getfunc(app, "installNativeEventFilter")(nativeEventFilter)
 
     def _patchWidget(obj, *, attach=False):
         """ Install event listener and register widget to debugger """
@@ -532,7 +551,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
             # Bug Fixed 20240819: when the widget is deleted, the QTimer will not be executed.
             #   So we need to check if the widget is deleted before setting the property.
             # ---
-            QtCore.QTimer.singleShot(0, lambda: _markPatched(obj) if not isdeleted(obj) else None)
+            getfunc(QtCore.QTimer, "singleShot")(0, lambda: _markPatched(obj) if not isdeleted(obj) else None)
         else:
             # Attach thread may be different from the main thread,
             #   so the timer method will be invalid.
@@ -607,6 +626,7 @@ def patch_qt_widgets(QtModule, qt_support_mode='auto', is_attach=False):
 
 
     def _new_QWidget_init(self, *args, **kwargs):
+        kwargs = {unsnake(name): value for name, value in kwargs.items()}
         self._original_QWidget_init(*args, **kwargs)
         if not ispycreated(self):
             # DO NOT install event listener for non-pycreated widget, because it may cause crash when exit
