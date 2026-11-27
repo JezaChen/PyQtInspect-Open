@@ -11,6 +11,10 @@ from PyQtInspect._pqi_bundle.monkey_qt.widget_utils import (
     get_widget_window_pos,
     get_widget_visual_rect,
 )
+from PyQtInspect._pqi_bundle.monkey_qt.tools import (
+    snake_getvalue,
+    snake_setattr,
+)
 
 __all__ = [
     "DetailedInspectTooltipManager",
@@ -68,6 +72,13 @@ class _WidgetInfo(NamedTuple):
 
 class DetailedInspectTooltipManager:
     def __init__(_self, qt_module):
+        if qt_module.__name__.startswith("PySide"):
+            getvalue = snake_getvalue
+            setattr_ = snake_setattr
+        else:
+            getvalue = getattr
+            setattr_ = setattr
+
         QtWidgets = qt_module.QtWidgets
         QtGui = qt_module.QtGui
         QtCore = qt_module.QtCore
@@ -92,76 +103,76 @@ class DetailedInspectTooltipManager:
             def __init__(self, parent=None):
                 super().__init__(parent)
 
-                self.setWindowFlags(
-                    Qt.WindowType.Tool
-                    | Qt.WindowType.FramelessWindowHint
-                    | Qt.WindowType.WindowStaysOnTopHint
-                )
-                self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-                self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+                setattr_(self, "setWindowFlags",
+                         Qt.WindowType.Tool
+                         | Qt.WindowType.FramelessWindowHint
+                         | Qt.WindowType.WindowStaysOnTopHint
+                         )
+                setattr_(self, "setAttribute", Qt.WidgetAttribute.WA_TranslucentBackground)
+                setattr_(self, "setAttribute", Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
                 self._initUI()
 
             def _initUI(self):
                 # Leave some space around the outer layout for the drop shadow.
                 self.outerLayout = QVBoxLayout(self)
-                self.outerLayout.setContentsMargins(10, 10, 10, 10)
+                setattr_(self.outerLayout, "setContentsMargins", QtCore.QMargins(10, 10, 10, 10))
 
                 self.card = QFrame()
-                self.card.setObjectName(_CARD_OBJECT_NAME)
-                self.card.setStyleSheet(_STYLE_SHEET)
+                setattr_(self.card, "setObjectName", _CARD_OBJECT_NAME)
+                setattr_(self.card, "setStyleSheet", _STYLE_SHEET)
 
                 shadow = QGraphicsDropShadowEffect(self.card)
-                shadow.setBlurRadius(18)
-                shadow.setOffset(0, 3)
-                shadow.setColor(QColor(0, 0, 0, 90))
-                self.card.setGraphicsEffect(shadow)
+                setattr_(shadow, "setBlurRadius", 18)
+                setattr_(shadow, "setOffset", QtCore.QPoint(0, 3))
+                setattr_(shadow, "setColor", QColor(0, 0, 0, 90))
+                setattr_(self.card, "setGraphicsEffect", shadow)
 
-                self.outerLayout.addWidget(self.card)
+                getvalue(self.outerLayout, "addWidget")(self.card)
 
                 self.mainLayout = QVBoxLayout(self.card)
-                self.mainLayout.setContentsMargins(12, 10, 12, 12)
-                self.mainLayout.setSpacing(7)
+                setattr_(self.mainLayout, "setContentsMargins", QtCore.QMargins(12, 10, 12, 12))
+                setattr_(self.mainLayout, "setSpacing", 7)
 
                 # ----------------------------
                 # Title Area: Object Name + Size
                 # ----------------------------
                 self.titleLabel = QLabel()
-                self.titleLabel.setObjectName(_TITLE_LABEL_OBJECT_NAME)
-                self.titleLabel.setWordWrap(True)
-                self.titleLabel.setSizePolicy(
-                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-                )
+                setattr_(self.titleLabel, "setObjectName", _TITLE_LABEL_OBJECT_NAME)
+                setattr_(self.titleLabel, "setWordWrap", True)
+                setattr_(self.titleLabel, "setSizePolicy",
+                         QtWidgets.QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                         )
 
-                self.mainLayout.addWidget(self.titleLabel)
+                getvalue(self.mainLayout, "addWidget")(self.titleLabel)
 
                 # ----------------------------
                 # Properties Area
                 # ----------------------------
                 self.propertyGrid = QGridLayout()
-                self.propertyGrid.setHorizontalSpacing(16)
-                self.propertyGrid.setVerticalSpacing(5)
-                self.propertyGrid.setColumnStretch(1, 1)
+                setattr_(self.propertyGrid, "setHorizontalSpacing", 16)
+                setattr_(self.propertyGrid, "setVerticalSpacing", 5)
+                getvalue(self.propertyGrid, "setColumnStretch")(1, 1)
 
-                self.mainLayout.addLayout(self.propertyGrid)
-                self.setFixedWidth(300)
+                getvalue(self.mainLayout, "addLayout")(self.propertyGrid)
+                setattr_(self, "setFixedWidth", 300)
 
             def addProperty(self, name, value):
                 name_label = QLabel(self.card)
-                name_label.setText(name)
-                name_label.setObjectName(_NAME_LABEL_OBJECT_NAME)
-                name_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+                setattr_(name_label, "setText", name)
+                setattr_(name_label, "setObjectName", _NAME_LABEL_OBJECT_NAME)
+                setattr_(name_label, "setAlignment", Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
                 value_label = QLabel(self.card)
-                value_label.setText(value)
-                value_label.setObjectName(_VALUE_LABEL_OBJECT_NAME)
-                value_label.setWordWrap(True)
-                value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+                setattr_(value_label, "setText", value)
+                setattr_(value_label, "setObjectName", _VALUE_LABEL_OBJECT_NAME)
+                setattr_(value_label, "setWordWrap", True)
+                setattr_(value_label, "setAlignment", Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
 
                 cnt = self.propertyGrid.count() // 2
 
-                self.propertyGrid.addWidget(name_label, cnt, 0)
-                self.propertyGrid.addWidget(value_label, cnt, 1)
+                getvalue(self.propertyGrid, "addWidget")(name_label, cnt, 0)
+                getvalue(self.propertyGrid, "addWidget")(value_label, cnt, 1)
 
                 # Important:
                 # Newly added widgets may not become visible immediately when the
@@ -186,18 +197,18 @@ class DetailedInspectTooltipManager:
                 # word-wrapped labels are measured at their final display width.
                 # Relying on unconstrained size hints can overestimate the required
                 # height.
-                height = self.outerLayout.heightForWidth(self.width())
+                height = getvalue(self.outerLayout, "heightForWidth")(getvalue(self, "width"))
 
                 if height >= 0:
-                    self.setFixedHeight(height)
+                    setattr_(self, "setFixedHeight", height)
                 else:
-                    self.adjustSize()
+                    getvalue(self, "adjustSize")()
 
                 self.card.repaint()
 
             def clearProperties(self):
                 while True:
-                    item = self.propertyGrid.takeAt(0)
+                    item = getvalue(self.propertyGrid, "takeAt")(0)
                     if item is None:
                         break
                     widget = item.widget()
@@ -206,13 +217,13 @@ class DetailedInspectTooltipManager:
                         # would then display the widget as a top-level window.
                         # https://chatgpt.com/s/t_6a7817ffaa488191b24a00b376d8483f
                         # widget.setParent(None)
-                        widget.deleteLater()
+                        getvalue(widget, "deleteLater")()
 
             def setInfo(self, info: _WidgetInfo):
                 with SuppressPatchMark.marked(
                     _self._QWidget_cls
                 ):
-                    self.titleLabel.setText(_make_breakable(
+                    setattr_(self.titleLabel, "setText", _make_breakable(
                         info.class_name
                         + ("#" + info.object_name if info.object_name != "" else "")
                     ))
@@ -232,16 +243,16 @@ class DetailedInspectTooltipManager:
                     window_pos=get_widget_window_pos(widget),
                     size_hint=get_widget_size_hint(widget),
                 )
-                self.setInfo(widget_info)
+                setattr_(self, "setInfo", widget_info)
                 self.fitHeightToWidth()
 
                 def findScreen(_pos):
-                    _screen = QApplication.screenAt(_pos)
+                    _screen = getvalue(QApplication, "screenAt")(_pos)
                     if _screen:
                         return _screen
                     # Try again using the tooltip's expected bottom-right corner.
-                    _screen = QApplication.screenAt(
-                        QPoint(_pos.x() + self.width(), _pos.y() + self.height())
+                    _screen = getvalue(QApplication, "screenAt")(
+                        QPoint(_pos.x() + getvalue(self, "width"), _pos.y() + getvalue(self, "height"))
                     )
                     return _screen
 
@@ -260,16 +271,16 @@ class DetailedInspectTooltipManager:
 
                 if screen:
                     # Clamp the tooltip to the screen's available geometry.
-                    rect = screen.availableGeometry()
+                    rect = getvalue(screen, "availableGeometry")
                     available_right = rect.x() + rect.width()
                     available_bottom = rect.y() + rect.height()
 
-                    if x + self.width() > available_right:
-                        x = available_right - self.width()
+                    if x + getvalue(self, "width") > available_right:
+                        x = available_right - getvalue(self, "width")
 
-                    if y + self.height() > available_bottom:
+                    if y + getvalue(self, "height") > available_bottom:
                         # Place the tooltip above the target widget if there is not enough space below.
-                        y = visual_rect.y - self.height() - 4
+                        y = visual_rect.y - getvalue(self, "height") - 4
 
                     x = max(rect.left(), x)
                     y = max(rect.top(), y)
